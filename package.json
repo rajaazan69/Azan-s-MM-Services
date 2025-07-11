@@ -1,20 +1,20 @@
 {
-  "name": "discord-ticket-bot",
+  "name": "ticket-tool-bot",
   "version": "1.0.0",
-  "description": "Discord ticket bot with HTML transcripts and Express uptime",
+  "description": "A Discord ticket bot clone of Ticket Tool XYZ",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
+  "author": "YourName",
+  "license": "MIT",
   "dependencies": {
-    "discord.js": "^14.13.0",
-    "dotenv": "^16.3.1",
-    "express": "^4.18.2",
+    "@discordjs/rest": "^2.5.1",
+    "discord-api-types": "^0.38.15",
+    "discord.js": "^14.21.0",
+    "dotenv": "^16.6.1",
+    "express": "^5.1.0",
+    "fs": "^0.0.1-security",
     "node-fetch": "^3.3.2"
-    "axios": "^1.6.0"
-}
-  },
-  "engines": {
-    "node": ">=18.0.0"
   }
 }
