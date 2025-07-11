@@ -2,7 +2,7 @@ const { Client, GatewayIntentBits, Partials, ChannelType, PermissionsBitField, A
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
-const fetch = require('node-fetch');
+const axios = require('axios');
 require('dotenv').config();
 
 const app = express();
@@ -17,9 +17,20 @@ const MIDDLEMAN_ROLE = '1373062797545570525';
 const PANEL_CHANNEL = '1373048211538841702';
 const TICKET_CATEGORY = '1373027564926406796';
 const TRANSCRIPT_CHANNEL = '1373058123547283568';
+const BASE_URL = process.env.BASE_URL;
 
 app.get('/', (req, res) => res.send('Bot is online.'));
+app.get('/transcripts/:filename', (req, res) => {
+  const filePath = path.join(__dirname, 'transcripts', req.params.filename);
+  if (fs.existsSync(filePath)) res.sendFile(filePath);
+  else res.status(404).send('Transcript not found.');
+});
 app.listen(PORT, () => console.log(`Uptime server running on port ${PORT}`));
+
+// Keep Replit awake
+setInterval(() => {
+  axios.get(BASE_URL).catch(() => {});
+}, 4 * 60 * 1000);
 
 client.once('ready', () => console.log(`Bot online as ${client.user.tag}`));
 
@@ -113,14 +124,13 @@ client.on('interactionCreate', async interaction => {
       )?.id;
 
       const embed = new EmbedBuilder()
-        .setTitle('📄 Transcript Uploaded')
+        .setTitle('📄 Transcript Ready')
         .setDescription(`[Click to view transcript](${link})`)
         .addFields(
           { name: 'Ticket Name', value: channel.name, inline: true },
           { name: 'Owner', value: ticketOwner ? `<@${ticketOwner}> (${ticketOwner})` : 'Unknown', inline: true }
         )
         .setColor('#4fc3f7')
-        .setFooter({ text: `Saved via Pastebin` })
         .setTimestamp();
 
       await interaction.editReply({ embeds: [embed] });
@@ -155,14 +165,13 @@ client.on('interactionCreate', async interaction => {
       )?.id;
 
       const embed = new EmbedBuilder()
-        .setTitle('📄 Transcript Uploaded')
+        .setTitle('📄 Transcript Ready')
         .setDescription(`[Click to view transcript](${link})`)
         .addFields(
           { name: 'Ticket Name', value: channel.name, inline: true },
           { name: 'Owner', value: ticketOwner ? `<@${ticketOwner}> (${ticketOwner})` : 'Unknown', inline: true }
         )
         .setColor('#4fc3f7')
-        .setFooter({ text: `Saved via Pastebin` })
         .setTimestamp();
 
       await interaction.editReply({ embeds: [embed] });
@@ -218,29 +227,24 @@ async function generateTranscript(channel) {
   const lines = sorted.map(m => {
     const userTag = `${m.author.username}#${m.author.discriminator}`;
     participants.set(userTag, (participants.get(userTag) || 0) + 1);
-    return `[${new Date(m.createdTimestamp).toLocaleString()}] ${userTag}: ${m.cleanContent}`;
+    return `<p><strong>${userTag}</strong> <em>${new Date(m.createdTimestamp).toLocaleString()}</em>: ${m.cleanContent}</p>`;
   });
 
-  const participantStats = [...participants.entries()].map(([user, count]) => `${user}: ${count} messages`).join('\n');
-  const content = `Transcript for #${channel.name}\n\nParticipants:\n${participantStats}\n\n---\n${lines.join('\n')}`;
+  const participantStats = [...participants.entries()].map(([user, count]) => `<li>${user}: ${count} messages</li>`).join('');
+  const html = `
+    <html><head><title>Transcript for ${channel.name}</title></head><body>
+    <h2>${channel.name}</h2>
+    <h3>Participants</h3><ul>${participantStats}</ul>
+    <hr>${lines.join('')}<hr>
+    </body></html>
+  `;
 
-  const pasteRes = await fetch('https://pastebin.com/api/api_post.php', {
-    method: 'POST',
-    body: new URLSearchParams({
-      api_dev_key: process.env.PASTEBIN_API_KEY,
-      api_option: 'paste',
-      api_paste_code: channel.id,
-      api_paste_name: `Transcript - ${channel.name}`,
-      api_paste_expire_date: 'N',
-      api_paste_format: 'text',
-      api_paste_private: '1',
-      api_paste_code: channel.id,
-      api_paste_data: content
-    })
-  });
+  const filename = `${channel.id}.html`;
+  const filepath = path.join(__dirname, 'transcripts');
+  if (!fs.existsSync(filepath)) fs.mkdirSync(filepath);
+  fs.writeFileSync(path.join(filepath, filename), html);
 
-  const url = await pasteRes.text();
-  return url;
+  return `${BASE_URL}/transcripts/${filename}`;
 }
 
 client.login(process.env.TOKEN);
