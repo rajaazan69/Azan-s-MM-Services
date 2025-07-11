@@ -1,8 +1,8 @@
+
 const { Client, GatewayIntentBits, Partials, ChannelType, PermissionsBitField, ActionRowBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, EmbedBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
-const axios = require('axios');
 require('dotenv').config();
 
 const app = express();
@@ -17,7 +17,7 @@ const MIDDLEMAN_ROLE = '1373062797545570525';
 const PANEL_CHANNEL = '1373048211538841702';
 const TICKET_CATEGORY = '1373027564926406796';
 const TRANSCRIPT_CHANNEL = '1373058123547283568';
-const BASE_URL = process.env.BASE_URL;
+const BASE_URL = process.env.BASE_URL; // ✅ Replace with your actual Render URL
 
 app.get('/', (req, res) => res.send('Bot is online.'));
 app.get('/transcripts/:filename', (req, res) => {
@@ -26,11 +26,6 @@ app.get('/transcripts/:filename', (req, res) => {
   else res.status(404).send('Transcript not found.');
 });
 app.listen(PORT, () => console.log(`Uptime server running on port ${PORT}`));
-
-// Keep Replit awake
-setInterval(() => {
-  axios.get(BASE_URL).catch(() => {});
-}, 4 * 60 * 1000);
 
 client.once('ready', () => console.log(`Bot online as ${client.user.tag}`));
 
