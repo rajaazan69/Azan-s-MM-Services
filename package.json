@@ -8,7 +8,6 @@
   },
   "author": "YourName",
   "license": "MIT",
-  "type": "module",
   "dependencies": {
     "@discordjs/rest": "^2.5.1",
     "discord-api-types": "^0.38.15",
