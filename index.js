@@ -1,4 +1,3 @@
-
 const { Client, GatewayIntentBits, Partials, ChannelType, PermissionsBitField, ActionRowBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, EmbedBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const express = require('express');
 const fs = require('fs');
@@ -12,12 +11,12 @@ const client = new Client({
 });
 
 const PORT = process.env.PORT || 3000;
+const BASE_URL = process.env.BASE_URL; // e.g. https://your-render-url.onrender.com
 const OWNER_ID = '1356149794040446998';
 const MIDDLEMAN_ROLE = '1373062797545570525';
 const PANEL_CHANNEL = '1373048211538841702';
 const TICKET_CATEGORY = '1373027564926406796';
 const TRANSCRIPT_CHANNEL = '1373058123547283568';
-const BASE_URL = process.env.BASE_URL; // ✅ Replace with your actual Render URL
 
 app.get('/', (req, res) => res.send('Bot is online.'));
 app.get('/transcripts/:filename', (req, res) => {
@@ -44,7 +43,7 @@ client.on('interactionCreate', async interaction => {
       );
 
       const panelChannel = await client.channels.fetch(PANEL_CHANNEL);
-      panelChannel.send({ embeds: [embed], components: [btn] });
+      await panelChannel.send({ embeds: [embed], components: [btn] });
       return interaction.reply({ content: 'Setup complete.', ephemeral: true });
     }
 
@@ -136,7 +135,7 @@ client.on('interactionCreate', async interaction => {
   }
 
   if (interaction.isButton()) {
-    const { customId, channel, user } = interaction;
+    const { customId, channel } = interaction;
 
     if (customId === 'openTicket') {
       const modal = new ModalBuilder().setCustomId('ticketModal').setTitle('Middleman Request')
@@ -235,14 +234,16 @@ async function generateTranscript(channel) {
   `;
 
   const filename = `${channel.id}.html`;
-  const filepath = path.join(__dirname, 'transcripts');
-  if (!fs.existsSync(filepath)) fs.mkdirSync(filepath);
-  fs.writeFileSync(path.join(filepath, filename), html);
+  const transcriptDir = path.join(__dirname, 'transcripts');
+  if (!fs.existsSync(transcriptDir)) fs.mkdirSync(transcriptDir);
+  fs.writeFileSync(path.join(transcriptDir, filename), html);
 
   return `${BASE_URL}/transcripts/${filename}`;
 }
+
+// Uptime self-ping every 5 minutes
 setInterval(() => {
   require('node-fetch')(BASE_URL).catch(() => {});
-}, 5 * 60 * 1000); // every 5 minutes
+}, 5 * 60 * 1000);
 
 client.login(process.env.TOKEN);
