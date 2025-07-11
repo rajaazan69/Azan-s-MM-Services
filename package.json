@@ -1,7 +1,7 @@
 {
   "name": "ticket-tool-bot",
   "version": "1.0.0",
-  "description": "A Discord ticket bot clone of Ticket Tool XYZ with full HTML transcript and Pastebin support",
+  "description": "A Discord ticket bot clone of Ticket Tool XYZ",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
@@ -10,13 +10,11 @@
   "license": "MIT",
   "dependencies": {
     "@discordjs/rest": "^2.5.1",
-    "axios": "^1.6.8",
     "discord-api-types": "^0.38.15",
     "discord.js": "^14.21.0",
     "dotenv": "^16.6.1",
     "express": "^5.1.0",
-    "fs-extra": "^11.2.0",
-    "node-fetch": "^3.3.2",
-    "uuid": "^9.0.1"
+    "fs": "^0.0.1-security",
+    "node-fetch": "^3.3.2"
   }
 }
