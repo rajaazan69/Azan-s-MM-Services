@@ -241,5 +241,14 @@ async function generateTranscript(channel) {
 
   return `${BASE_URL}/transcripts/${filename}`;
 }
+// Express server for uptime
+const app = express();
+const port = 3000;
+
+app.get('/', (req, res) => res.send('Bot is alive!'));
+app.listen(port, () => console.log(`Uptime server running on http://localhost:${port}`));
+
+// Keep-alive ping to prevent Render timeout
+setInterval(() => fetch(`http://localhost:${port}`), 60_000);
 
 client.login(process.env.TOKEN);
