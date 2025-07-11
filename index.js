@@ -16,7 +16,7 @@ const MIDDLEMAN_ROLE = '1373062797545570525';
 const PANEL_CHANNEL = '1373048211538841702';
 const TICKET_CATEGORY = '1373027564926406796';
 const TRANSCRIPT_CHANNEL = '1373058123547283568';
-const BASE_URL = 'https://your-app-name.onrender.com'; // ✅ Replace with your actual Render URL
+const BASE_URL = process.env.BASE_URL; // ✅ Replace with your actual Render URL
 
 app.get('/', (req, res) => res.send('Bot is online.'));
 app.get('/transcripts/:filename', (req, res) => {
