@@ -241,5 +241,8 @@ async function generateTranscript(channel) {
 
   return `${BASE_URL}/transcripts/${filename}`;
 }
+setInterval(() => {
+  require('node-fetch')(BASE_URL).catch(() => {});
+}, 5 * 60 * 1000); // every 5 minutes
 
 client.login(process.env.TOKEN);
