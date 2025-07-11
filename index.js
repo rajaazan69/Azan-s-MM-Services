@@ -3,7 +3,7 @@ const { Client, GatewayIntentBits, Partials, ChannelType, PermissionsBitField, A
 const fs = require('fs');
 const express = require('express');
 const path = require('path');
-const uploadToPastebin = require('./uploadToPastebin');
+const uploadToPastebin = require('./uploadtoPastebin');
 const app = express();
 const port = 3000;
 
