@@ -1,147 +1,194 @@
-require('dotenv').config();
-const { Client, GatewayIntentBits, Partials, ChannelType, PermissionsBitField, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, Events, SlashCommandBuilder, REST, Routes } = require('discord.js');
-const fs = require('fs-extra');
-const path = require('path');
-const express = require('express');
-const uploadToPastebin = require('./uploadtoPastebin'); // make sure the filename matches
-const app = express();
-const port = 3000;
 
-const TOKEN = process.env.TOKEN;
-const CLIENT_ID = '1392944799983730849';
+const { Client, GatewayIntentBits, Partials, ChannelType, PermissionsBitField, ActionRowBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, EmbedBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const express = require('express');
+const fs = require('fs');
+const path = require('path');
+require('dotenv').config();
+
+const app = express();
+const client = new Client({
+  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent],
+  partials: [Partials.Channel]
+});
+
+const PORT = process.env.PORT || 3000;
 const OWNER_ID = '1356149794040446998';
 const MIDDLEMAN_ROLE = '1373062797545570525';
 const PANEL_CHANNEL = '1373048211538841702';
 const TICKET_CATEGORY = '1373027564926406796';
 const TRANSCRIPT_CHANNEL = '1373058123547283568';
+const BASE_URL = process.env.BASE_URL; // ✅ Replace with your actual Render URL
 
-const client = new Client({
-  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.GuildMembers, GatewayIntentBits.MessageContent],
-  partials: [Partials.Channel]
+app.get('/', (req, res) => res.send('Bot is online.'));
+app.get('/transcripts/:filename', (req, res) => {
+  const filePath = path.join(__dirname, 'transcripts', req.params.filename);
+  if (fs.existsSync(filePath)) res.sendFile(filePath);
+  else res.status(404).send('Transcript not found.');
 });
+app.listen(PORT, () => console.log(`Uptime server running on port ${PORT}`));
 
-const commands = [
-  new SlashCommandBuilder().setName('setup').setDescription('Setup the ticket panel'),
-  new SlashCommandBuilder().setName('close').setDescription('Close the ticket'),
-  new SlashCommandBuilder().setName('transcript').setDescription('Send the ticket transcript'),
-  new SlashCommandBuilder().setName('delete').setDescription('Delete the ticket'),
-  new SlashCommandBuilder().setName('rename').setDescription('Rename the ticket').addStringOption(opt => opt.setName('name').setDescription('New name').setRequired(true)),
-  new SlashCommandBuilder().setName('add').setDescription('Add user to ticket').addUserOption(opt => opt.setName('user').setDescription('User to add').setRequired(true)),
-  new SlashCommandBuilder().setName('remove').setDescription('Remove user from ticket').addUserOption(opt => opt.setName('user').setDescription('User to remove').setRequired(true))
-].map(cmd => cmd.toJSON());
+client.once('ready', () => console.log(`Bot online as ${client.user.tag}`));
 
-client.once('ready', async () => {
-  console.log(`Bot ready as ${client.user.tag}`);
-
-  const rest = new REST({ version: '10' }).setToken(TOKEN);
-  await rest.put(Routes.applicationCommands(CLIENT_ID), { body: commands });
-});
-
-client.on(Events.InteractionCreate, async interaction => {
+client.on('interactionCreate', async interaction => {
   if (interaction.isChatInputCommand()) {
-    const { commandName } = interaction;
+    const { commandName, channel, options } = interaction;
 
     if (commandName === 'setup') {
       const embed = new EmbedBuilder()
-        .setTitle('Request Middleman')
-        .setDescription('Click the button below to open a ticket.\nPlease fill out all required information.')
+        .setTitle('**Request Middleman**')
+        .setDescription('**Click Below To Request Azan’s Services**\nPlease answer all the questions correctly for the best support.')
         .setColor('Blue');
 
-      const button = new ButtonBuilder().setCustomId('create_ticket').setLabel('Request Middleman').setStyle(ButtonStyle.Primary);
+      const btn = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('openTicket').setLabel('Request Middleman').setStyle(ButtonStyle.Primary)
+      );
 
-      await interaction.reply({ content: '✅ Panel created.', ephemeral: true });
-      await client.channels.cache.get(PANEL_CHANNEL).send({ embeds: [embed], components: [new ActionRowBuilder().addComponents(button)] });
+      const panelChannel = await client.channels.fetch(PANEL_CHANNEL);
+      panelChannel.send({ embeds: [embed], components: [btn] });
+      return interaction.reply({ content: 'Setup complete.', ephemeral: true });
     }
 
     if (commandName === 'close') {
-      if (!interaction.channel.name.startsWith('ticket-')) return interaction.reply({ content: '❌ Not a ticket channel.', ephemeral: true });
-      await interaction.deferReply({ ephemeral: true });
+      const perms = channel.permissionOverwrites.cache;
+      const ticketOwner = [...perms.values()].find(po =>
+        po.allow.has(PermissionsBitField.Flags.ViewChannel) &&
+        po.id !== OWNER_ID && po.id !== MIDDLEMAN_ROLE && po.id !== channel.guild.id
+      )?.id;
 
-      const member = interaction.guild.members.cache.get(interaction.channel.topic);
-      await interaction.channel.permissionOverwrites.edit(member, { SendMessages: false, ViewChannel: false });
+      for (const [id] of perms) {
+        if (id !== OWNER_ID && id !== MIDDLEMAN_ROLE && id !== channel.guild.id) {
+          await channel.permissionOverwrites.edit(id, {
+            SendMessages: false,
+            ViewChannel: false
+          }).catch(() => {});
+        }
+      }
+
+      const closeEmbed = new EmbedBuilder()
+        .setTitle('🔒 Ticket Closed')
+        .setDescription('Select an option below to generate the transcript or delete the ticket.')
+        .addFields(
+          { name: 'Ticket Name', value: channel.name, inline: true },
+          { name: 'Owner', value: ticketOwner ? `<@${ticketOwner}> (${ticketOwner})` : 'Unknown', inline: true }
+        )
+        .setColor('#2B2D31')
+        .setFooter({ text: `Closed by ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
+        .setTimestamp();
 
       const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('transcript').setLabel('Transcript').setStyle(ButtonStyle.Secondary),
-        new ButtonBuilder().setCustomId('delete').setLabel('Delete').setStyle(ButtonStyle.Danger)
+        new ButtonBuilder().setCustomId('transcript').setLabel('📄 Transcript').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId('delete').setLabel('🗑️ Delete').setStyle(ButtonStyle.Danger)
       );
 
-      await interaction.followUp({ content: '✅ Ticket closed.', components: [row] });
+      await interaction.reply({ embeds: [closeEmbed], components: [row] });
     }
 
     if (commandName === 'delete') {
-      if (!interaction.channel.name.startsWith('ticket-')) return interaction.reply({ content: '❌ Not a ticket channel.', ephemeral: true });
-      await interaction.reply({ content: 'Deleting in 3 seconds...', ephemeral: true });
-      setTimeout(() => interaction.channel.delete().catch(() => {}), 3000);
+      await channel.delete();
     }
 
     if (commandName === 'rename') {
-      const newName = interaction.options.getString('name');
-      await interaction.channel.setName(`ticket-${newName}`);
-      await interaction.reply({ content: `Renamed to ticket-${newName}`, ephemeral: true });
+      const newName = options.getString('name');
+      await channel.setName(newName);
+      await interaction.reply({ content: `Renamed to ${newName}`, ephemeral: true });
     }
 
     if (commandName === 'add') {
-      const user = interaction.options.getUser('user');
-      await interaction.channel.permissionOverwrites.edit(user.id, { ViewChannel: true, SendMessages: true });
-      await interaction.reply({ content: `✅ ${user} added to the ticket.`, ephemeral: true });
+      const user = options.getUser('user');
+      await channel.permissionOverwrites.edit(user.id, {
+        SendMessages: true,
+        ViewChannel: true
+      });
+      await interaction.reply({ content: `${user} added to the ticket.`, ephemeral: true });
     }
 
     if (commandName === 'remove') {
-      const user = interaction.options.getUser('user');
-      await interaction.channel.permissionOverwrites.delete(user.id);
-      await interaction.reply({ content: `❌ ${user} removed from the ticket.`, ephemeral: true });
+      const user = options.getUser('user');
+      await channel.permissionOverwrites.delete(user.id);
+      await interaction.reply({ content: `${user} removed from the ticket.`, ephemeral: true });
     }
 
     if (commandName === 'transcript') {
-      await generateTranscript(interaction);
+      await interaction.deferReply({ ephemeral: true });
+      const link = await generateTranscript(channel);
+
+      const perms = channel.permissionOverwrites.cache;
+      const ticketOwner = [...perms.values()].find(po =>
+        po.allow.has(PermissionsBitField.Flags.ViewChannel) &&
+        po.id !== OWNER_ID && po.id !== MIDDLEMAN_ROLE && po.id !== channel.guild.id
+      )?.id;
+
+      const embed = new EmbedBuilder()
+        .setTitle('📄 Transcript Ready')
+        .setDescription(`[Click to view transcript](${link})`)
+        .addFields(
+          { name: 'Ticket Name', value: channel.name, inline: true },
+          { name: 'Owner', value: ticketOwner ? `<@${ticketOwner}> (${ticketOwner})` : 'Unknown', inline: true }
+        )
+        .setColor('#4fc3f7')
+        .setTimestamp();
+
+      await interaction.editReply({ embeds: [embed] });
+
+      const logChannel = client.channels.cache.get(TRANSCRIPT_CHANNEL);
+      if (logChannel) await logChannel.send({ embeds: [embed] });
     }
   }
 
   if (interaction.isButton()) {
-    if (interaction.customId === 'create_ticket') {
-      const modal = new ModalBuilder().setCustomId('ticket_modal').setTitle('Ticket Form');
+    const { customId, channel, user } = interaction;
 
-      const questions = [
-        { id: 'trade', label: "What's the trade?" },
-        { id: 'side', label: "What's your side?" },
-        { id: 'otherside', label: "What's their side?" },
-        { id: 'userid', label: "What's their user ID?" }
-      ];
-
-      const components = questions.map(q =>
-        new ActionRowBuilder().addComponents(new TextInputBuilder()
-          .setCustomId(q.id)
-          .setLabel(q.label)
-          .setStyle(TextInputStyle.Short)
-          .setRequired(true)));
-
-      modal.addComponents(...components);
+    if (customId === 'openTicket') {
+      const modal = new ModalBuilder().setCustomId('ticketModal').setTitle('Middleman Request')
+        .addComponents(
+          new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('q1').setLabel("What's the trade?").setStyle(TextInputStyle.Short).setRequired(true)),
+          new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('q2').setLabel("What's your side?").setStyle(TextInputStyle.Short).setRequired(true)),
+          new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('q3').setLabel("What's their side?").setStyle(TextInputStyle.Short).setRequired(true)),
+          new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('q4').setLabel("Their Discord ID?").setStyle(TextInputStyle.Short).setRequired(true))
+        );
       await interaction.showModal(modal);
     }
 
-    if (interaction.customId === 'transcript') {
-      await generateTranscript(interaction);
+    if (customId === 'transcript') {
+      await interaction.deferReply({ ephemeral: true });
+      const link = await generateTranscript(channel);
+
+      const perms = channel.permissionOverwrites.cache;
+      const ticketOwner = [...perms.values()].find(po =>
+        po.allow.has(PermissionsBitField.Flags.ViewChannel) &&
+        po.id !== OWNER_ID && po.id !== MIDDLEMAN_ROLE && po.id !== channel.guild.id
+      )?.id;
+
+      const embed = new EmbedBuilder()
+        .setTitle('📄 Transcript Ready')
+        .setDescription(`[Click to view transcript](${link})`)
+        .addFields(
+          { name: 'Ticket Name', value: channel.name, inline: true },
+          { name: 'Owner', value: ticketOwner ? `<@${ticketOwner}> (${ticketOwner})` : 'Unknown', inline: true }
+        )
+        .setColor('#4fc3f7')
+        .setTimestamp();
+
+      await interaction.editReply({ embeds: [embed] });
+
+      const logChannel = client.channels.cache.get(TRANSCRIPT_CHANNEL);
+      if (logChannel) await logChannel.send({ embeds: [embed] });
     }
 
-    if (interaction.customId === 'delete') {
-      await interaction.channel.delete().catch(() => {});
+    if (customId === 'delete') {
+      await channel.delete();
     }
   }
 
-  if (interaction.isModalSubmit() && interaction.customId === 'ticket_modal') {
-    await interaction.deferReply({ ephemeral: true });
-
-    const answers = {
-      trade: interaction.fields.getTextInputValue('trade'),
-      side: interaction.fields.getTextInputValue('side'),
-      otherside: interaction.fields.getTextInputValue('otherside'),
-      userid: interaction.fields.getTextInputValue('userid')
-    };
+  if (interaction.isModalSubmit() && interaction.customId === 'ticketModal') {
+    const q1 = interaction.fields.getTextInputValue('q1');
+    const q2 = interaction.fields.getTextInputValue('q2');
+    const q3 = interaction.fields.getTextInputValue('q3');
+    const q4 = interaction.fields.getTextInputValue('q4');
 
     const channel = await interaction.guild.channels.create({
       name: `ticket-${interaction.user.username}`,
       type: ChannelType.GuildText,
-      topic: interaction.user.id,
       parent: TICKET_CATEGORY,
       permissionOverwrites: [
         { id: interaction.guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
@@ -152,46 +199,47 @@ client.on(Events.InteractionCreate, async interaction => {
     });
 
     const embed = new EmbedBuilder()
-      .setTitle('Ticket Created')
-      .setDescription(`**Trade:** ${answers.trade}\n**Your Side:** ${answers.side}\n**Their Side:** ${answers.otherside}\n**User ID:** ${answers.userid}`)
-      .setColor('Green')
-      .setFooter({ text: `User ID: ${interaction.user.id}` });
+      .setTitle('🎫 New Ticket Created')
+      .addFields(
+        { name: "What's the trade?", value: q1 },
+        { name: "Your side", value: q2 },
+        { name: "Their side", value: q3 },
+        { name: "Their Discord ID", value: q4 }
+      )
+      .setColor('#2ecc71')
+      .setFooter({ text: `Ticket by ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() });
 
-    await channel.send({ content: `<@${interaction.user.id}> <@&${MIDDLEMAN_ROLE}>`, embeds: [embed] });
-    await interaction.followUp({ content: `✅ Ticket created: ${channel}`, ephemeral: true });
+    await channel.send({ content: `<@${interaction.user.id}> <@${OWNER_ID}> <@&${MIDDLEMAN_ROLE}>`, embeds: [embed] });
+    await interaction.reply({ content: `Ticket created: ${channel}`, ephemeral: true });
   }
 });
 
-async function generateTranscript(interaction) {
-  const channel = interaction.channel;
+async function generateTranscript(channel) {
   const messages = await channel.messages.fetch({ limit: 100 });
-  const sorted = [...messages.values()].reverse();
+  const sorted = messages.sort((a, b) => a.createdTimestamp - b.createdTimestamp);
+  const participants = new Map();
 
-  let transcriptHTML = `<html><body><h1>Transcript - ${channel.name}</h1><ul>`;
-  sorted.forEach(msg => {
-    const timestamp = msg.createdAt.toLocaleString();
-    transcriptHTML += `<li><strong>${msg.author.tag}</strong> [${timestamp}]: ${msg.content}</li>`;
+  const lines = sorted.map(m => {
+    const userTag = `${m.author.username}#${m.author.discriminator}`;
+    participants.set(userTag, (participants.get(userTag) || 0) + 1);
+    return `<p><strong>${userTag}</strong> <em>${new Date(m.createdTimestamp).toLocaleString()}</em>: ${m.cleanContent}</p>`;
   });
-  transcriptHTML += `</ul></body></html>`;
 
-  const filePath = path.join(__dirname, `${channel.id}.html`);
-  fs.writeFileSync(filePath, transcriptHTML);
+  const participantStats = [...participants.entries()].map(([user, count]) => `<li>${user}: ${count} messages</li>`).join('');
+  const html = `
+    <html><head><title>Transcript for ${channel.name}</title></head><body>
+    <h2>${channel.name}</h2>
+    <h3>Participants</h3><ul>${participantStats}</ul>
+    <hr>${lines.join('')}<hr>
+    </body></html>
+  `;
 
-  const pasteUrl = await uploadToPastebin(transcriptHTML);
-  const embed = new EmbedBuilder()
-    .setTitle('📄 Ticket Transcript')
-    .setDescription(`[View Transcript on Pastebin](${pasteUrl})`)
-    .setColor('Orange');
+  const filename = `${channel.id}.html`;
+  const filepath = path.join(__dirname, 'transcripts');
+  if (!fs.existsSync(filepath)) fs.mkdirSync(filepath);
+  fs.writeFileSync(path.join(filepath, filename), html);
 
-  client.channels.cache.get(TRANSCRIPT_CHANNEL).send({ embeds: [embed] });
-  await interaction.reply({ embeds: [embed], ephemeral: true });
-
-  setTimeout(() => fs.remove(filePath).catch(() => {}), 60_000);
+  return `${BASE_URL}/transcripts/${filename}`;
 }
 
-// Express uptime ping server
-app.get('/', (req, res) => res.send('Bot is alive.'));
-app.listen(port, () => console.log(`Uptime server running on http://localhost:${port}`));
-setInterval(() => require('node-fetch')('http://localhost:3000'), 60_000);
-
-client.login(TOKEN);
+client.login(process.env.TOKEN);
