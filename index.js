@@ -1,4 +1,3 @@
-
 const { Client, GatewayIntentBits, Partials, ChannelType, PermissionsBitField, ActionRowBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, EmbedBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const express = require('express');
 const fs = require('fs');
@@ -241,14 +240,10 @@ async function generateTranscript(channel) {
 
   return `${BASE_URL}/transcripts/${filename}`;
 }
-// Express server for uptime
-const app = express();
-const port = 3000;
-
-app.get('/', (req, res) => res.send('Bot is alive!'));
-app.listen(port, () => console.log(`Uptime server running on http://localhost:${port}`));
-
-// Keep-alive ping to prevent Render timeout
-setInterval(() => fetch(`http://localhost:${port}`), 60_000);
 
 client.login(process.env.TOKEN);
+
+// Self-ping to keep app awake (Replit / Render)
+setInterval(() => {
+  require('node-fetch')(BASE_URL).catch(() => {});
+}, 5 * 60 * 1000); // Ping every 5 minutes
