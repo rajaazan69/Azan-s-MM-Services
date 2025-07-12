@@ -1,4 +1,4 @@
-const { Client, GatewayIntentBits, Partials, ChannelType, PermissionsBitField, ActionRowBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, EmbedBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { Client, GatewayIntentBits, Partials, ChannelType, PermissionsBitField, ActionRowBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, EmbedBuilder, ButtonBuilder, ButtonStyle, AttachmentBuilder } = require('discord.js');
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
@@ -16,7 +16,7 @@ const MIDDLEMAN_ROLE = '1373062797545570525';
 const PANEL_CHANNEL = '1373048211538841702';
 const TICKET_CATEGORY = '1373027564926406796';
 const TRANSCRIPT_CHANNEL = '1373058123547283568';
-const BASE_URL = process.env.BASE_URL; // ✅ Replace with your actual Render URL
+const BASE_URL = process.env.BASE_URL;
 
 app.get('/', (req, res) => res.send('Bot is online.'));
 app.get('/transcripts/:filename', (req, res) => {
@@ -110,6 +110,7 @@ client.on('interactionCreate', async interaction => {
     if (commandName === 'transcript') {
       await interaction.deferReply({ ephemeral: true });
       const link = await generateTranscript(channel);
+      const txtTranscript = await generateTextTranscript(channel);
 
       const perms = channel.permissionOverwrites.cache;
       const ticketOwner = [...perms.values()].find(po =>
@@ -127,10 +128,10 @@ client.on('interactionCreate', async interaction => {
         .setColor('#4fc3f7')
         .setTimestamp();
 
-      await interaction.editReply({ embeds: [embed] });
+      await interaction.editReply({ embeds: [embed], files: [txtTranscript] });
 
       const logChannel = client.channels.cache.get(TRANSCRIPT_CHANNEL);
-      if (logChannel) await logChannel.send({ embeds: [embed] });
+      if (logChannel) await logChannel.send({ embeds: [embed], files: [txtTranscript] });
     }
   }
 
@@ -151,6 +152,7 @@ client.on('interactionCreate', async interaction => {
     if (customId === 'transcript') {
       await interaction.deferReply({ ephemeral: true });
       const link = await generateTranscript(channel);
+      const txtTranscript = await generateTextTranscript(channel);
 
       const perms = channel.permissionOverwrites.cache;
       const ticketOwner = [...perms.values()].find(po =>
@@ -168,10 +170,10 @@ client.on('interactionCreate', async interaction => {
         .setColor('#4fc3f7')
         .setTimestamp();
 
-      await interaction.editReply({ embeds: [embed] });
+      await interaction.editReply({ embeds: [embed], files: [txtTranscript] });
 
       const logChannel = client.channels.cache.get(TRANSCRIPT_CHANNEL);
-      if (logChannel) await logChannel.send({ embeds: [embed] });
+      if (logChannel) await logChannel.send({ embeds: [embed], files: [txtTranscript] });
     }
 
     if (customId === 'delete') {
@@ -241,9 +243,33 @@ async function generateTranscript(channel) {
   return `${BASE_URL}/transcripts/${filename}`;
 }
 
+async function generateTextTranscript(channel) {
+  const messages = await channel.messages.fetch({ limit: 100 });
+  const sorted = [...messages.values()].reverse();
+
+  let content = `Transcript for #${channel.name}\n\n`;
+
+  for (const msg of sorted) {
+    const timestamp = msg.createdAt.toISOString();
+    const cleanContent = msg.content || '[Embed/Attachment]';
+    content += `[${timestamp}] ${msg.author.tag}: ${cleanContent}\n`;
+  }
+
+  const fileName = `transcript-${channel.id}.txt`;
+  const filePath = path.join(__dirname, 'transcripts', fileName);
+
+  if (!fs.existsSync(path.dirname(filePath))) {
+    fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  }
+
+  fs.writeFileSync(filePath, content);
+
+  return new AttachmentBuilder(filePath);
+}
+
 client.login(process.env.TOKEN);
 
-// Self-ping to keep app awake (Render/Express)
+// Optional self-ping for uptime (works for Render if needed)
 const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
 setInterval(() => {
   fetch(BASE_URL).catch(() => {});
