@@ -2,7 +2,6 @@ const { Client, GatewayIntentBits, Partials, ChannelType, PermissionsBitField, A
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
-const puppeteer = require('puppeteer');
 require('dotenv').config();
 
 const app = express();
@@ -200,45 +199,18 @@ client.on('interactionCreate', async interaction => {
       ]
     });
 
-    let user2Mention = 'Unknown User';
-    if (/\\d{17,19}/.test(q4)) {
-      try {
-        const userObj = await client.users.fetch(q4);
-        user2Mention = `<@${userObj.id}>`;
-      } catch (e) {}
-    }
+    const embed = new EmbedBuilder()
+      .setTitle('🎫 New Ticket Created')
+      .addFields(
+        { name: "What's the trade?", value: q1 },
+        { name: "Your side", value: q2 },
+        { name: "Their side", value: q3 },
+        { name: "Their Discord ID", value: q4 }
+      )
+      .setColor('#2ecc71')
+      .setFooter({ text: `Ticket by ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() });
 
-    const html = `
-    <html>
-    <body style="background-color:#2b2d31; font-family:Arial, sans-serif; padding:20px; color:#fff;">
-      <h2 style="color:#00b0f4;">Middleman Request</h2>
-      <p><strong>User 1:</strong> <span style="color:#00ffcc;"><@${interaction.user.id}></span></p>
-      <p><strong>User 2:</strong> <span style="color:#ffcc00;">${user2Mention}</span></p>
-      <hr style="border-color:#444;">
-      <p><strong>What is User 1 giving?</strong><br><span style="color:#ccc;">${q2}</span></p><br>
-      <p><strong>What is User 2 giving?</strong><br><span style="color:#ccc;">${q3}</span></p><br>
-      <p><strong>What's the trade?</strong><br><span style="color:#ccc;">${q1}</span></p><br>
-      <p><em>Ticket created by ${interaction.user.tag}</em></p>
-    </body>
-    </html>`;
-
-    const screenshotPath = path.join(__dirname, 'transcripts', `${channel.id}-preview.png`);
-    if (!fs.existsSync(path.dirname(screenshotPath))) fs.mkdirSync(path.dirname(screenshotPath), { recursive: true });
-
-    const browser = await puppeteer.launch({ args: ['--no-sandbox'], headless: "new" });
-    const page = await browser.newPage();
-    await page.setContent(html);
-    await page.setViewport({ width: 800, height: 600 });
-    await page.screenshot({ path: screenshotPath });
-    await browser.close();
-
-    const image = new AttachmentBuilder(screenshotPath);
-
-    await channel.send({
-      content: `<@${interaction.user.id}> <@${OWNER_ID}> <@&${MIDDLEMAN_ROLE}>`,
-      files: [image]
-    });
-
+    await channel.send({ content: `<@${interaction.user.id}> <@${OWNER_ID}> <@&${MIDDLEMAN_ROLE}>`, embeds: [embed] });
     await interaction.reply({ content: `Ticket created: ${channel}`, ephemeral: true });
   }
 });
@@ -297,6 +269,7 @@ async function generateTextTranscript(channel) {
 
 client.login(process.env.TOKEN);
 
+// Optional self-ping for uptime (works for Render if needed)
 const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
 setInterval(() => {
   fetch(BASE_URL).catch(() => {});
