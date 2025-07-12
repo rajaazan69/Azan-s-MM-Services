@@ -260,6 +260,12 @@ async function generateTextTranscript(channel) {
   return new AttachmentBuilder(filePath);
 }
 
+client.on('error', console.error);
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
 client.login(process.env.TOKEN);
 
 const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
