@@ -243,7 +243,8 @@ async function generateTranscript(channel) {
 
 client.login(process.env.TOKEN);
 
-// Self-ping to keep app awake (Replit / Render)
+// Self-ping to keep app awake (Render/Express)
+const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
 setInterval(() => {
-  require('node-fetch')(BASE_URL).catch(() => {});
-}, 5 * 60 * 1000); // Ping every 5 minutes
+  fetch(BASE_URL).catch(() => {});
+}, 5 * 60 * 1000);
