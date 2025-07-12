@@ -82,7 +82,9 @@ client.on('interactionCreate', async interaction => {
       await interaction.reply({ embeds: [closeEmbed], components: [row] });
     }
 
-    if (commandName === 'delete') await channel.delete();
+    if (commandName === 'delete') {
+      await channel.delete();
+    }
 
     if (commandName === 'rename') {
       const newName = options.getString('name');
@@ -109,7 +111,6 @@ client.on('interactionCreate', async interaction => {
       await interaction.deferReply({ ephemeral: true });
       const link = await generateTranscript(channel);
       const txtTranscript = await generateTextTranscript(channel);
-      const mentions = await getMentions(channel);
 
       const perms = channel.permissionOverwrites.cache;
       const ticketOwner = [...perms.values()].find(po =>
@@ -122,8 +123,7 @@ client.on('interactionCreate', async interaction => {
         .setDescription(`[Click to view transcript](${link})`)
         .addFields(
           { name: 'Ticket Name', value: channel.name, inline: true },
-          { name: 'Owner', value: ticketOwner ? `<@${ticketOwner}> (${ticketOwner})` : 'Unknown', inline: true },
-          { name: 'Participants', value: mentions || 'None' }
+          { name: 'Owner', value: ticketOwner ? `<@${ticketOwner}> (${ticketOwner})` : 'Unknown', inline: true }
         )
         .setColor('#4fc3f7')
         .setTimestamp();
@@ -136,7 +136,7 @@ client.on('interactionCreate', async interaction => {
   }
 
   if (interaction.isButton()) {
-    const { customId, channel } = interaction;
+    const { customId, channel, user } = interaction;
 
     if (customId === 'openTicket') {
       const modal = new ModalBuilder().setCustomId('ticketModal').setTitle('Middleman Request')
@@ -153,7 +153,6 @@ client.on('interactionCreate', async interaction => {
       await interaction.deferReply({ ephemeral: true });
       const link = await generateTranscript(channel);
       const txtTranscript = await generateTextTranscript(channel);
-      const mentions = await getMentions(channel);
 
       const perms = channel.permissionOverwrites.cache;
       const ticketOwner = [...perms.values()].find(po =>
@@ -166,8 +165,7 @@ client.on('interactionCreate', async interaction => {
         .setDescription(`[Click to view transcript](${link})`)
         .addFields(
           { name: 'Ticket Name', value: channel.name, inline: true },
-          { name: 'Owner', value: ticketOwner ? `<@${ticketOwner}> (${ticketOwner})` : 'Unknown', inline: true },
-          { name: 'Participants', value: mentions || 'None' }
+          { name: 'Owner', value: ticketOwner ? `<@${ticketOwner}> (${ticketOwner})` : 'Unknown', inline: true }
         )
         .setColor('#4fc3f7')
         .setTimestamp();
@@ -178,7 +176,9 @@ client.on('interactionCreate', async interaction => {
       if (logChannel) await logChannel.send({ embeds: [embed], files: [txtTranscript] });
     }
 
-    if (customId === 'delete') await channel.delete();
+    if (customId === 'delete') {
+      await channel.delete();
+    }
   }
 
   if (interaction.isModalSubmit() && interaction.customId === 'ticketModal') {
@@ -188,7 +188,11 @@ client.on('interactionCreate', async interaction => {
     const q4 = interaction.fields.getTextInputValue('q4');
 
     let targetMention = 'Unknown User';
-    if (/^\d{17,19}$/.test(q4)) targetMention = `<@${q4}>`;
+    if (/^\d{17,19}$/.test(q4)) {
+      try {
+        targetMention = `<@${q4}>`;
+      } catch (err) {}
+    }
 
     const channel = await interaction.guild.channels.create({
       name: `ticket-${interaction.user.username}`,
@@ -219,12 +223,6 @@ client.on('interactionCreate', async interaction => {
     await interaction.reply({ content: `Ticket created: ${channel}`, ephemeral: true });
   }
 });
-
-async function getMentions(channel) {
-  const messages = await channel.messages.fetch({ limit: 100 });
-  const ids = new Set(messages.map(m => `<@${m.author.id}>`));
-  return [...ids].join(', ');
-}
 
 async function generateTranscript(channel) {
   const messages = await channel.messages.fetch({ limit: 100 });
@@ -259,6 +257,7 @@ async function generateTextTranscript(channel) {
   const sorted = [...messages.values()].reverse();
 
   let content = `Transcript for #${channel.name}\n\n`;
+
   for (const msg of sorted) {
     const timestamp = msg.createdAt.toISOString();
     const cleanContent = msg.content || '[Embed/Attachment]';
@@ -273,6 +272,7 @@ async function generateTextTranscript(channel) {
   }
 
   fs.writeFileSync(filePath, content);
+
   return new AttachmentBuilder(filePath);
 }
 
