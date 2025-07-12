@@ -82,9 +82,7 @@ client.on('interactionCreate', async interaction => {
       await interaction.reply({ embeds: [closeEmbed], components: [row] });
     }
 
-    if (commandName === 'delete') {
-      await channel.delete();
-    }
+    if (commandName === 'delete') await channel.delete();
 
     if (commandName === 'rename') {
       const newName = options.getString('name');
@@ -108,12 +106,38 @@ client.on('interactionCreate', async interaction => {
     }
 
     if (commandName === 'transcript') {
-      await sendTranscript(interaction, channel);
+      await interaction.deferReply({ ephemeral: true });
+      const link = await generateTranscript(channel);
+      const txtTranscript = await generateTextTranscript(channel);
+      const mentions = await getMentions(channel);
+
+      const perms = channel.permissionOverwrites.cache;
+      const ticketOwner = [...perms.values()].find(po =>
+        po.allow.has(PermissionsBitField.Flags.ViewChannel) &&
+        po.id !== OWNER_ID && po.id !== MIDDLEMAN_ROLE && po.id !== channel.guild.id
+      )?.id;
+
+      const embed = new EmbedBuilder()
+        .setTitle('📄 Transcript Ready')
+        .setDescription(`[Click to view transcript](${link})`)
+        .addFields(
+          { name: 'Ticket Name', value: channel.name, inline: true },
+          { name: 'Owner', value: ticketOwner ? `<@${ticketOwner}> (${ticketOwner})` : 'Unknown', inline: true },
+          { name: 'Participants', value: mentions || 'None' }
+        )
+        .setColor('#4fc3f7')
+        .setTimestamp();
+
+      await interaction.editReply({ embeds: [embed], files: [txtTranscript] });
+
+      const logChannel = client.channels.cache.get(TRANSCRIPT_CHANNEL);
+      if (logChannel) await logChannel.send({ embeds: [embed], files: [txtTranscript] });
     }
   }
 
   if (interaction.isButton()) {
     const { customId, channel } = interaction;
+
     if (customId === 'openTicket') {
       const modal = new ModalBuilder().setCustomId('ticketModal').setTitle('Middleman Request')
         .addComponents(
@@ -126,12 +150,35 @@ client.on('interactionCreate', async interaction => {
     }
 
     if (customId === 'transcript') {
-      await sendTranscript(interaction, channel);
+      await interaction.deferReply({ ephemeral: true });
+      const link = await generateTranscript(channel);
+      const txtTranscript = await generateTextTranscript(channel);
+      const mentions = await getMentions(channel);
+
+      const perms = channel.permissionOverwrites.cache;
+      const ticketOwner = [...perms.values()].find(po =>
+        po.allow.has(PermissionsBitField.Flags.ViewChannel) &&
+        po.id !== OWNER_ID && po.id !== MIDDLEMAN_ROLE && po.id !== channel.guild.id
+      )?.id;
+
+      const embed = new EmbedBuilder()
+        .setTitle('📄 Transcript Ready')
+        .setDescription(`[Click to view transcript](${link})`)
+        .addFields(
+          { name: 'Ticket Name', value: channel.name, inline: true },
+          { name: 'Owner', value: ticketOwner ? `<@${ticketOwner}> (${ticketOwner})` : 'Unknown', inline: true },
+          { name: 'Participants', value: mentions || 'None' }
+        )
+        .setColor('#4fc3f7')
+        .setTimestamp();
+
+      await interaction.editReply({ embeds: [embed], files: [txtTranscript] });
+
+      const logChannel = client.channels.cache.get(TRANSCRIPT_CHANNEL);
+      if (logChannel) await logChannel.send({ embeds: [embed], files: [txtTranscript] });
     }
 
-    if (customId === 'delete') {
-      await channel.delete();
-    }
+    if (customId === 'delete') await channel.delete();
   }
 
   if (interaction.isModalSubmit() && interaction.customId === 'ticketModal') {
@@ -141,11 +188,7 @@ client.on('interactionCreate', async interaction => {
     const q4 = interaction.fields.getTextInputValue('q4');
 
     let targetMention = 'Unknown User';
-    if (/^\d{17,19}$/.test(q4)) {
-      try {
-        targetMention = `<@${q4}>`;
-      } catch {}
-    }
+    if (/^\d{17,19}$/.test(q4)) targetMention = `<@${q4}>`;
 
     const channel = await interaction.guild.channels.create({
       name: `ticket-${interaction.user.username}`,
@@ -177,32 +220,10 @@ client.on('interactionCreate', async interaction => {
   }
 });
 
-async function sendTranscript(interaction, channel) {
-  await interaction.deferReply({ ephemeral: true });
-
-  const htmlLink = await generateTranscript(channel);
-  const txtAttachment = await generateTextTranscript(channel);
-
-  const perms = channel.permissionOverwrites.cache;
-  const ticketOwner = [...perms.values()].find(po =>
-    po.allow.has(PermissionsBitField.Flags.ViewChannel) &&
-    po.id !== OWNER_ID && po.id !== MIDDLEMAN_ROLE && po.id !== channel.guild.id
-  )?.id;
-
-  const embed = new EmbedBuilder()
-    .setTitle('📄 Transcript Ready')
-    .setDescription(`[Click to view transcript](${htmlLink})`)
-    .addFields(
-      { name: 'Ticket Name', value: channel.name, inline: true },
-      { name: 'Owner', value: ticketOwner ? `<@${ticketOwner}> (${ticketOwner})` : 'Unknown', inline: true }
-    )
-    .setColor('#4fc3f7')
-    .setTimestamp();
-
-  await interaction.editReply({ embeds: [embed], files: [txtAttachment] });
-
-  const logChannel = client.channels.cache.get(TRANSCRIPT_CHANNEL);
-  if (logChannel) await logChannel.send({ embeds: [embed], files: [txtAttachment] });
+async function getMentions(channel) {
+  const messages = await channel.messages.fetch({ limit: 100 });
+  const ids = new Set(messages.map(m => `<@${m.author.id}>`));
+  return [...ids].join(', ');
 }
 
 async function generateTranscript(channel) {
@@ -212,15 +233,14 @@ async function generateTranscript(channel) {
 
   const lines = sorted.map(m => {
     const userTag = `${m.author.username}#${m.author.discriminator}`;
-    const mention = `<@${m.author.id}>`;
-    participants.set(mention, (participants.get(mention) || 0) + 1);
-    return `<p><strong>${mention} (${userTag})</strong> <em>${new Date(m.createdTimestamp).toLocaleString()}</em>: ${m.cleanContent}</p>`;
+    participants.set(userTag, (participants.get(userTag) || 0) + 1);
+    return `<p><strong>${userTag}</strong> <em>${new Date(m.createdTimestamp).toLocaleString()}</em>: ${m.cleanContent}</p>`;
   });
 
-  const participantStats = [...participants.entries()].map(([mention, count]) => `<li>${mention}: ${count} messages</li>`).join('');
+  const participantStats = [...participants.entries()].map(([user, count]) => `<li>${user}: ${count} messages</li>`).join('');
   const html = `
     <html><head><title>Transcript for ${channel.name}</title></head><body>
-    <h2>Transcript for ${channel.name}</h2>
+    <h2>${channel.name}</h2>
     <h3>Participants</h3><ul>${participantStats}</ul>
     <hr>${lines.join('')}<hr>
     </body></html>
@@ -239,11 +259,10 @@ async function generateTextTranscript(channel) {
   const sorted = [...messages.values()].reverse();
 
   let content = `Transcript for #${channel.name}\n\n`;
-
   for (const msg of sorted) {
     const timestamp = msg.createdAt.toISOString();
     const cleanContent = msg.content || '[Embed/Attachment]';
-    content += `[${timestamp}] ${msg.author.tag} (${msg.author.id}): ${cleanContent}\n`;
+    content += `[${timestamp}] ${msg.author.tag}: ${cleanContent}\n`;
   }
 
   const fileName = `transcript-${channel.id}.txt`;
@@ -254,13 +273,12 @@ async function generateTextTranscript(channel) {
   }
 
   fs.writeFileSync(filePath, content);
-
   return new AttachmentBuilder(filePath);
 }
 
 client.login(process.env.TOKEN);
 
-// Uptime ping for Render
+// Self-ping for Render
 const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
 setInterval(() => {
   fetch(BASE_URL).catch(() => {});
