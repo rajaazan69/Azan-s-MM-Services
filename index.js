@@ -108,35 +108,12 @@ client.on('interactionCreate', async interaction => {
     }
 
     if (commandName === 'transcript') {
-      await interaction.deferReply({ ephemeral: true });
-      const link = await generateTranscript(channel);
-      const txtTranscript = await generateTextTranscript(channel);
-
-      const perms = channel.permissionOverwrites.cache;
-      const ticketOwner = [...perms.values()].find(po =>
-        po.allow.has(PermissionsBitField.Flags.ViewChannel) &&
-        po.id !== OWNER_ID && po.id !== MIDDLEMAN_ROLE && po.id !== channel.guild.id
-      )?.id;
-
-      const embed = new EmbedBuilder()
-        .setTitle('📄 Transcript Ready')
-        .setDescription(`[Click to view transcript](${link})`)
-        .addFields(
-          { name: 'Ticket Name', value: channel.name, inline: true },
-          { name: 'Owner', value: ticketOwner ? `<@${ticketOwner}> (${ticketOwner})` : 'Unknown', inline: true }
-        )
-        .setColor('#4fc3f7')
-        .setTimestamp();
-
-      await interaction.editReply({ embeds: [embed], files: [txtTranscript] });
-
-      const logChannel = client.channels.cache.get(TRANSCRIPT_CHANNEL);
-      if (logChannel) await logChannel.send({ embeds: [embed], files: [txtTranscript] });
+      await handleTranscript(interaction, channel);
     }
   }
 
   if (interaction.isButton()) {
-    const { customId, channel, user } = interaction;
+    const { customId, channel } = interaction;
 
     if (customId === 'openTicket') {
       const modal = new ModalBuilder().setCustomId('ticketModal').setTitle('Middleman Request')
@@ -150,30 +127,7 @@ client.on('interactionCreate', async interaction => {
     }
 
     if (customId === 'transcript') {
-      await interaction.deferReply({ ephemeral: true });
-      const link = await generateTranscript(channel);
-      const txtTranscript = await generateTextTranscript(channel);
-
-      const perms = channel.permissionOverwrites.cache;
-      const ticketOwner = [...perms.values()].find(po =>
-        po.allow.has(PermissionsBitField.Flags.ViewChannel) &&
-        po.id !== OWNER_ID && po.id !== MIDDLEMAN_ROLE && po.id !== channel.guild.id
-      )?.id;
-
-      const embed = new EmbedBuilder()
-        .setTitle('📄 Transcript Ready')
-        .setDescription(`[Click to view transcript](${link})`)
-        .addFields(
-          { name: 'Ticket Name', value: channel.name, inline: true },
-          { name: 'Owner', value: ticketOwner ? `<@${ticketOwner}> (${ticketOwner})` : 'Unknown', inline: true }
-        )
-        .setColor('#4fc3f7')
-        .setTimestamp();
-
-      await interaction.editReply({ embeds: [embed], files: [txtTranscript] });
-
-      const logChannel = client.channels.cache.get(TRANSCRIPT_CHANNEL);
-      if (logChannel) await logChannel.send({ embeds: [embed], files: [txtTranscript] });
+      await handleTranscript(interaction, channel);
     }
 
     if (customId === 'delete') {
@@ -189,9 +143,7 @@ client.on('interactionCreate', async interaction => {
 
     let targetMention = 'Unknown User';
     if (/^\d{17,19}$/.test(q4)) {
-      try {
-        targetMention = `<@${q4}>`;
-      } catch (err) {}
+      targetMention = `<@${q4}>`;
     }
 
     const channel = await interaction.guild.channels.create({
@@ -224,22 +176,62 @@ client.on('interactionCreate', async interaction => {
   }
 });
 
+async function handleTranscript(interaction, channel) {
+  await interaction.deferReply({ ephemeral: true });
+
+  const htmlLink = await generateTranscript(channel);
+  const txtFile = await generateTextTranscript(channel);
+
+  const messages = await channel.messages.fetch({ limit: 100 });
+  const participants = new Map();
+  messages.forEach(msg => {
+    const id = msg.author.id;
+    participants.set(id, (participants.get(id) || 0) + 1);
+  });
+
+  const mentionList = [...participants.entries()]
+    .map(([id, count]) => `• <@${id}>: ${count} messages`)
+    .join('\n');
+
+  const perms = channel.permissionOverwrites.cache;
+  const ticketOwner = [...perms.values()].find(po =>
+    po.allow.has(PermissionsBitField.Flags.ViewChannel) &&
+    po.id !== OWNER_ID && po.id !== MIDDLEMAN_ROLE && po.id !== channel.guild.id
+  )?.id;
+
+  const embed = new EmbedBuilder()
+    .setTitle('📄 Transcript Ready')
+    .setDescription(`[Click to view transcript](${htmlLink})`)
+    .addFields(
+      { name: 'Ticket Name', value: channel.name, inline: true },
+      { name: 'Owner', value: ticketOwner ? `<@${ticketOwner}> (${ticketOwner})` : 'Unknown', inline: true },
+      { name: 'Participants', value: mentionList || 'No messages.' }
+    )
+    .setColor('#4fc3f7')
+    .setTimestamp();
+
+  await interaction.editReply({ embeds: [embed], files: [txtFile] });
+
+  const logChannel = client.channels.cache.get(TRANSCRIPT_CHANNEL);
+  if (logChannel) await logChannel.send({ embeds: [embed], files: [txtFile] });
+}
+
 async function generateTranscript(channel) {
   const messages = await channel.messages.fetch({ limit: 100 });
   const sorted = messages.sort((a, b) => a.createdTimestamp - b.createdTimestamp);
   const participants = new Map();
 
   const lines = sorted.map(m => {
-    const userTag = `${m.author.username}#${m.author.discriminator}`;
-    participants.set(userTag, (participants.get(userTag) || 0) + 1);
-    return `<p><strong>${userTag}</strong> <em>${new Date(m.createdTimestamp).toLocaleString()}</em>: ${m.cleanContent}</p>`;
+    const tag = `${m.author.username}#${m.author.discriminator}`;
+    participants.set(m.author.id, (participants.get(m.author.id) || 0) + 1);
+    return `<p><strong>${tag}</strong> <em>${new Date(m.createdTimestamp).toLocaleString()}</em>: ${m.cleanContent}</p>`;
   });
 
-  const participantStats = [...participants.entries()].map(([user, count]) => `<li>${user}: ${count} messages</li>`).join('');
+  const stats = [...participants.entries()].map(([id, count]) => `<li><strong><a href="https://discord.com/users/${id}">${id}</a></strong>: ${count} messages</li>`).join('');
   const html = `
     <html><head><title>Transcript for ${channel.name}</title></head><body>
     <h2>${channel.name}</h2>
-    <h3>Participants</h3><ul>${participantStats}</ul>
+    <h3>Participants</h3><ul>${stats}</ul>
     <hr>${lines.join('')}<hr>
     </body></html>
   `;
@@ -255,31 +247,20 @@ async function generateTranscript(channel) {
 async function generateTextTranscript(channel) {
   const messages = await channel.messages.fetch({ limit: 100 });
   const sorted = [...messages.values()].reverse();
-
   let content = `Transcript for #${channel.name}\n\n`;
-
   for (const msg of sorted) {
-    const timestamp = msg.createdAt.toISOString();
-    const cleanContent = msg.content || '[Embed/Attachment]';
-    content += `[${timestamp}] ${msg.author.tag}: ${cleanContent}\n`;
+    const time = msg.createdAt.toISOString();
+    const clean = msg.content || '[Embed/Attachment]';
+    content += `[${time}] ${msg.author.tag}: ${clean}\n`;
   }
-
   const fileName = `transcript-${channel.id}.txt`;
   const filePath = path.join(__dirname, 'transcripts', fileName);
-
-  if (!fs.existsSync(path.dirname(filePath))) {
-    fs.mkdirSync(path.dirname(filePath), { recursive: true });
-  }
-
+  if (!fs.existsSync(path.dirname(filePath))) fs.mkdirSync(path.dirname(filePath), { recursive: true });
   fs.writeFileSync(filePath, content);
-
   return new AttachmentBuilder(filePath);
 }
 
 client.login(process.env.TOKEN);
 
-// Self-ping for Render
 const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
-setInterval(() => {
-  fetch(BASE_URL).catch(() => {});
-}, 5 * 60 * 1000);
+setInterval(() => { fetch(BASE_URL).catch(() => {}); }, 5 * 60 * 1000);
