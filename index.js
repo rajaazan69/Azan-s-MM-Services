@@ -142,8 +142,8 @@ client.on('interactionCreate', async interaction => {
       const modal = new ModalBuilder().setCustomId('ticketModal').setTitle('Middleman Request')
         .addComponents(
           new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('q1').setLabel("What's the trade?").setStyle(TextInputStyle.Short).setRequired(true)),
-          new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('q2').setLabel("What's your side?").setStyle(TextInputStyle.Short).setRequired(true)),
-          new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('q3').setLabel("What's their side?").setStyle(TextInputStyle.Short).setRequired(true)),
+          new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('q2').setLabel("What's your side?").setStyle(TextInputStyle.Paragraph).setRequired(true)),
+          new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('q3').setLabel("What's their side?").setStyle(TextInputStyle.Paragraph).setRequired(true)),
           new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('q4').setLabel("Their Discord ID?").setStyle(TextInputStyle.Short).setRequired(true))
         );
       await interaction.showModal(modal);
@@ -187,6 +187,13 @@ client.on('interactionCreate', async interaction => {
     const q3 = interaction.fields.getTextInputValue('q3');
     const q4 = interaction.fields.getTextInputValue('q4');
 
+    let targetMention = 'Unknown User';
+    if (/^\d{17,19}$/.test(q4)) {
+      try {
+        targetMention = `<@${q4}>`;
+      } catch (err) {}
+    }
+
     const channel = await interaction.guild.channels.create({
       name: `ticket-${interaction.user.username}`,
       type: ChannelType.GuildText,
@@ -200,15 +207,17 @@ client.on('interactionCreate', async interaction => {
     });
 
     const embed = new EmbedBuilder()
-      .setTitle('🎫 New Ticket Created')
-      .addFields(
-        { name: "What's the trade?", value: q1 },
-        { name: "Your side", value: q2 },
-        { name: "Their side", value: q3 },
-        { name: "Their Discord ID", value: q4 }
+      .setTitle('🎟️ Middleman Request')
+      .setColor('#00b0f4')
+      .setDescription(
+        `**User 1:** <@${interaction.user.id}>\n` +
+        `**User 2:** ${targetMention}\n\n` +
+        `**What's the trade?**\n${q1}\n\n` +
+        `**User 1 is giving:**\n${q2}\n\n` +
+        `**User 2 is giving:**\n${q3}`
       )
-      .setColor('#2ecc71')
-      .setFooter({ text: `Ticket by ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() });
+      .setFooter({ text: `Ticket by ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
+      .setTimestamp();
 
     await channel.send({ content: `<@${interaction.user.id}> <@${OWNER_ID}> <@&${MIDDLEMAN_ROLE}>`, embeds: [embed] });
     await interaction.reply({ content: `Ticket created: ${channel}`, ephemeral: true });
@@ -269,7 +278,7 @@ async function generateTextTranscript(channel) {
 
 client.login(process.env.TOKEN);
 
-// Optional self-ping for uptime (works for Render if needed)
+// Self-ping for Render
 const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
 setInterval(() => {
   fetch(BASE_URL).catch(() => {});
