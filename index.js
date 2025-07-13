@@ -252,6 +252,11 @@ if (commandName === 'taglist') {
 
   const newName = options.getString('name');
   await channel.setName(newName);
+  return interaction.reply({ content: `✅ Renamed to \`${newName}\``, ephemeral: true });
+}
+
+  const newName = options.getString('name');
+  await channel.setName(newName);
   await interaction.reply({ content: `✅ Renamed to \`${newName}\``, ephemeral: true });
 }
 
