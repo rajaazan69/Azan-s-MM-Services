@@ -16,5 +16,6 @@
     "express": "^5.1.0",
     "fs": "^0.0.1-security",
     "node-fetch": "^3.3.2"
+    "sqlite3": "^5.1.6"
   }
 }
