@@ -328,7 +328,8 @@ client.login(process.env.TOKEN);
 const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
 setInterval(() => { fetch(BASE_URL).catch(() => {}); }, 5 * 60 * 1000);
 // ---- Slash Command Registration (runs only once) ----
-const { REST, Routes, SlashCommandBuilder } = require('discord.js');
+const { REST, Routes } = require('@discordjs/rest');
+const { SlashCommandBuilder } = require('discord.js');
 
 (async () => {
   try {
