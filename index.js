@@ -158,20 +158,30 @@ client.on('interactionCreate', async interaction => {
   }
 
   if (interaction.isButton()) {
-    const { customId, channel } = interaction;
-    if (customId === 'openTicket') {
-      const modal = new ModalBuilder().setCustomId('ticketModal').setTitle('Middleman Request')
-        .addComponents(
-          new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('q1').setLabel("What's the trade?").setStyle(TextInputStyle.Short).setRequired(true)),
-          new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('q2').setLabel("What's your side?").setStyle(TextInputStyle.Paragraph).setRequired(true)),
-          new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('q3').setLabel("What's their side?").setStyle(TextInputStyle.Paragraph).setRequired(true)),
-          new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('q4').setLabel("Their Discord ID?").setStyle(TextInputStyle.Short).setRequired(true))
-        );
-      await interaction.showModal(modal);
-    }
-    if (customId === 'transcript') await handleTranscript(interaction, channel);
-    if (customId === 'delete') await channel.delete();
+  const { customId, channel } = interaction;
+
+  if (customId === 'transcript') {
+    try {
+      await interaction.deferReply({ ephemeral: true });
+    } catch (e) {}
+    await handleTranscript(interaction, channel);
   }
+
+  if (customId === 'delete') {
+    await channel.delete();
+  }
+
+  if (customId === 'openTicket') {
+    const modal = new ModalBuilder().setCustomId('ticketModal').setTitle('Middleman Request')
+      .addComponents(
+        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('q1').setLabel("What's the trade?").setStyle(TextInputStyle.Short).setRequired(true)),
+        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('q2').setLabel("What's your side?").setStyle(TextInputStyle.Paragraph).setRequired(true)),
+        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('q3').setLabel("What's their side?").setStyle(TextInputStyle.Paragraph).setRequired(true)),
+        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('q4').setLabel("Their Discord ID?").setStyle(TextInputStyle.Short).setRequired(true))
+      );
+    await interaction.showModal(modal);
+  }
+}
 
   if (interaction.isModalSubmit() && interaction.customId === 'ticketModal') {
     const q1 = interaction.fields.getTextInputValue('q1');
