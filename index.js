@@ -1,4 +1,4 @@
-const { Client, GatewayIntentBits, Partials, ChannelType, PermissionsBitField, ActionRowBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, EmbedBuilder, ButtonBuilder, ButtonStyle, AttachmentBuilder } = require('discord.js');
+const { Client, GatewayIntentBits, Partials, ChannelType, PermissionsBitField, ActionRowBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, EmbedBuilder, ButtonBuilder, ButtonStyle, AttachmentBuilder, SlashCommandBuilder } = require('discord.js');
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
@@ -109,6 +109,54 @@ client.on('interactionCreate', async interaction => {
 
     if (commandName === 'transcript') {
       await handleTranscript(interaction, channel);
+    }
+
+    if (commandName === 'tagcreate') {
+      const name = options.getString('name').toLowerCase();
+      const message = options.getString('message');
+      const tags = loadTags();
+      if (tags[name]) {
+        return interaction.reply({ content: `❌ Tag \`${name}\` already exists.`, ephemeral: true });
+      }
+      tags[name] = message;
+      saveTags(tags);
+      return interaction.reply({ content: `✅ Tag \`${name}\` created!`, ephemeral: true });
+    }
+
+    if (commandName === 'tag') {
+      const name = options.getString('name').toLowerCase();
+      const user = options.getUser('user');
+      const tags = loadTags();
+      if (!tags[name]) {
+        return interaction.reply({ content: `❌ Tag \`${name}\` not found.`, ephemeral: true });
+      }
+      const embed = new EmbedBuilder()
+        .setColor('Yellow')
+        .setDescription(`🔔 ${user} — ${tags[name]}`)
+        .setFooter({ text: `Tagged by ${interaction.user.tag}` });
+      return interaction.reply({ embeds: [embed] });
+    }
+
+    if (commandName === 'tagdelete') {
+      const name = options.getString('name').toLowerCase();
+      const tags = loadTags();
+      if (!tags[name]) {
+        return interaction.reply({ content: `❌ Tag \`${name}\` not found.`, ephemeral: true });
+      }
+      delete tags[name];
+      saveTags(tags);
+      return interaction.reply({ content: `✅ Tag \`${name}\` deleted.`, ephemeral: true });
+    }
+
+    if (commandName === 'taglist') {
+      const tags = loadTags();
+      const names = Object.keys(tags);
+      const list = names.length ? names.map(t => `• \`${t}\``).join('\n') : 'No tags saved.';
+      const embed = new EmbedBuilder()
+        .setTitle('🏷️ Saved Tags')
+        .setDescription(list)
+        .setColor('#00cc99');
+      return interaction.reply({ embeds: [embed], ephemeral: true });
     }
   }
 
@@ -258,6 +306,15 @@ async function generateTextTranscript(channel) {
   if (!fs.existsSync(path.dirname(filePath))) fs.mkdirSync(path.dirname(filePath), { recursive: true });
   fs.writeFileSync(filePath, content);
   return new AttachmentBuilder(filePath);
+}
+
+const TAGS_FILE = path.join(__dirname, 'tags.json');
+function loadTags() {
+  if (!fs.existsSync(TAGS_FILE)) fs.writeFileSync(TAGS_FILE, '{}');
+  return JSON.parse(fs.readFileSync(TAGS_FILE));
+}
+function saveTags(tags) {
+  fs.writeFileSync(TAGS_FILE, JSON.stringify(tags, null, 2));
 }
 
 client.on('error', console.error);
