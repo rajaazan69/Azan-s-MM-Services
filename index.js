@@ -34,6 +34,12 @@ app.listen(PORT, () => console.log(`Uptime server running on port ${PORT}`));
 
 client.once('ready', async () => {
   console.log(`Bot online as ${client.user.tag}`);
+  const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
+const commands = await rest.get(Routes.applicationCommands(client.user.id));
+for (const cmd of commands) {
+  await rest.delete(Routes.applicationCommand(client.user.id, cmd.id));
+}
+console.log('✅ Old commands deleted');
   const commands = [
     new SlashCommandBuilder().setName('setup').setDescription('Send ticket panel')
       .addChannelOption(opt => opt.setName('channel').setDescription('Target channel').setRequired(true)),
