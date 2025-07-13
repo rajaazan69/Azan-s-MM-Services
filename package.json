@@ -1,16 +1,21 @@
 {
-  "name": "ticket-bot",
+  "name": "middleman-ticket-bot",
   "version": "1.0.0",
-  "description": "Discord ticket bot with Supabase integration and uptime system",
+  "description": "Discord bot for ticket handling and tag management with transcript support.",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.39.5",
     "discord.js": "^14.14.1",
-    "dotenv": "^16.3.2",
     "express": "^4.19.2",
-    "node-fetch": "^2.6.7"
+    "fs": "^0.0.1-security",
+    "path": "^0.12.7",
+    "sqlite3": "^5.1.6",
+    "dotenv": "^16.4.5",
+    "node-fetch": "^3.3.2"
+  },
+  "engines": {
+    "node": ">=16.9.0"
   }
 }
