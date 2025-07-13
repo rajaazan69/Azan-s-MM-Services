@@ -35,31 +35,34 @@ app.listen(PORT, () => console.log(`Uptime server running on port ${PORT}`));
 client.once('ready', async () => {
   console.log(`Bot online as ${client.user.tag}`);
 
-  // Clean up old commands
-  const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
-  const old = await rest.get(Routes.applicationCommands(client.user.id));
-  for (const cmd of old) {
-    await rest.delete(Routes.applicationCommand(client.user.id, cmd.id));
+  if (process.env.REGISTER_COMMANDS === 'true') {
+    const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
+
+    const old = await rest.get(Routes.applicationCommands(client.user.id));
+    for (const cmd of old) {
+      await rest.delete(Routes.applicationCommand(client.user.id, cmd.id));
+    }
+    console.log('✅ Old commands deleted');
+
+    const commands = [
+      new SlashCommandBuilder().setName('setup').setDescription('Send ticket panel').addChannelOption(opt => opt.setName('channel').setDescription('Target channel').setRequired(true)),
+      new SlashCommandBuilder().setName('close').setDescription('Close the ticket'),
+      new SlashCommandBuilder().setName('delete').setDescription('Delete the ticket'),
+      new SlashCommandBuilder().setName('rename').setDescription('Rename the ticket').addStringOption(opt => opt.setName('name').setDescription('New name').setRequired(true)),
+      new SlashCommandBuilder().setName('add').setDescription('Add a user to the ticket').addUserOption(opt => opt.setName('user').setDescription('User').setRequired(true)),
+      new SlashCommandBuilder().setName('remove').setDescription('Remove a user').addUserOption(opt => opt.setName('user').setDescription('User').setRequired(true)),
+      new SlashCommandBuilder().setName('transcript').setDescription('Generate a transcript'),
+      new SlashCommandBuilder().setName('tagcreate').setDescription('Create a tag').addStringOption(o => o.setName('name').setDescription('Tag name').setRequired(true)).addStringOption(o => o.setName('message').setDescription('Tag message').setRequired(true)),
+      new SlashCommandBuilder().setName('tag').setDescription('Send a saved tag').addStringOption(o => o.setName('name').setDescription('Tag name').setRequired(true)),
+      new SlashCommandBuilder().setName('tagdelete').setDescription('Delete a tag').addStringOption(o => o.setName('name').setDescription('Tag name').setRequired(true)),
+      new SlashCommandBuilder().setName('taglist').setDescription('List all tags')
+    ].map(cmd => cmd.toJSON());
+
+    await rest.put(Routes.applicationCommands(client.user.id), { body: commands });
+    console.log('✅ Slash commands registered');
+  } else {
+    console.log('🟡 Skipping command registration (REGISTER_COMMANDS is false)');
   }
-  console.log('✅ Old commands deleted');
-
-  // Register new commands
-  const commands = [
-    new SlashCommandBuilder().setName('setup').setDescription('Send ticket panel').addChannelOption(opt => opt.setName('channel').setDescription('Target channel').setRequired(true)),
-    new SlashCommandBuilder().setName('close').setDescription('Close the ticket'),
-    new SlashCommandBuilder().setName('delete').setDescription('Delete the ticket'),
-    new SlashCommandBuilder().setName('rename').setDescription('Rename the ticket').addStringOption(opt => opt.setName('name').setDescription('New name').setRequired(true)),
-    new SlashCommandBuilder().setName('add').setDescription('Add a user to the ticket').addUserOption(opt => opt.setName('user').setDescription('User').setRequired(true)),
-    new SlashCommandBuilder().setName('remove').setDescription('Remove a user').addUserOption(opt => opt.setName('user').setDescription('User').setRequired(true)),
-    new SlashCommandBuilder().setName('transcript').setDescription('Generate a transcript'),
-    new SlashCommandBuilder().setName('tagcreate').setDescription('Create a tag').addStringOption(o => o.setName('name').setDescription('Tag name').setRequired(true)).addStringOption(o => o.setName('message').setDescription('Tag message').setRequired(true)),
-    new SlashCommandBuilder().setName('tag').setDescription('Send a saved tag').addStringOption(o => o.setName('name').setDescription('Tag name').setRequired(true)),
-    new SlashCommandBuilder().setName('tagdelete').setDescription('Delete a tag').addStringOption(o => o.setName('name').setDescription('Tag name').setRequired(true)),
-    new SlashCommandBuilder().setName('taglist').setDescription('List all tags')
-  ].map(cmd => cmd.toJSON());
-
-  await rest.put(Routes.applicationCommands(client.user.id), { body: commands });
-  console.log('✅ Slash commands registered');
 });
 
 client.on('interactionCreate', async interaction => {
