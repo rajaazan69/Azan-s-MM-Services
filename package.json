@@ -3,9 +3,8 @@
   "version": "1.0.0",
   "description": "A Discord ticket bot clone of Ticket Tool XYZ",
   "main": "index.js",
- "scripts": {
-  "start": "node index.js"
-}
+  "scripts": {
+    "start": "node index.js"
   },
   "author": "YourName",
   "license": "MIT",
