@@ -96,39 +96,101 @@ client.on('interactionCreate', async interaction => {
 
       if (commandName === 'setup') {
         const target = options.getChannel('channel');
-
         const embed = new EmbedBuilder()
           .setTitle('**Request Middleman**')
           .setDescription('**Click Below To Request Azan’s Services**\nPlease answer all the questions correctly for the best support.')
           .setColor('Blue');
-
         const btn = new ActionRowBuilder().addComponents(
-          new ButtonBuilder()
-            .setCustomId('openTicket')
-            .setLabel('Request Middleman')
-            .setStyle(ButtonStyle.Primary)
+          new ButtonBuilder().setCustomId('openTicket').setLabel('Request Middleman').setStyle(ButtonStyle.Primary)
         );
-
         await target.send({ embeds: [embed], components: [btn] });
-
         if (!interaction.replied && !interaction.deferred) {
           await interaction.reply({ content: '✅ Setup complete.', ephemeral: true }).catch(() => {});
         }
       }
+
+      // ✅ TAG CREATE
+      if (commandName === 'tagcreate') {
+        if (!interaction.replied && !interaction.deferred) {
+          await interaction.deferReply({ ephemeral: true }).catch(() => {});
+        }
+
+        const name = options.getString('name');
+        const message = options.getString('message');
+
+        db.run(`INSERT OR REPLACE INTO tags(name, message) VALUES(?, ?)`, [name, message], (err) => {
+          if (err) {
+            console.error('DB Error (tagcreate):', err);
+            return interaction.editReply({ content: '❌ Failed to create tag.' });
+          }
+          interaction.editReply({ content: `✅ Tag \`${name}\` saved.` });
+        });
+      }
+
+      // ✅ TAG USE
+      if (commandName === 'tag') {
+        const name = options.getString('name');
+        db.get('SELECT message FROM tags WHERE name = ?', [name], (err, row) => {
+          if (err) {
+            console.error('DB Error (tag):', err);
+            return interaction.reply({ content: '❌ Error reading tag.' });
+          }
+          if (row) {
+            interaction.reply({ content: row.message.slice(0, 2000) || '✅ Sent.' });
+          } else {
+            interaction.reply({ content: `❌ Tag \`${name}\` not found.` });
+          }
+        });
+      }
+
+      // ✅ TAG DELETE
+      if (commandName === 'tagdelete') {
+        if (!interaction.replied && !interaction.deferred) {
+          await interaction.deferReply({ ephemeral: true }).catch(() => {});
+        }
+
+        const name = options.getString('name');
+        db.run('DELETE FROM tags WHERE name = ?', [name], function (err) {
+          if (err) {
+            console.error('DB Error (tagdelete):', err);
+            return interaction.editReply({ content: '❌ Failed to delete tag.' });
+          }
+          if (this.changes === 0) {
+            interaction.editReply({ content: `❌ Tag \`${name}\` not found.`, ephemeral: true });
+          } else {
+            interaction.editReply({ content: `🗑️ Tag \`${name}\` deleted.`, ephemeral: true });
+          }
+        });
+      }
+
+      // ✅ TAG LIST
+      if (commandName === 'taglist') {
+        db.all('SELECT name FROM tags', (err, rows) => {
+          if (err) {
+            console.error('DB Error (taglist):', err);
+            return interaction.reply({ content: '❌ Failed to fetch tag list.' });
+          }
+
+          const list = rows.map(r => `• \`${r.name}\``).join('\n') || 'No tags found.';
+          interaction.reply({ content: list });
+        });
+      }
+
+      // ✅ All your other commands can remain here (close, rename, transcript, etc.)
     }
 
-    // Button Click Logging
+    // 🔘 Button Click Logging
     if (interaction.isButton()) {
       console.log(`🔘 Button Clicked: ${interaction.customId} by ${user.tag} in #${channel?.name || 'DMs'} (${guild?.name || 'No Guild'})`);
     }
 
-    // Modal Submission Logging
+    // 📝 Modal Submission Logging
     if (interaction.isModalSubmit()) {
       console.log(`📝 Modal Submitted: ${interaction.customId} by ${user.tag} in #${channel?.name || 'DMs'} (${guild?.name || 'No Guild'})`);
     }
 
   } catch (err) {
-    console.error('❌ Interaction Error:', err);
+    console.error('❌ Interaction error:', err);
   }
 });
 
