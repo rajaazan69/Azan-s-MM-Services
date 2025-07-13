@@ -35,18 +35,47 @@ client.once('ready', () => {
   console.log(`Bot online as ${client.user.tag}`);
 });
 
-// TEMP: Clear all global slash commands
+const { SlashCommandBuilder, REST, Routes } = require('discord.js');
+require('dotenv').config();
+
+const commands = [
+  new SlashCommandBuilder()
+    .setName('setup')
+    .setDescription('Send ticket panel in a selected channel')
+    .addChannelOption(opt => opt.setName('channel').setDescription('Target channel').setRequired(true)),
+  new SlashCommandBuilder().setName('close').setDescription('Close the ticket'),
+  new SlashCommandBuilder().setName('delete').setDescription('Delete the ticket'),
+  new SlashCommandBuilder().setName('rename').setDescription('Rename the ticket')
+    .addStringOption(opt => opt.setName('name').setDescription('New name').setRequired(true)),
+  new SlashCommandBuilder().setName('add').setDescription('Add a user to the ticket')
+    .addUserOption(opt => opt.setName('user').setDescription('User').setRequired(true)),
+  new SlashCommandBuilder().setName('remove').setDescription('Remove a user from the ticket')
+    .addUserOption(opt => opt.setName('user').setDescription('User').setRequired(true)),
+  new SlashCommandBuilder().setName('transcript').setDescription('Generate a transcript'),
+
+  // Tags
+  new SlashCommandBuilder().setName('tagcreate').setDescription('Create a tag')
+    .addStringOption(opt => opt.setName('name').setDescription('Tag name').setRequired(true))
+    .addStringOption(opt => opt.setName('message').setDescription('Tag message').setRequired(true)),
+  new SlashCommandBuilder().setName('tag').setDescription('Send a saved tag')
+    .addStringOption(opt => opt.setName('name').setDescription('Tag name').setRequired(true)),
+  new SlashCommandBuilder().setName('tagdelete').setDescription('Delete a tag')
+    .addStringOption(opt => opt.setName('name').setDescription('Tag name').setRequired(true)),
+  new SlashCommandBuilder().setName('taglist').setDescription('List all tags')
+].map(cmd => cmd.toJSON());
+
 const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
+
 (async () => {
   try {
-    console.log('⛔ Clearing global slash commands...');
+    console.log('📦 Registering slash commands...');
     await rest.put(
       Routes.applicationCommands('1392944799983730849'),
-      { body: [] }
+      { body: commands }
     );
-    console.log('✅ All commands removed.');
+    console.log('✅ Slash commands registered.');
   } catch (error) {
-    console.error(error);
+    console.error('❌ Error registering commands:', error);
   }
 })();
 client.on('interactionCreate', async interaction => {
