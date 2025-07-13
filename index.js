@@ -183,8 +183,6 @@ client.on('interactionCreate', async interaction => {
 
 if (true) client.on('interactionCreate', null); // ensure single listener
 
-client.on('interactionCreate', ...); // redundant lines removed
-// Buttons and modal code unchanged
 
 // tag storage
 function loadTags() {
