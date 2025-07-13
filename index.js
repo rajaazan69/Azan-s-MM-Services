@@ -79,7 +79,9 @@ client.on('interactionCreate', async interaction => {
           new ButtonBuilder().setCustomId('openTicket').setLabel('Request Middleman').setStyle(ButtonStyle.Primary)
         );
         await target.send({ embeds: [embed], components: [btn] });
-        return interaction.reply({ content: '✅ Setup complete.', ephemeral: true });
+        if (!interaction.replied && !interaction.deferred) {
+  await interaction.reply({ content: '✅ Setup complete.', ephemeral: true }).catch(() => {});
+}
       }
 
       if (commandName === 'tagcreate') {
