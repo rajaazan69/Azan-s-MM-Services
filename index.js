@@ -99,26 +99,34 @@ client.on('interactionCreate', async interaction => {
       }
 
       if (commandName === 'tagcreate') {
+  if (!interaction.replied && !interaction.deferred) {
+    await interaction.deferReply({ ephemeral: true }).catch(() => {});
+  }
   tags[options.getString('name')] = options.getString('message');
-  fs.writeFileSync(tagsPath, JSON.stringify(tags, null, 2)); // 🔁 Save every time
-  await interaction.reply({ content: '✅ Tag created.', ephemeral: true });
+  fs.writeFileSync(tagsPath, JSON.stringify(tags, null, 2));
+  await interaction.editReply({ content: '✅ Tag created.' });
 }
-
       if (commandName === 'tag') {
         await interaction.reply({ content: tags[options.getString('name')] || '❌ Tag not found.' });
       }
 
       if (commandName === 'tagdelete') {
+  if (!interaction.replied && !interaction.deferred) {
+    await interaction.deferReply({ ephemeral: true }).catch(() => {});
+  }
   const name = options.getString('name');
   delete tags[name];
-  fs.writeFileSync(tagsPath, JSON.stringify(tags, null, 2)); // 🔁 Save every time
-  await interaction.reply({ content: `🗑️ Tag \`${name}\` deleted.`, ephemeral: true });
+  fs.writeFileSync(tagsPath, JSON.stringify(tags, null, 2));
+  await interaction.editReply({ content: `🗑️ Tag \`${name}\` deleted.` });
 }
 
       if (commandName === 'taglist') {
-        const list = Object.keys(tags).map(t => `• \`${t}\``).join('\n') || 'No tags found.';
-        await interaction.reply({ content: list, ephemeral: true });
-      }
+  if (!interaction.replied && !interaction.deferred) {
+    await interaction.deferReply({ ephemeral: true }).catch(() => {});
+  }
+  const list = Object.keys(tags).map(t => `• \`${t}\``).join('\n') || 'No tags found.';
+  await interaction.editReply({ content: list });
+}
 
       if (commandName === 'close') {
         const perms = channel.permissionOverwrites.cache;
