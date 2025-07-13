@@ -9,6 +9,14 @@ const fs = require('fs');
 const path = require('path');
 require('dotenv').config(); // ✅ Load .env variables before using them
 
+const sqlite3 = require('sqlite3').verbose();
+const db = new sqlite3.Database('./tags.db');
+
+db.run(`CREATE TABLE IF NOT EXISTS tags (
+  name TEXT PRIMARY KEY,
+  message TEXT NOT NULL
+)`); // ✅ Create table if missing
+
 const tagsPath = path.join(__dirname, 'tag.json');
 let tags = {};
 
