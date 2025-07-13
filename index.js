@@ -35,7 +35,6 @@ client.once('ready', () => {
   console.log(`Bot online as ${client.user.tag}`);
 });
 
-const { SlashCommandBuilder, REST, Routes } = require('discord.js');
 require('dotenv').config();
 
 const commands = [
