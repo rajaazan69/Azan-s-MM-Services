@@ -51,7 +51,7 @@ app.listen(PORT, () => console.log(`Uptime server running on port ${PORT}`));
       .addStringOption(opt => opt.setName('name').setRequired(true)),
     new SlashCommandBuilder().setName('tagdelete').setDescription('Delete a tag')
       .addStringOption(opt => opt.setName('name').setRequired(true)),
-    new SlashCommandBuilder().setName('taglist').setDescription('List tags')
+    new SlashCommandBuilder().setName('taglist').setDescription('List all saved tags')
   ].map(c => c.toJSON());
 
   const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
