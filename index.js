@@ -201,15 +201,28 @@ if (commandName === 'taglist') {
       }
 
       if (commandName === 'delete') {
-  const ticketCategoryId = '1373027564926406796'; // your ticket category ID
+  const ticketCategoryId = '1373027564926406796'; // Your ticket category ID
 
-  if (channel.parentId === ticketCategoryId) {
-    await channel.delete();
-  } else {
-    await interaction.reply({ content: '❌ You can only delete ticket channels!', ephemeral: true });
+  try {
+    const parentId = channel.parentId || channel.parent?.id;
+    if (parentId === ticketCategoryId) {
+      await channel.delete();
+    } else {
+      if (!interaction.replied && !interaction.deferred) {
+        await interaction.reply({
+          content: '❌ You can only delete ticket channels!',
+          ephemeral: true
+        }).catch(() => {});
+      }
+    }
+  } catch (err) {
+    console.error('❌ Delete Command Error:', err);
+    await interaction.reply({
+      content: '⚠️ Something went wrong while trying to delete the channel.',
+      ephemeral: true
+    }).catch(() => {});
   }
 }
-
       if (commandName === 'rename') {
         const newName = options.getString('name');
         await channel.setName(newName);
