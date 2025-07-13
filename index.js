@@ -105,7 +105,7 @@ client.on('interactionCreate', async interaction => {
 }
 
       if (commandName === 'tag') {
-        await interaction.reply({ content: tags[options.getString('name')] || '❌ Tag not found.', ephemeral: true });
+        await interaction.reply({ content: tags[options.getString('name')] || '❌ Tag not found.' });
       }
 
       if (commandName === 'tagdelete') {
