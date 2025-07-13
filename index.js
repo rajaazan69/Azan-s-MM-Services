@@ -7,7 +7,20 @@ const {
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
-require('dotenv').config();
+require('dotenv').config(); // ✅ Load .env variables before using them
+
+const tagsPath = path.join(__dirname, 'tag.json');
+let tags = {};
+
+// Load saved tags from tag.json if it exists
+if (fs.existsSync(tagsPath)) {
+  try {
+    tags = JSON.parse(fs.readFileSync(tagsPath, 'utf-8'));
+    console.log('✅ Tags loaded from tag.json');
+  } catch (err) {
+    console.error('❌ Failed to parse tag.json:', err);
+  }
+}
 
 const app = express();
 const client = new Client({
@@ -22,7 +35,7 @@ const PANEL_CHANNEL = '1373048211538841702';
 const TICKET_CATEGORY = '1373027564926406796';
 const TRANSCRIPT_CHANNEL = '1373058123547283568';
 const BASE_URL = process.env.BASE_URL;
-const tags = {};
+
 
 app.get('/', (req, res) => res.send('Bot is online.'));
 app.get('/transcripts/:filename', (req, res) => {
@@ -86,19 +99,21 @@ client.on('interactionCreate', async interaction => {
       }
 
       if (commandName === 'tagcreate') {
-        tags[options.getString('name')] = options.getString('message');
-        await interaction.reply({ content: '✅ Tag created.', ephemeral: true });
-      }
+  tags[options.getString('name')] = options.getString('message');
+  fs.writeFileSync(tagsPath, JSON.stringify(tags, null, 2)); // 🔁 Save every time
+  await interaction.reply({ content: '✅ Tag created.', ephemeral: true });
+}
 
       if (commandName === 'tag') {
         await interaction.reply({ content: tags[options.getString('name')] || '❌ Tag not found.', ephemeral: true });
       }
 
       if (commandName === 'tagdelete') {
-        const name = options.getString('name');
-        delete tags[name];
-        await interaction.reply({ content: `🗑️ Tag \`${name}\` deleted.`, ephemeral: true });
-      }
+  const name = options.getString('name');
+  delete tags[name];
+  fs.writeFileSync(tagsPath, JSON.stringify(tags, null, 2)); // 🔁 Save every time
+  await interaction.reply({ content: `🗑️ Tag \`${name}\` deleted.`, ephemeral: true });
+}
 
       if (commandName === 'taglist') {
         const list = Object.keys(tags).map(t => `• \`${t}\``).join('\n') || 'No tags found.';
