@@ -106,36 +106,72 @@ client.on('interactionCreate', async interaction => {
         }
       }
 
-      if (commandName === 'tagcreate') {
+      // TAG CREATE
+if (commandName === 'tagcreate') {
   if (!interaction.replied && !interaction.deferred) {
     await interaction.deferReply({ ephemeral: true }).catch(() => {});
   }
-  tags[options.getString('name')] = options.getString('message');
-  fs.writeFileSync(tagsPath, JSON.stringify(tags, null, 2));
-  await interaction.editReply({ content: '✅ Tag created.' });
-}
-      if (commandName === 'tag') {
-        await interaction.reply({ content: tags[options.getString('name')] || '❌ Tag not found.' });
-      }
 
-      if (commandName === 'tagdelete') {
-  if (!interaction.replied && !interaction.deferred) {
-    await interaction.deferReply({ ephemeral: true }).catch(() => {});
-  }
   const name = options.getString('name');
-  delete tags[name];
-  fs.writeFileSync(tagsPath, JSON.stringify(tags, null, 2));
-  await interaction.editReply({ content: `🗑️ Tag \`${name}\` deleted.` });
+  const message = options.getString('message');
+
+  db.run(`INSERT OR REPLACE INTO tags(name, message) VALUES(?, ?)`, [name, message], (err) => {
+    if (err) {
+      console.error('DB Error (tagcreate):', err);
+      return interaction.editReply({ content: '❌ Failed to create tag.' });
+    }
+    interaction.editReply({ content: `✅ Tag \`${name}\` saved.` });
+  });
 }
 
-      if (commandName === 'taglist') {
+// TAG USE
+if (commandName === 'tag') {
+  const name = options.getString('name');
+  db.get('SELECT message FROM tags WHERE name = ?', [name], (err, row) => {
+    if (err) {
+      console.error('DB Error (tag):', err);
+      return interaction.reply({ content: '❌ Error reading tag.' });
+    }
+    if (row) {
+      interaction.reply({ content: row.message.slice(0, 2000) || '✅ Sent.' }); // 🔓 Visible to everyone
+    } else {
+      interaction.reply({ content: `❌ Tag \`${name}\` not found.` });
+    }
+  });
+}
+
+// TAG DELETE
+if (commandName === 'tagdelete') {
   if (!interaction.replied && !interaction.deferred) {
     await interaction.deferReply({ ephemeral: true }).catch(() => {});
   }
-  const list = Object.keys(tags).map(t => `• \`${t}\``).join('\n') || 'No tags found.';
-  await interaction.editReply({ content: list });
+
+  const name = options.getString('name');
+  db.run('DELETE FROM tags WHERE name = ?', [name], function (err) {
+    if (err) {
+      console.error('DB Error (tagdelete):', err);
+      return interaction.editReply({ content: '❌ Failed to delete tag.' });
+    }
+    if (this.changes === 0) {
+      interaction.editReply({ content: `❌ Tag \`${name}\` not found.`, ephemeral: true });
+    } else {
+      interaction.editReply({ content: `🗑️ Tag \`${name}\` deleted.`, ephemeral: true });
+    }
+  });
 }
 
+// TAG LIST
+if (commandName === 'taglist') {
+  db.all('SELECT name FROM tags', (err, rows) => {
+    if (err) {
+      console.error('DB Error (taglist):', err);
+      return interaction.reply({ content: '❌ Failed to fetch tag list.' });
+    }
+
+    const list = rows.map(r => `• \`${r.name}\``).join('\n') || 'No tags found.';
+    interaction.reply({ content: list }); // 🔓 Visible to everyone
+  });
+}
       if (commandName === 'close') {
         const perms = channel.permissionOverwrites.cache;
         const ticketOwner = [...perms.values()].find(po =>
