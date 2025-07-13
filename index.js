@@ -200,7 +200,15 @@ if (commandName === 'taglist') {
         await interaction.reply({ embeds: [embed], components: [row] });
       }
 
-      if (commandName === 'delete') return channel.delete();
+      if (commandName === 'delete') {
+  const ticketCategoryId = '1373027564926406796'; // your ticket category ID
+
+  if (channel.parentId === ticketCategoryId) {
+    await channel.delete();
+  } else {
+    await interaction.reply({ content: '❌ You can only delete ticket channels!', ephemeral: true });
+  }
+}
 
       if (commandName === 'rename') {
         const newName = options.getString('name');
