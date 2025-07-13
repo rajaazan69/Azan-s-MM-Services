@@ -1,5 +1,4 @@
-// --- BEGIN index.js FULL CODE ---
-const {
+const { 
   Client, GatewayIntentBits, Partials, ChannelType, PermissionsBitField,
   ActionRowBuilder, ModalBuilder, TextInputBuilder, TextInputStyle,
   EmbedBuilder, ButtonBuilder, ButtonStyle, AttachmentBuilder,
@@ -36,24 +35,26 @@ app.listen(PORT, () => console.log(`Uptime server running on port ${PORT}`));
 client.once('ready', async () => {
   console.log(`Bot online as ${client.user.tag}`);
 
+  // Clean up old commands
   const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
+  const old = await rest.get(Routes.applicationCommands(client.user.id));
+  for (const cmd of old) {
+    await rest.delete(Routes.applicationCommand(client.user.id, cmd.id));
+  }
+  console.log('✅ Old commands deleted');
 
+  // Register new commands
   const commands = [
-    new SlashCommandBuilder().setName('setup').setDescription('Send ticket panel')
-      .addChannelOption(opt => opt.setName('channel').setDescription('Target channel').setRequired(true)),
+    new SlashCommandBuilder().setName('setup').setDescription('Send ticket panel').addChannelOption(opt => opt.setName('channel').setDescription('Target channel').setRequired(true)),
     new SlashCommandBuilder().setName('close').setDescription('Close the ticket'),
     new SlashCommandBuilder().setName('delete').setDescription('Delete the ticket'),
     new SlashCommandBuilder().setName('rename').setDescription('Rename the ticket').addStringOption(opt => opt.setName('name').setDescription('New name').setRequired(true)),
     new SlashCommandBuilder().setName('add').setDescription('Add a user to the ticket').addUserOption(opt => opt.setName('user').setDescription('User').setRequired(true)),
     new SlashCommandBuilder().setName('remove').setDescription('Remove a user').addUserOption(opt => opt.setName('user').setDescription('User').setRequired(true)),
     new SlashCommandBuilder().setName('transcript').setDescription('Generate a transcript'),
-    new SlashCommandBuilder().setName('tagcreate').setDescription('Create a tag')
-      .addStringOption(o => o.setName('name').setDescription('Tag name').setRequired(true))
-      .addStringOption(o => o.setName('message').setDescription('Tag message').setRequired(true)),
-    new SlashCommandBuilder().setName('tag').setDescription('Send a saved tag')
-      .addStringOption(o => o.setName('name').setDescription('Tag name').setRequired(true)),
-    new SlashCommandBuilder().setName('tagdelete').setDescription('Delete a tag')
-      .addStringOption(o => o.setName('name').setDescription('Tag name').setRequired(true)),
+    new SlashCommandBuilder().setName('tagcreate').setDescription('Create a tag').addStringOption(o => o.setName('name').setDescription('Tag name').setRequired(true)).addStringOption(o => o.setName('message').setDescription('Tag message').setRequired(true)),
+    new SlashCommandBuilder().setName('tag').setDescription('Send a saved tag').addStringOption(o => o.setName('name').setDescription('Tag name').setRequired(true)),
+    new SlashCommandBuilder().setName('tagdelete').setDescription('Delete a tag').addStringOption(o => o.setName('name').setDescription('Tag name').setRequired(true)),
     new SlashCommandBuilder().setName('taglist').setDescription('List all tags')
   ].map(cmd => cmd.toJSON());
 
@@ -64,37 +65,41 @@ client.once('ready', async () => {
 client.on('interactionCreate', async interaction => {
   try {
     const { commandName, options, channel, guild } = interaction;
+
     if (interaction.isChatInputCommand()) {
       if (commandName === 'setup') {
         const target = options.getChannel('channel');
-        const embed = new EmbedBuilder().setTitle('**Request Middleman**')
+        const embed = new EmbedBuilder()
+          .setTitle('**Request Middleman**')
           .setDescription('**Click Below To Request Azan’s Services**\nPlease answer all the questions correctly for the best support.')
           .setColor('Blue');
         const btn = new ActionRowBuilder().addComponents(
           new ButtonBuilder().setCustomId('openTicket').setLabel('Request Middleman').setStyle(ButtonStyle.Primary)
         );
         await target.send({ embeds: [embed], components: [btn] });
-        return interaction.reply({ content: '✅ Setup complete.', ephemeral: true });
+        if (!interaction.replied && !interaction.deferred) {
+          await interaction.reply({ content: '✅ Setup complete.', ephemeral: true }).catch(() => {});
+        }
       }
 
       if (commandName === 'tagcreate') {
         tags[options.getString('name')] = options.getString('message');
-        return interaction.reply({ content: '✅ Tag created.', ephemeral: true });
+        await interaction.reply({ content: '✅ Tag created.', ephemeral: true });
       }
 
       if (commandName === 'tag') {
-        return interaction.reply({ content: tags[options.getString('name')] || '❌ Tag not found.', ephemeral: true });
+        await interaction.reply({ content: tags[options.getString('name')] || '❌ Tag not found.', ephemeral: true });
       }
 
       if (commandName === 'tagdelete') {
         const name = options.getString('name');
         delete tags[name];
-        return interaction.reply({ content: `🗑️ Tag \`${name}\` deleted.`, ephemeral: true });
+        await interaction.reply({ content: `🗑️ Tag \`${name}\` deleted.`, ephemeral: true });
       }
 
       if (commandName === 'taglist') {
         const list = Object.keys(tags).map(t => `• \`${t}\``).join('\n') || 'No tags found.';
-        return interaction.reply({ content: list, ephemeral: true });
+        await interaction.reply({ content: list, ephemeral: true });
       }
 
       if (commandName === 'close') {
@@ -103,68 +108,71 @@ client.on('interactionCreate', async interaction => {
           po.allow.has(PermissionsBitField.Flags.ViewChannel) &&
           po.id !== OWNER_ID && po.id !== MIDDLEMAN_ROLE && po.id !== guild.id
         )?.id;
-
-        const participants = new Set();
-        for (const [id, overwrite] of perms) {
+        for (const [id] of perms) {
           if (id !== OWNER_ID && id !== MIDDLEMAN_ROLE && id !== guild.id) {
             await channel.permissionOverwrites.edit(id, { SendMessages: false, ViewChannel: false }).catch(() => {});
-            participants.add(`<@${id}>`);
           }
         }
-
         const embed = new EmbedBuilder()
           .setTitle('🔒 Ticket Closed')
           .setDescription('Select an option below to generate the transcript or delete the ticket.')
           .addFields(
             { name: 'Ticket Name', value: channel.name, inline: true },
-            { name: 'Owner', value: ticketOwner ? `<@${ticketOwner}> (${ticketOwner})` : 'Unknown', inline: true },
-            { name: 'Participants', value: [...participants].join(', ') || 'None', inline: false }
+            { name: 'Owner', value: ticketOwner ? `<@${ticketOwner}> (${ticketOwner})` : 'Unknown', inline: true }
           )
           .setColor('#2B2D31')
           .setFooter({ text: `Closed by ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
           .setTimestamp();
-
         const row = new ActionRowBuilder().addComponents(
           new ButtonBuilder().setCustomId('transcript').setLabel('📄 Transcript').setStyle(ButtonStyle.Secondary),
           new ButtonBuilder().setCustomId('delete').setLabel('🗑️ Delete').setStyle(ButtonStyle.Danger)
         );
-
-        return interaction.reply({ embeds: [embed], components: [row] });
+        await interaction.reply({ embeds: [embed], components: [row] });
       }
 
       if (commandName === 'delete') return channel.delete();
+
       if (commandName === 'rename') {
         const newName = options.getString('name');
         await channel.setName(newName);
-        return interaction.reply({ content: `✅ Renamed to \`${newName}\`.`, ephemeral: true });
+        await interaction.reply({ content: `✅ Renamed to \`${newName}\``, ephemeral: true });
       }
+
       if (commandName === 'add') {
         const user = options.getUser('user');
         await channel.permissionOverwrites.edit(user.id, {
           SendMessages: true,
           ViewChannel: true
         });
-        return interaction.reply({ content: `✅ ${user} added.`, ephemeral: true });
+        await interaction.reply({ content: `✅ ${user} added.`, ephemeral: true });
       }
+
       if (commandName === 'remove') {
         const user = options.getUser('user');
         await channel.permissionOverwrites.delete(user.id);
-        return interaction.reply({ content: `✅ ${user} removed.`, ephemeral: true });
+        await interaction.reply({ content: `✅ ${user} removed.`, ephemeral: true });
       }
+
       if (commandName === 'transcript') {
-        await interaction.deferReply({ ephemeral: true }).catch(() => {});
+        if (!interaction.replied && !interaction.deferred) {
+          await interaction.deferReply({ ephemeral: true }).catch(() => {});
+        }
         await handleTranscript(interaction, channel);
       }
     }
 
     if (interaction.isButton()) {
       if (interaction.customId === 'transcript') {
-        await interaction.deferReply({ ephemeral: true }).catch(() => {});
+        if (!interaction.replied && !interaction.deferred) {
+          await interaction.deferReply({ ephemeral: true }).catch(() => {});
+        }
         await handleTranscript(interaction, interaction.channel);
       }
+
       if (interaction.customId === 'delete') {
         await interaction.channel.delete();
       }
+
       if (interaction.customId === 'openTicket') {
         const modal = new ModalBuilder().setCustomId('ticketModal').setTitle('Middleman Request').addComponents(
           new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('q1').setLabel("What's the trade?").setStyle(TextInputStyle.Short).setRequired(true)),
@@ -234,7 +242,17 @@ async function handleTranscript(interaction, channel) {
   const embed = new EmbedBuilder()
     .setTitle('📄 Transcript Ready')
     .setDescription(`[Click to view HTML Transcript](${htmlLink})`)
-    .addFields({ name: 'Ticket Name', value: channel.name, inline: true })
+    .addFields(
+      { name: 'Ticket Name', value: channel.name, inline: true },
+      {
+        name: 'Participants',
+        value: [...participants.entries()]
+          .map(([id, count]) => `<@${id}> — \`${count}\` messages`)
+          .join('\n')
+          .slice(0, 1024) || 'None',
+        inline: false
+      }
+    )
     .setColor('#4fc3f7')
     .setTimestamp();
 
@@ -244,10 +262,10 @@ async function handleTranscript(interaction, channel) {
 }
 
 client.on('error', console.error);
-process.on('unhandledRejection', (reason) => console.error('Unhandled Rejection:', reason));
+process.on('unhandledRejection', (reason, p) => {
+  console.error('Unhandled Rejection:', reason);
+});
 client.login(process.env.TOKEN);
 
-// Self-ping for uptime
 const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
 setInterval(() => { fetch(BASE_URL).catch(() => {}); }, 5 * 60 * 1000);
-// --- END index.js ---
