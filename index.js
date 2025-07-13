@@ -88,23 +88,49 @@ client.once('ready', async () => {
 
 client.on('interactionCreate', async interaction => {
   try {
-    const { commandName, options, channel, guild } = interaction;
+    const { commandName, options, channel, guild, user } = interaction;
 
+    // Slash Command Logging
     if (interaction.isChatInputCommand()) {
+      console.log(`📘 Slash Command: /${commandName} by ${user.tag} in #${channel?.name || 'DMs'} (${guild?.name || 'No Guild'})`);
+
       if (commandName === 'setup') {
         const target = options.getChannel('channel');
+
         const embed = new EmbedBuilder()
           .setTitle('**Request Middleman**')
           .setDescription('**Click Below To Request Azan’s Services**\nPlease answer all the questions correctly for the best support.')
           .setColor('Blue');
+
         const btn = new ActionRowBuilder().addComponents(
-          new ButtonBuilder().setCustomId('openTicket').setLabel('Request Middleman').setStyle(ButtonStyle.Primary)
+          new ButtonBuilder()
+            .setCustomId('openTicket')
+            .setLabel('Request Middleman')
+            .setStyle(ButtonStyle.Primary)
         );
+
         await target.send({ embeds: [embed], components: [btn] });
+
         if (!interaction.replied && !interaction.deferred) {
           await interaction.reply({ content: '✅ Setup complete.', ephemeral: true }).catch(() => {});
         }
       }
+    }
+
+    // Button Click Logging
+    if (interaction.isButton()) {
+      console.log(`🔘 Button Clicked: ${interaction.customId} by ${user.tag} in #${channel?.name || 'DMs'} (${guild?.name || 'No Guild'})`);
+    }
+
+    // Modal Submission Logging
+    if (interaction.isModalSubmit()) {
+      console.log(`📝 Modal Submitted: ${interaction.customId} by ${user.tag} in #${channel?.name || 'DMs'} (${guild?.name || 'No Guild'})`);
+    }
+
+  } catch (err) {
+    console.error('❌ Interaction Error:', err);
+  }
+});
 
       // TAG CREATE
 if (commandName === 'tagcreate') {
