@@ -4,7 +4,7 @@
   "description": "A Discord ticket bot clone of Ticket Tool XYZ",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node register-commands.js && node index.js"
   },
   "author": "YourName",
   "license": "MIT",
