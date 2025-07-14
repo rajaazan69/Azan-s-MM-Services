@@ -72,8 +72,6 @@ client.once('ready', async () => {
 
     await rest.put(Routes.applicationCommands(client.user.id), { body: commands });
     console.log('✅ Slash commands registered');
-  } else {
-    console.log('🟡 Skipping command registration (REGISTER_COMMANDS is false)');
   }
 });
 
@@ -96,7 +94,7 @@ client.on('interactionCreate', async interaction => {
       }
 
       if (commandName === 'tagcreate') {
-        await interaction.deferReply({ ephemeral: true }).catch(() => {});
+        await interaction.deferReply({ ephemeral: true });
         const name = options.getString('name');
         const message = options.getString('message');
         db.run(`INSERT OR REPLACE INTO tags(name, message) VALUES(?, ?)`, [name, message], err => {
@@ -115,7 +113,7 @@ client.on('interactionCreate', async interaction => {
       }
 
       if (commandName === 'tagdelete') {
-        await interaction.deferReply({ ephemeral: true }).catch(() => {});
+        await interaction.deferReply({ ephemeral: true });
         const name = options.getString('name');
         db.run('DELETE FROM tags WHERE name = ?', [name], function (err) {
           if (err) return interaction.editReply({ content: '❌ Failed to delete tag.' });
@@ -151,12 +149,10 @@ client.on('interactionCreate', async interaction => {
           .setColor('#2B2D31')
           .setFooter({ text: `Closed by ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
           .setTimestamp();
-
         const row = new ActionRowBuilder().addComponents(
           new ButtonBuilder().setCustomId('transcript').setLabel('📄 Transcript').setStyle(ButtonStyle.Secondary),
           new ButtonBuilder().setCustomId('delete').setLabel('🗑️ Delete').setStyle(ButtonStyle.Danger)
         );
-
         await interaction.reply({ embeds: [embed], components: [row] });
       }
 
@@ -194,7 +190,6 @@ client.on('interactionCreate', async interaction => {
       }
     }
 
-    // ✅ BUTTON: Open Modal
     if (interaction.isButton() && interaction.customId === 'openTicket') {
       const modal = new ModalBuilder()
         .setCustomId('ticketModal')
@@ -208,74 +203,68 @@ client.on('interactionCreate', async interaction => {
       await interaction.showModal(modal).catch(console.error);
     }
 
-    // ✅ BUTTON: Transcript Fix
     if (interaction.isButton() && interaction.customId === 'transcript') {
       const parentId = interaction.channel.parentId || interaction.channel.parent?.id;
-      if (parentId !== TICKET_CATEGORY) {
-        return interaction.reply({ content: '❌ You can only use this inside ticket channels.', ephemeral: true });
-      }
-      await interaction.deferReply({ ephemeral: true }).catch(() => {});
+      if (parentId !== TICKET_CATEGORY) return interaction.reply({ content: '❌ Only usable inside ticket channels.', ephemeral: true });
+      await interaction.deferReply({ ephemeral: true });
       await handleTranscript(interaction, interaction.channel);
     }
 
-    // ✅ BUTTON: Delete
     if (interaction.isButton() && interaction.customId === 'delete') {
       await interaction.channel.delete().catch(console.error);
     }
 
     if (interaction.isModalSubmit() && interaction.customId === 'ticketModal') {
-  try {
-    const q1 = interaction.fields.getTextInputValue('q1');
-    const q2 = interaction.fields.getTextInputValue('q2');
-    const q3 = interaction.fields.getTextInputValue('q3');
-    const q4 = interaction.fields.getTextInputValue('q4');
+      try {
+        const q1 = interaction.fields.getTextInputValue('q1');
+        const q2 = interaction.fields.getTextInputValue('q2');
+        const q3 = interaction.fields.getTextInputValue('q3');
+        const q4 = interaction.fields.getTextInputValue('q4');
+        const targetMention = /^\d{17,19}$/.test(q4) ? `<@${q4}>` : 'Unknown User';
+        const safeName = `ticket-${interaction.user.username}`.toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 90);
 
-    const targetMention = /^\d{17,19}$/.test(q4) ? `<@${q4}>` : 'Unknown User';
+        const ticket = await interaction.guild.channels.create({
+          name: safeName,
+          type: ChannelType.GuildText,
+          parent: TICKET_CATEGORY,
+          permissionOverwrites: [
+            { id: interaction.guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
+            { id: interaction.user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
+            { id: OWNER_ID, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
+            { id: MIDDLEMAN_ROLE, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] }
+          ]
+        });
 
-    // 👇 Ensure channel name is valid length and format
-    const safeName = `ticket-${interaction.user.username}`.toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 90);
+        const embed = new EmbedBuilder()
+          .setTitle('🎟️ New Middleman Ticket')
+          .setColor('#00b0f4')
+          .setDescription([
+            `🔹 **User 1:** <@${interaction.user.id}>`,
+            `🔹 **User 2:** ${targetMention}`,
+            '',
+            `💬 **Trade**\n\`\`\`\n${q1}\n\`\`\``,
+            `📤 **User 1 Offers**\n\`\`\`\n${q2}\n\`\`\``,
+            `📥 **User 2 Offers**\n\`\`\`\n${q3}\n\`\`\``
+          ].join('\n'))
+          .setFooter({ text: `Ticket by ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
+          .setTimestamp();
 
-    const ticket = await interaction.guild.channels.create({
-      name: safeName,
-      type: ChannelType.GuildText,
-      parent: TICKET_CATEGORY,
-      permissionOverwrites: [
-        { id: interaction.guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
-        { id: interaction.user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
-        { id: OWNER_ID, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
-        { id: MIDDLEMAN_ROLE, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] }
-      ]
-    });
+        await ticket.send({
+          content: `<@${interaction.user.id}> <@${OWNER_ID}>`,
+          embeds: [embed],
+          allowedMentions: { users: [interaction.user.id, OWNER_ID] }
+        });
 
-    const embed = new EmbedBuilder()
-      .setTitle('🎟️ New Middleman Ticket')
-      .setColor('#00b0f4')
-      .setDescription([
-        `🔹 **User 1:** <@${interaction.user.id}>`,
-        `🔹 **User 2:** ${targetMention}`,
-        '',
-        `💬 **Trade**`,
-        `\`\`\`\n${q1}\n\`\`\``,
-        `📤 **User 1 Offers**`,
-        `\`\`\`\n${q2}\n\`\`\``,
-        `📥 **User 2 Offers**`,
-        `\`\`\`\n${q3}\n\`\`\``
-      ].join('\n'))
-      .setFooter({ text: `Ticket by ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
-      .setTimestamp();
-
-    await ticket.send({
-      content: `<@${interaction.user.id}> <@${OWNER_ID}>`,
-      embeds: [embed],
-      allowedMentions: { users: [interaction.user.id, OWNER_ID], roles: [] } // ⛔ prevent role ping!
-    });
-
-    await interaction.reply({ content: `✅ Ticket created: ${ticket}`, ephemeral: true });
+        await interaction.reply({ content: `✅ Ticket created: ${ticket}`, ephemeral: true });
+      } catch (err) {
+        console.error('❌ Ticket creation error:', err);
+        await interaction.reply({ content: '❌ Failed to create ticket.', ephemeral: true });
+      }
+    }
   } catch (err) {
-    console.error('❌ Ticket creation error:', err);
-    await interaction.reply({ content: '❌ Failed to create ticket. Please try again.', ephemeral: true });
+    console.error('❌ Interaction error:', err);
   }
-}
+});
 
 async function handleTranscript(interaction, channel) {
   const messages = await channel.messages.fetch({ limit: 100 });
@@ -317,8 +306,7 @@ async function handleTranscript(interaction, channel) {
 client.on('error', console.error);
 process.on('unhandledRejection', (reason, p) => console.error('Unhandled Rejection:', reason));
 client.login(process.env.TOKEN);
-
-const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
+const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args
 setInterval(() => {
-  fetch(BASE_URL).catch(() => {});
-}, 5 * 60 * 1000);
+  fetch(BASE_URL).catch(() => console.warn('⚠️ Self-ping failed'));
+}, 5 * 60 * 1000); // every 5 minutes to keep Render alive
