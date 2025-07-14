@@ -274,7 +274,7 @@ async function handleTranscript(interaction, channel) {
   for (const m of sorted) participants.set(m.author.id, (participants.get(m.author.id) || 0) + 1);
 
   const lines = sorted.map(m =>
-    `<p><strong>${m.author.username}#${m.author.discriminator}</strong> <em>${new Date(m.createdTimestamp).toLocaleString()}</em>: ${m.cleanContent}"
+  `<p><strong>${m.author.username}#${m.author.discriminator}</strong> <em>${new Date(m.createdTimestamp).toLocaleString()}</em>: ${m.cleanContent}</p>`
 );
   const stats = [...participants.entries()].map(([id, cnt]) =>
     `<li><strong><a href="https://discord.com/users/${id}">${id}</a></strong>: ${cnt} messages</li>`
