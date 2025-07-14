@@ -224,54 +224,58 @@ client.on('interactionCreate', async interaction => {
     }
 
     if (interaction.isModalSubmit() && interaction.customId === 'ticketModal') {
-  const q1 = interaction.fields.getTextInputValue('q1');
-  const q2 = interaction.fields.getTextInputValue('q2');
-  const q3 = interaction.fields.getTextInputValue('q3');
-  const q4 = interaction.fields.getTextInputValue('q4');
+  try {
+    const q1 = interaction.fields.getTextInputValue('q1');
+    const q2 = interaction.fields.getTextInputValue('q2');
+    const q3 = interaction.fields.getTextInputValue('q3');
+    const q4 = interaction.fields.getTextInputValue('q4');
 
-  const targetMention = /^\d{17,19}$/.test(q4) ? `<@${q4}>` : 'Unknown User';
+    const targetMention = /^\d{17,19}$/.test(q4) ? `<@${q4}>` : 'Unknown User';
 
-  const ticket = await interaction.guild.channels.create({
-    name: `ticket-${interaction.user.username}`,
-    type: ChannelType.GuildText,
-    parent: TICKET_CATEGORY,
-    permissionOverwrites: [
-      { id: interaction.guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
-      { id: interaction.user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
-      { id: OWNER_ID, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
-      { id: MIDDLEMAN_ROLE, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] }
-    ]
-  });
+    // 👇 Ensure channel name is valid length and format
+    const safeName = `ticket-${interaction.user.username}`.toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 90);
 
-  const embed = new EmbedBuilder()
-  .setTitle('🎟️ New Middleman Ticket')
-  .setColor('#00b0f4')
-  .setDescription([
-    `🔹 **User 1:** <@${interaction.user.id}>`,
-    `🔹 **User 2:** ${targetMention}`,
-    '',
-    `💬 **Trade**`,
-    `\`\`\`\n${q1}\n\`\`\``,
-    `📤 **User 1 Offers**`,
-    `\`\`\`\n${q2}\n\`\`\``,
-    `📥 **User 2 Offers**`,
-    `\`\`\`\n${q3}\n\`\`\``
-  ].join('\n'))
-  .setFooter({ text: `Ticket by ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
-  .setTimestamp();
+    const ticket = await interaction.guild.channels.create({
+      name: safeName,
+      type: ChannelType.GuildText,
+      parent: TICKET_CATEGORY,
+      permissionOverwrites: [
+        { id: interaction.guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
+        { id: interaction.user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
+        { id: OWNER_ID, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
+        { id: MIDDLEMAN_ROLE, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] }
+      ]
+    });
 
-  await ticket.send({
-  content: `<@${interaction.user.id}> <@${OWNER_ID}>`,
-  embeds: [embed],
-  allowedMentions: { users: [interaction.user.id, OWNER_ID], roles: [] }
-});
+    const embed = new EmbedBuilder()
+      .setTitle('🎟️ New Middleman Ticket')
+      .setColor('#00b0f4')
+      .setDescription([
+        `🔹 **User 1:** <@${interaction.user.id}>`,
+        `🔹 **User 2:** ${targetMention}`,
+        '',
+        `💬 **Trade**`,
+        `\`\`\`\n${q1}\n\`\`\``,
+        `📤 **User 1 Offers**`,
+        `\`\`\`\n${q2}\n\`\`\``,
+        `📥 **User 2 Offers**`,
+        `\`\`\`\n${q3}\n\`\`\``
+      ].join('\n'))
+      .setFooter({ text: `Ticket by ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
+      .setTimestamp();
 
-  await interaction.reply({ content: `✅ Ticket created: ${ticket}`, ephemeral: true });
-}
+    await ticket.send({
+      content: `<@${interaction.user.id}> <@${OWNER_ID}>`,
+      embeds: [embed],
+      allowedMentions: { users: [interaction.user.id, OWNER_ID], roles: [] } // ⛔ prevent role ping!
+    });
+
+    await interaction.reply({ content: `✅ Ticket created: ${ticket}`, ephemeral: true });
   } catch (err) {
-    console.error('❌ Interaction error:', err);
+    console.error('❌ Ticket creation error:', err);
+    await interaction.reply({ content: '❌ Failed to create ticket. Please try again.', ephemeral: true });
   }
-});
+}
 
 async function handleTranscript(interaction, channel) {
   const messages = await channel.messages.fetch({ limit: 100 });
