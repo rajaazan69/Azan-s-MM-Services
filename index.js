@@ -223,32 +223,47 @@ client.on('interactionCreate', async interaction => {
       await interaction.channel.delete().catch(console.error);
     }
 
-    if (interaction.isModalSubmit() && interaction.customId === 'ticketModal') {
-      const q1 = interaction.fields.getTextInputValue('q1');
-      const q2 = interaction.fields.getTextInputValue('q2');
-      const q3 = interaction.fields.getTextInputValue('q3');
-      const q4 = interaction.fields.getTextInputValue('q4');
-      const targetMention = /^\d{17,19}$/.test(q4) ? `<@${q4}>` : 'Unknown User';
-      const ticket = await interaction.guild.channels.create({
-        name: `ticket-${interaction.user.username}`,
-        type: ChannelType.GuildText,
-        parent: TICKET_CATEGORY,
-        permissionOverwrites: [
-          { id: interaction.guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
-          { id: interaction.user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
-          { id: OWNER_ID, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
-          { id: MIDDLEMAN_ROLE, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] }
-        ]
-      });
-      const embed = new EmbedBuilder()
-        .setTitle('🎟️ Middleman Request')
-        .setColor('#00b0f4')
-        .setDescription(`**User 1:** <@${interaction.user.id}>\n**User 2:** ${targetMention}\n\n**What's the trade?**\n${q1}\n\n**User 1 is giving:**\n${q2}\n\n**User 2 is giving:**\n${q3}`)
-        .setFooter({ text: `Ticket by ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
-        .setTimestamp();
-      await ticket.send({ content: `<@${interaction.user.id}> <@${OWNER_ID}> <@&${MIDDLEMAN_ROLE}>`, embeds: [embed] });
-      await interaction.reply({ content: `✅ Ticket created: ${ticket}`, ephemeral: true });
-    }
+  if (interaction.isModalSubmit() && interaction.customId === 'ticketModal') {
+  const q1 = interaction.fields.getTextInputValue('q1');
+  const q2 = interaction.fields.getTextInputValue('q2');
+  const q3 = interaction.fields.getTextInputValue('q3');
+  const q4 = interaction.fields.getTextInputValue('q4');
+
+  const targetMention = /^\d{17,19}$/.test(q4) ? `<@${q4}>` : 'Unknown User';
+
+  const ticket = await interaction.guild.channels.create({
+    name: `ticket-${interaction.user.username}`,
+    type: ChannelType.GuildText,
+    parent: TICKET_CATEGORY,
+    permissionOverwrites: [
+      { id: interaction.guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
+      { id: interaction.user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
+      { id: OWNER_ID, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
+      { id: MIDDLEMAN_ROLE, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] }
+    ]
+  });
+
+  const embed = new EmbedBuilder()
+    .setTitle('Middleman Request')
+    .setColor('#2B2D31')
+    .addFields(
+      { name: 'User 1', value: `<@${interaction.user.id}>`, inline: true },
+      { name: 'User 2', value: `${targetMention}`, inline: true },
+      { name: '\u200B', value: '\u200B' },
+      { name: "What's the trade?", value: q1 },
+      { name: 'User 1 is giving', value: q2 },
+      { name: 'User 2 is giving', value: q3 }
+    )
+    .setFooter({ text: `Ticket by ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
+    .setTimestamp();
+
+  await ticket.send({
+    content: `<@${OWNER_ID}> <@&${MIDDLEMAN_ROLE}>`,
+    embeds: [embed]
+  });
+
+  await interaction.reply({ content: `✅ Ticket created: ${ticket}`, ephemeral: true });
+}
   } catch (err) {
     console.error('❌ Interaction error:', err);
   }
