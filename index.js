@@ -1,4 +1,3 @@
-// ⚙️ Imports & Setup
 const {
   Client, GatewayIntentBits, Partials, ChannelType, PermissionsBitField,
   ActionRowBuilder, ModalBuilder, TextInputBuilder, TextInputStyle,
@@ -12,8 +11,8 @@ require('dotenv').config();
 const sqlite3 = require('sqlite3').verbose();
 const db = new sqlite3.Database('./tags.db');
 
-// 🗂️ Tag DB init
 db.run(`CREATE TABLE IF NOT EXISTS tags (name TEXT PRIMARY KEY, message TEXT NOT NULL)`);
+
 const tagsPath = path.join(__dirname, 'tag.json');
 let tags = {};
 if (fs.existsSync(tagsPath)) {
@@ -25,12 +24,12 @@ if (fs.existsSync(tagsPath)) {
   }
 }
 
-// 🌐 Express uptime
 const app = express();
 const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent],
   partials: [Partials.Channel]
 });
+
 const PORT = process.env.PORT || 3000;
 const OWNER_ID = '1356149794040446998';
 const MIDDLEMAN_ROLE = '1373062797545570525';
@@ -83,7 +82,6 @@ client.on('interactionCreate', async interaction => {
     const { commandName, options, channel, guild } = interaction;
 
     if (interaction.isChatInputCommand()) {
-      // Panel setup
       if (commandName === 'setup') {
         const target = options.getChannel('channel');
         const embed = new EmbedBuilder()
@@ -97,7 +95,6 @@ client.on('interactionCreate', async interaction => {
         await interaction.reply({ content: '✅ Setup complete.', ephemeral: true }).catch(() => {});
       }
 
-      // Tags
       if (commandName === 'tagcreate') {
         await interaction.deferReply({ ephemeral: true }).catch(() => {});
         const name = options.getString('name');
@@ -134,19 +131,16 @@ client.on('interactionCreate', async interaction => {
         });
       }
 
-      // ✅ FIXED: Close ticket
       if (commandName === 'close') {
         const parentId = channel.parentId || channel.parent?.id;
         if (parentId !== TICKET_CATEGORY) return interaction.reply({ content: '❌ You can only close ticket channels!', ephemeral: true });
-
-        const ticketOwner = channel.topic?.match(/\d{17,19}/)?.[0] || null;
         const perms = channel.permissionOverwrites.cache;
+        const ticketOwner = [...perms.values()].find(po => po.allow.has(PermissionsBitField.Flags.ViewChannel) && po.id !== OWNER_ID && po.id !== MIDDLEMAN_ROLE && po.id !== guild.id)?.id;
         for (const [id] of perms) {
           if (![OWNER_ID, MIDDLEMAN_ROLE, guild.id].includes(id)) {
             await channel.permissionOverwrites.edit(id, { SendMessages: false, ViewChannel: false }).catch(() => {});
           }
         }
-
         const embed = new EmbedBuilder()
           .setTitle('🔒 Ticket Closed')
           .setDescription('Select an option below to generate the transcript or delete the ticket.')
@@ -200,7 +194,7 @@ client.on('interactionCreate', async interaction => {
       }
     }
 
-    // ✅ Open Ticket Modal
+    // ✅ BUTTON: Open Modal
     if (interaction.isButton() && interaction.customId === 'openTicket') {
       const modal = new ModalBuilder()
         .setCustomId('ticketModal')
@@ -214,19 +208,46 @@ client.on('interactionCreate', async interaction => {
       await interaction.showModal(modal).catch(console.error);
     }
 
+    // ✅ BUTTON: Transcript Fix
     if (interaction.isButton() && interaction.customId === 'transcript') {
       const parentId = interaction.channel.parentId || interaction.channel.parent?.id;
-      if (parentId !== TICKET_CATEGORY) return interaction.reply({ content: '❌ You can only use this inside ticket channels.', ephemeral: true });
+      if (parentId !== TICKET_CATEGORY) {
+        return interaction.reply({ content: '❌ You can only use this inside ticket channels.', ephemeral: true });
+      }
       await interaction.deferReply({ ephemeral: true }).catch(() => {});
       await handleTranscript(interaction, interaction.channel);
     }
 
+    // ✅ BUTTON: Delete
     if (interaction.isButton() && interaction.customId === 'delete') {
       await interaction.channel.delete().catch(console.error);
     }
 
     if (interaction.isModalSubmit() && interaction.customId === 'ticketModal') {
-      // Handled above — same modal block
+      const q1 = interaction.fields.getTextInputValue('q1');
+      const q2 = interaction.fields.getTextInputValue('q2');
+      const q3 = interaction.fields.getTextInputValue('q3');
+      const q4 = interaction.fields.getTextInputValue('q4');
+      const targetMention = /^\d{17,19}$/.test(q4) ? `<@${q4}>` : 'Unknown User';
+      const ticket = await interaction.guild.channels.create({
+        name: `ticket-${interaction.user.username}`,
+        type: ChannelType.GuildText,
+        parent: TICKET_CATEGORY,
+        permissionOverwrites: [
+          { id: interaction.guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
+          { id: interaction.user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
+          { id: OWNER_ID, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
+          { id: MIDDLEMAN_ROLE, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] }
+        ]
+      });
+      const embed = new EmbedBuilder()
+        .setTitle('🎟️ Middleman Request')
+        .setColor('#00b0f4')
+        .setDescription(`**User 1:** <@${interaction.user.id}>\n**User 2:** ${targetMention}\n\n**What's the trade?**\n${q1}\n\n**User 1 is giving:**\n${q2}\n\n**User 2 is giving:**\n${q3}`)
+        .setFooter({ text: `Ticket by ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
+        .setTimestamp();
+      await ticket.send({ content: `<@${interaction.user.id}> <@${OWNER_ID}> <@&${MIDDLEMAN_ROLE}>`, embeds: [embed] });
+      await interaction.reply({ content: `✅ Ticket created: ${ticket}`, ephemeral: true });
     }
   } catch (err) {
     console.error('❌ Interaction error:', err);
