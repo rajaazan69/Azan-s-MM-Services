@@ -241,22 +241,12 @@ client.on('interactionCreate', async interaction => {
         ]
       });
       const embed = new EmbedBuilder()
-  .setTitle('🎟️ New Middleman Ticket')
-  .setColor('#00b0f4')
-  .addFields(
-    { name: '🔹 User 1', value: `<@${interaction.user.id}>`, inline: true },
-    { name: '🔹 User 2', value: targetMention, inline: true },
-    { name: '💬 Trade', value: q1, inline: false },
-    { name: '📤 User 1 Offers', value: q2, inline: false },
-    { name: '📥 User 2 Offers', value: q3, inline: false }
-  )
-  .setFooter({ text: `Ticket by ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
-  .setTimestamp();
-      await ticket.send({
-  content: `<@${interaction.user.id}> <@${OWNER_ID}>`,
-  embeds: [embed],
-  allowedMentions: { users: [interaction.user.id, OWNER_ID] }
-});
+        .setTitle('🎟️ Middleman Request')
+        .setColor('#00b0f4')
+        .setDescription(`**User 1:** <@${interaction.user.id}>\n**User 2:** ${targetMention}\n\n**What's the trade?**\n${q1}\n\n**User 1 is giving:**\n${q2}\n\n**User 2 is giving:**\n${q3}`)
+        .setFooter({ text: `Ticket by ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
+        .setTimestamp();
+      await ticket.send({ content: `<@${interaction.user.id}> <@${OWNER_ID}> <@&${MIDDLEMAN_ROLE}>`, embeds: [embed] });
       await interaction.reply({ content: `✅ Ticket created: ${ticket}`, ephemeral: true });
     }
   } catch (err) {
