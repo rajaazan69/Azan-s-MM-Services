@@ -13,17 +13,6 @@ const db = new sqlite3.Database('./tags.db');
 
 db.run(`CREATE TABLE IF NOT EXISTS tags (name TEXT PRIMARY KEY, message TEXT NOT NULL)`);
 
-const tagsPath = path.join(__dirname, 'tag.json');
-let tags = {};
-if (fs.existsSync(tagsPath)) {
-  try {
-    tags = JSON.parse(fs.readFileSync(tagsPath, 'utf-8'));
-    console.log('✅ Tags loaded from tag.json');
-  } catch (err) {
-    console.error('❌ Failed to parse tag.json:', err);
-  }
-}
-
 const app = express();
 const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent],
@@ -33,7 +22,6 @@ const client = new Client({
 const PORT = process.env.PORT || 3000;
 const OWNER_ID = '1356149794040446998';
 const MIDDLEMAN_ROLE = '1373062797545570525';
-const PANEL_CHANNEL = '1373048211538841702';
 const TICKET_CATEGORY = '1373027564926406796';
 const TRANSCRIPT_CHANNEL = '1373058123547283568';
 const BASE_URL = process.env.BASE_URL;
@@ -63,20 +51,13 @@ client.once('ready', async () => {
       new SlashCommandBuilder().setName('rename').setDescription('Rename the ticket').addStringOption(opt => opt.setName('name').setDescription('New name').setRequired(true)),
       new SlashCommandBuilder().setName('add').setDescription('Add a user to the ticket').addUserOption(opt => opt.setName('user').setDescription('User').setRequired(true)),
       new SlashCommandBuilder().setName('remove').setDescription('Remove a user').addUserOption(opt => opt.setName('user').setDescription('User').setRequired(true)),
-      new SlashCommandBuilder().setName('transcript').setDescription('Generate a transcript'),
-      new SlashCommandBuilder().setName('tagcreate').setDescription('Create a tag').addStringOption(o => o.setName('name').setDescription('Tag name').setRequired(true)).addStringOption(o => o.setName('message').setDescription('Tag message').setRequired(true)),
-      new SlashCommandBuilder().setName('tag').setDescription('Send a saved tag').addStringOption(o => o.setName('name').setDescription('Tag name').setRequired(true)),
-      new SlashCommandBuilder().setName('tagdelete').setDescription('Delete a tag').addStringOption(o => o.setName('name').setDescription('Tag name').setRequired(true)),
-      new SlashCommandBuilder().setName('taglist').setDescription('List all tags')
+      new SlashCommandBuilder().setName('transcript').setDescription('Generate a transcript')
     ].map(cmd => cmd.toJSON());
 
     await rest.put(Routes.applicationCommands(client.user.id), { body: commands });
     console.log('✅ Slash commands registered');
-  } else {
-    console.log('🟡 Skipping command registration (REGISTER_COMMANDS is false)');
   }
 });
-
 client.on('interactionCreate', async interaction => {
   try {
     const { commandName, options, channel, guild } = interaction;
@@ -85,9 +66,9 @@ client.on('interactionCreate', async interaction => {
       if (commandName === 'setup') {
         const target = options.getChannel('channel');
         const embed = new EmbedBuilder()
-          .setTitle('**Request Middleman**')
-          .setDescription('**Click Below To Request Azan’s Services**\nPlease answer all the questions correctly for the best support.')
-          .setColor('Blue');
+          .setTitle('Request Middleman')
+          .setDescription('Click the button below to open a ticket and request Azan’s middleman services.\n\nPlease answer all questions truthfully.')
+          .setColor('#5865F2');
         const btn = new ActionRowBuilder().addComponents(
           new ButtonBuilder().setCustomId('openTicket').setLabel('Request Middleman').setStyle(ButtonStyle.Primary)
         );
@@ -95,42 +76,7 @@ client.on('interactionCreate', async interaction => {
         await interaction.reply({ content: '✅ Setup complete.', ephemeral: true }).catch(() => {});
       }
 
-      if (commandName === 'tagcreate') {
-        await interaction.deferReply({ ephemeral: true }).catch(() => {});
-        const name = options.getString('name');
-        const message = options.getString('message');
-        db.run(`INSERT OR REPLACE INTO tags(name, message) VALUES(?, ?)`, [name, message], err => {
-          if (err) return interaction.editReply({ content: '❌ Failed to create tag.' });
-          interaction.editReply({ content: `✅ Tag \`${name}\` saved.` });
-        });
-      }
-
-      if (commandName === 'tag') {
-        const name = options.getString('name');
-        db.get('SELECT message FROM tags WHERE name = ?', [name], (err, row) => {
-          if (err) return interaction.reply({ content: '❌ Error reading tag.' });
-          if (row) interaction.reply({ content: row.message.slice(0, 2000) });
-          else interaction.reply({ content: `❌ Tag \`${name}\` not found.` });
-        });
-      }
-
-      if (commandName === 'tagdelete') {
-        await interaction.deferReply({ ephemeral: true }).catch(() => {});
-        const name = options.getString('name');
-        db.run('DELETE FROM tags WHERE name = ?', [name], function (err) {
-          if (err) return interaction.editReply({ content: '❌ Failed to delete tag.' });
-          interaction.editReply({ content: this.changes === 0 ? `❌ Tag \`${name}\` not found.` : `🗑️ Tag \`${name}\` deleted.` });
-        });
-      }
-
-      if (commandName === 'taglist') {
-        db.all('SELECT name FROM tags', (err, rows) => {
-          if (err) return interaction.reply({ content: '❌ Failed to fetch tag list.' });
-          const list = rows.map(r => `• \`${r.name}\``).join('\n') || 'No tags found.';
-          interaction.reply({ content: list });
-        });
-      }
-            if (commandName === 'close') {
+      if (commandName === 'close') {
         const parentId = channel.parentId || channel.parent?.id;
         if (parentId !== TICKET_CATEGORY) return interaction.reply({ content: '❌ You can only close ticket channels!', ephemeral: true });
         const perms = channel.permissionOverwrites.cache;
@@ -140,28 +86,26 @@ client.on('interactionCreate', async interaction => {
             await channel.permissionOverwrites.edit(id, { SendMessages: false, ViewChannel: false }).catch(() => {});
           }
         }
-        const embedClose = new EmbedBuilder()
-          .setTitle('🔒 Ticket Closed')
-          .setDescription('Select an option below to generate the transcript or delete the ticket.')
-          .addFields(
+        const embed = new EmbedBuilder()
+          .setTitle('Ticket Closed')
+          .setColor('#2B2D31')
+          .setFields(
             { name: 'Ticket Name', value: channel.name, inline: true },
             { name: 'Owner', value: ticketOwner ? `<@${ticketOwner}>` : 'Unknown', inline: true }
           )
-          .setColor('#2B2D31')
           .setFooter({ text: `Closed by ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
           .setTimestamp();
 
-        const rowClose = new ActionRowBuilder().addComponents(
-          new ButtonBuilder().setCustomId('transcript').setLabel('📄 Transcript').setStyle(ButtonStyle.Secondary),
-          new ButtonBuilder().setCustomId('delete').setLabel('🗑️ Delete').setStyle(ButtonStyle.Danger)
+        const row = new ActionRowBuilder().addComponents(
+          new ButtonBuilder().setCustomId('transcript').setLabel('Transcript').setStyle(ButtonStyle.Secondary),
+          new ButtonBuilder().setCustomId('delete').setLabel('Delete').setStyle(ButtonStyle.Danger)
         );
 
-        await interaction.reply({ embeds: [embedClose], components: [rowClose] });
+        await interaction.reply({ embeds: [embed], components: [row] });
       }
 
       if (commandName === 'delete') {
-        const parentId = channel.parentId || channel.parent?.id;
-        if (parentId === TICKET_CATEGORY) await channel.delete();
+        if ((channel.parentId || channel.parent?.id) === TICKET_CATEGORY) await channel.delete();
         else await interaction.reply({ content: '❌ You can only delete ticket channels!', ephemeral: true });
       }
 
@@ -176,14 +120,14 @@ client.on('interactionCreate', async interaction => {
         const user = options.getUser('user');
         if ((channel.parentId || channel.parent?.id) !== TICKET_CATEGORY) return interaction.reply({ content: '❌ You can only add users in ticket channels!', ephemeral: true });
         await channel.permissionOverwrites.edit(user.id, { SendMessages: true, ViewChannel: true });
-        return interaction.reply({ content: `✅ ${user} added.`, ephemeral: true });
+        await interaction.reply({ content: `✅ ${user} added.`, ephemeral: true });
       }
 
       if (commandName === 'remove') {
         const user = options.getUser('user');
         if ((channel.parentId || channel.parent?.id) !== TICKET_CATEGORY) return interaction.reply({ content: '❌ You can only remove users in ticket channels!', ephemeral: true });
         await channel.permissionOverwrites.delete(user.id);
-        return interaction.reply({ content: `✅ ${user} removed.`, ephemeral: true });
+        await interaction.reply({ content: `✅ ${user} removed.`, ephemeral: true });
       }
 
       if (commandName === 'transcript') {
@@ -193,7 +137,6 @@ client.on('interactionCreate', async interaction => {
       }
     }
 
-    // BUTTONS & MODAL HANDLING
     if (interaction.isButton()) {
       if (interaction.customId === 'openTicket') {
         const modal = new ModalBuilder()
@@ -201,24 +144,22 @@ client.on('interactionCreate', async interaction => {
           .setTitle('Middleman Request')
           .addComponents(
             new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('q1').setLabel("What's the trade?").setStyle(TextInputStyle.Short).setRequired(true)),
-            new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('q2').setLabel("What's your side?").setStyle(TextInputStyle.Paragraph).setRequired(true)),
-            new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('q3').setLabel("What's their side?").setStyle(TextInputStyle.Paragraph).setRequired(true)),
+            new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('q2').setLabel("Your side?").setStyle(TextInputStyle.Paragraph).setRequired(true)),
+            new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('q3').setLabel("Their side?").setStyle(TextInputStyle.Paragraph).setRequired(true)),
             new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('q4').setLabel("Their Discord ID?").setStyle(TextInputStyle.Short).setRequired(true))
           );
-        return await interaction.showModal(modal);
+        await interaction.showModal(modal).catch(console.error);
       }
 
       if (interaction.customId === 'transcript') {
-        const parentId = interaction.channel.parentId || interaction.channel.parent?.id;
-        if (parentId !== TICKET_CATEGORY) {
-          return interaction.reply({ content: '❌ You can only use this inside ticket channels.', ephemeral: true });
-        }
+        if ((interaction.channel.parentId || interaction.channel.parent?.id) !== TICKET_CATEGORY)
+          return interaction.reply({ content: '❌ Only in ticket channels.', ephemeral: true });
         await interaction.deferReply({ ephemeral: true }).catch(() => {});
-        return await handleTranscript(interaction, interaction.channel);
+        await handleTranscript(interaction, interaction.channel);
       }
 
       if (interaction.customId === 'delete') {
-        return await interaction.channel.delete().catch(console.error);
+        await interaction.channel.delete().catch(console.error);
       }
     }
 
@@ -227,7 +168,7 @@ client.on('interactionCreate', async interaction => {
       const q2 = interaction.fields.getTextInputValue('q2');
       const q3 = interaction.fields.getTextInputValue('q3');
       const q4 = interaction.fields.getTextInputValue('q4');
-      const targetMention = /^\d{17,19}$/.test(q4) ? `<@${q4}>` : 'Unknown User';
+      const targetMention = /^\d{17,19}$/.test(q4) ? `<@${q4}>` : 'Unknown';
 
       const ticket = await interaction.guild.channels.create({
         name: `ticket-${interaction.user.username}`,
@@ -242,29 +183,19 @@ client.on('interactionCreate', async interaction => {
       });
 
       const embed = new EmbedBuilder()
-        .setColor('#2b2d31')
-        .setAuthor({ name: `Middleman Request`, iconURL: interaction.user.displayAvatarURL() })
-        .setDescription([
-          `**User 1:** <@${interaction.user.id}>`,
-          `**User 2:** ${targetMention}`,
-          '',
-          `**💬 What’s the trade?**`,
-          `${q1}`,
-          '',
-          `**📦 User 1 is giving:**`,
-          `${q2}`,
-          '',
-          `**🎁 User 2 is giving:**`,
-          `${q3}`
-        ].join('\n'))
+        .setTitle('Middleman Request')
+        .setColor('#5865F2')
+        .setDescription(
+          `**User 1:** <@${interaction.user.id}>\n` +
+          `**User 2:** ${targetMention}\n\n` +
+          `**What's the trade?**\n${q1}\n\n` +
+          `**User 1 is giving:**\n${q2}\n\n` +
+          `**User 2 is giving:**\n${q3}`
+        )
         .setFooter({ text: `Ticket by ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
         .setTimestamp();
 
-      await ticket.send({
-        content: `<@${interaction.user.id}> <@&${MIDDLEMAN_ROLE}>`,
-        embeds: [embed]
-      });
-
+      await ticket.send({ content: `<@&${MIDDLEMAN_ROLE}>`, embeds: [embed] });
       await interaction.reply({ content: `✅ Ticket created: ${ticket}`, ephemeral: true });
     }
   } catch (err) {
@@ -278,38 +209,27 @@ async function handleTranscript(interaction, channel) {
   const participants = new Map();
   const lines = sorted.map(m => {
     participants.set(m.author.id, (participants.get(m.author.id) || 0) + 1);
-    const tagStr = `${m.author.username}#${m.author.discriminator}`;
-    return `<p><strong>${tagStr}</strong> <em>${new Date(m.createdTimestamp).toLocaleString()}</em>: ${m.cleanContent}</p>`;
+    return `<p><strong>${m.author.tag}</strong> <em>${new Date(m.createdTimestamp).toLocaleString()}</em>: ${m.cleanContent}</p>`;
   });
-  const stats = [...participants.entries()].map(([id, count]) => `<li><strong><a href="https://discord.com/users/${id}">${id}</a></strong>: ${count} messages</li>`).join('');
-  const html = `<html><head><title>Transcript for ${channel.name}</title></head><body><h2>${channel.name}</h2><h3>Participants</h3><ul>${stats}</ul><hr>${lines.join('')}<hr></body></html>`;
+  const stats = [...participants.entries()].map(([id, count]) => `<li><a href="https://discord.com/users/${id}">${id}</a>: ${count} messages</li>`).join('');
+  const html = `<html><body><h2>${channel.name}</h2><ul>${stats}</ul><hr>${lines.join('')}</body></html>`;
   const filename = `${channel.id}.html`;
   const filepath = path.join(__dirname, 'transcripts');
   if (!fs.existsSync(filepath)) fs.mkdirSync(filepath);
   fs.writeFileSync(path.join(filepath, filename), html);
-  const txtPath = path.join(filepath, `transcript-${channel.id}.txt`);
-  const txtLines = sorted.map(m => `[${new Date(m.createdTimestamp).toISOString()}] ${m.author.tag}: ${m.cleanContent || '[Embed/Attachment]'}`).join('\n');
-  fs.writeFileSync(txtPath, txtLines);
   const htmlLink = `${BASE_URL}/transcripts/${filename}`;
-  const embedTrans = new EmbedBuilder()
-    .setTitle('📄 Transcript Ready')
-    .setDescription(`[Click to view HTML Transcript](${htmlLink})`)
-    .addFields(
-      { name: 'Ticket Name', value: channel.name, inline: true },
-      { name: 'Participants', value: [...participants.entries()].map(([id, count]) => `<@${id}> — \`${count}\` messages`).join('\n').slice(0, 1024) }
-    )
+
+  const embed = new EmbedBuilder()
+    .setTitle('Transcript Ready')
+    .setDescription(`[Click here to view HTML transcript](${htmlLink})`)
     .setColor('#4fc3f7')
     .setTimestamp();
 
-  await interaction.editReply({ embeds: [embedTrans], files: [new AttachmentBuilder(txtPath)] }).catch(() => {});
+  await interaction.editReply({ embeds: [embed] }).catch(() => {});
   const logChannel = client.channels.cache.get(TRANSCRIPT_CHANNEL);
-  if (logChannel) await logChannel.send({ embeds: [embedTrans], files: [new AttachmentBuilder(txtPath)] });
+  if (logChannel) await logChannel.send({ embeds: [embed] });
 }
 
-client.on('error', console.error);
-process.on('unhandledRejection', (reason, p) => console.error('Unhandled Rejection:', reason));
-
 client.login(process.env.TOKEN);
-
 const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
-setInterval(() => { if (BASE_URL) fetch(BASE_URL).catch(() => {}); }, 5 * 60 * 1000);
+setInterval(() => { fetch(BASE_URL).catch(() => {}); }, 5 * 60 * 1000);
