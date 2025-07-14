@@ -305,7 +305,7 @@ async function handleTranscript(interaction, channel) {
 }
 
 client.on('error', console.error);
-process.on('unhandledRejection', (reason, p) => console.error('Unhandled Rejection:', reason
+process.on('unhandledRejection', (reason, p) => console.error('Unhandled Rejection:', reason));
 const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
 setInterval(() => {
   fetch(BASE_URL).catch(() => {});
