@@ -72,6 +72,8 @@ client.once('ready', async () => {
 
     await rest.put(Routes.applicationCommands(client.user.id), { body: commands });
     console.log('✅ Slash commands registered');
+  } else {
+    console.log('🟡 Skipping command registration (REGISTER_COMMANDS is false)');
   }
 });
 
@@ -94,7 +96,7 @@ client.on('interactionCreate', async interaction => {
       }
 
       if (commandName === 'tagcreate') {
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ ephemeral: true }).catch(() => {});
         const name = options.getString('name');
         const message = options.getString('message');
         db.run(`INSERT OR REPLACE INTO tags(name, message) VALUES(?, ?)`, [name, message], err => {
@@ -113,7 +115,7 @@ client.on('interactionCreate', async interaction => {
       }
 
       if (commandName === 'tagdelete') {
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ ephemeral: true }).catch(() => {});
         const name = options.getString('name');
         db.run('DELETE FROM tags WHERE name = ?', [name], function (err) {
           if (err) return interaction.editReply({ content: '❌ Failed to delete tag.' });
@@ -205,8 +207,8 @@ client.on('interactionCreate', async interaction => {
 
     if (interaction.isButton() && interaction.customId === 'transcript') {
       const parentId = interaction.channel.parentId || interaction.channel.parent?.id;
-      if (parentId !== TICKET_CATEGORY) return interaction.reply({ content: '❌ Only usable inside ticket channels.', ephemeral: true });
-      await interaction.deferReply({ ephemeral: true });
+      if (parentId !== TICKET_CATEGORY) return interaction.reply({ content: '❌ You can only use this inside ticket channels.', ephemeral: true });
+      await interaction.deferReply({ ephemeral: true }).catch(() => {});
       await handleTranscript(interaction, interaction.channel);
     }
 
@@ -222,7 +224,6 @@ client.on('interactionCreate', async interaction => {
         const q4 = interaction.fields.getTextInputValue('q4');
         const targetMention = /^\d{17,19}$/.test(q4) ? `<@${q4}>` : 'Unknown User';
         const safeName = `ticket-${interaction.user.username}`.toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 90);
-
         const ticket = await interaction.guild.channels.create({
           name: safeName,
           type: ChannelType.GuildText,
@@ -234,7 +235,6 @@ client.on('interactionCreate', async interaction => {
             { id: MIDDLEMAN_ROLE, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] }
           ]
         });
-
         const embed = new EmbedBuilder()
           .setTitle('🎟️ New Middleman Ticket')
           .setColor('#00b0f4')
@@ -242,27 +242,28 @@ client.on('interactionCreate', async interaction => {
             `🔹 **User 1:** <@${interaction.user.id}>`,
             `🔹 **User 2:** ${targetMention}`,
             '',
-            `💬 **Trade**\n\`\`\`\n${q1}\n\`\`\``,
-            `📤 **User 1 Offers**\n\`\`\`\n${q2}\n\`\`\``,
-            `📥 **User 2 Offers**\n\`\`\`\n${q3}\n\`\`\``
+            `💬 **Trade**`,
+            `\`\`\`\n${q1}\n\`\`\``,
+            `📤 **User 1 Offers**`,
+            `\`\`\`\n${q2}\n\`\`\``,
+            `📥 **User 2 Offers**`,
+            `\`\`\`\n${q3}\n\`\`\``
           ].join('\n'))
           .setFooter({ text: `Ticket by ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
           .setTimestamp();
-
         await ticket.send({
           content: `<@${interaction.user.id}> <@${OWNER_ID}>`,
           embeds: [embed],
-          allowedMentions: { users: [interaction.user.id, OWNER_ID] }
+          allowedMentions: { users: [interaction.user.id, OWNER_ID], roles: [] }
         });
-
         await interaction.reply({ content: `✅ Ticket created: ${ticket}`, ephemeral: true });
       } catch (err) {
         console.error('❌ Ticket creation error:', err);
-        await interaction.reply({ content: '❌ Failed to create ticket.', ephemeral: true });
+        await interaction.reply({ content: '❌ Failed to create ticket. Please try again.', ephemeral: true });
       }
     }
   } catch (err) {
-    console.error('❌ Interaction error:', err);
+    console.error('❌ Error in interactionCreate:', err);
   }
 });
 
@@ -304,9 +305,4 @@ async function handleTranscript(interaction, channel) {
 }
 
 client.on('error', console.error);
-process.on('unhandledRejection', (reason, p) => console.error('Unhandled Rejection:', reason));
-client.login(process.env.TOKEN);
-const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args
-setInterval(() => {
-  fetch(BASE_URL).catch(() => console.warn('⚠️ Self-ping failed'));
-}, 5 * 60 * 1000); // every 5 minutes to keep Render alive
+process.on('unhandledRejection', (reason, p) => console.error('Unhandled Rejection:', reason
