@@ -130,8 +130,7 @@ client.on('interactionCreate', async interaction => {
           interaction.reply({ content: list });
         });
       }
-
-      if (commandName === 'close') {
+            if (commandName === 'close') {
         const parentId = channel.parentId || channel.parent?.id;
         if (parentId !== TICKET_CATEGORY) return interaction.reply({ content: '❌ You can only close ticket channels!', ephemeral: true });
         const perms = channel.permissionOverwrites.cache;
@@ -141,23 +140,23 @@ client.on('interactionCreate', async interaction => {
             await channel.permissionOverwrites.edit(id, { SendMessages: false, ViewChannel: false }).catch(() => {});
           }
         }
-        const embed = new EmbedBuilder()
+        const embedClose = new EmbedBuilder()
           .setTitle('🔒 Ticket Closed')
           .setDescription('Select an option below to generate the transcript or delete the ticket.')
           .addFields(
             { name: 'Ticket Name', value: channel.name, inline: true },
-            { name: 'Owner', value: ticketOwner ? `<@${ticketOwner}> (${ticketOwner})` : 'Unknown', inline: true }
+            { name: 'Owner', value: ticketOwner ? `<@${ticketOwner}>` : 'Unknown', inline: true }
           )
           .setColor('#2B2D31')
           .setFooter({ text: `Closed by ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
           .setTimestamp();
 
-        const row = new ActionRowBuilder().addComponents(
+        const rowClose = new ActionRowBuilder().addComponents(
           new ButtonBuilder().setCustomId('transcript').setLabel('📄 Transcript').setStyle(ButtonStyle.Secondary),
           new ButtonBuilder().setCustomId('delete').setLabel('🗑️ Delete').setStyle(ButtonStyle.Danger)
         );
 
-        await interaction.reply({ embeds: [embed], components: [row] });
+        await interaction.reply({ embeds: [embedClose], components: [rowClose] });
       }
 
       if (commandName === 'delete') {
@@ -177,14 +176,14 @@ client.on('interactionCreate', async interaction => {
         const user = options.getUser('user');
         if ((channel.parentId || channel.parent?.id) !== TICKET_CATEGORY) return interaction.reply({ content: '❌ You can only add users in ticket channels!', ephemeral: true });
         await channel.permissionOverwrites.edit(user.id, { SendMessages: true, ViewChannel: true });
-        await interaction.reply({ content: `✅ ${user} added.`, ephemeral: true });
+        return interaction.reply({ content: `✅ ${user} added.`, ephemeral: true });
       }
 
       if (commandName === 'remove') {
         const user = options.getUser('user');
         if ((channel.parentId || channel.parent?.id) !== TICKET_CATEGORY) return interaction.reply({ content: '❌ You can only remove users in ticket channels!', ephemeral: true });
         await channel.permissionOverwrites.delete(user.id);
-        await interaction.reply({ content: `✅ ${user} removed.`, ephemeral: true });
+        return interaction.reply({ content: `✅ ${user} removed.`, ephemeral: true });
       }
 
       if (commandName === 'transcript') {
@@ -194,33 +193,33 @@ client.on('interactionCreate', async interaction => {
       }
     }
 
-    // ✅ BUTTON: Open Modal
-    if (interaction.isButton() && interaction.customId === 'openTicket') {
-      const modal = new ModalBuilder()
-        .setCustomId('ticketModal')
-        .setTitle('Middleman Request')
-        .addComponents(
-          new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('q1').setLabel("What's the trade?").setStyle(TextInputStyle.Short).setRequired(true)),
-          new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('q2').setLabel("What's your side?").setStyle(TextInputStyle.Paragraph).setRequired(true)),
-          new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('q3').setLabel("What's their side?").setStyle(TextInputStyle.Paragraph).setRequired(true)),
-          new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('q4').setLabel("Their Discord ID?").setStyle(TextInputStyle.Short).setRequired(true))
-        );
-      await interaction.showModal(modal).catch(console.error);
-    }
-
-    // ✅ BUTTON: Transcript Fix
-    if (interaction.isButton() && interaction.customId === 'transcript') {
-      const parentId = interaction.channel.parentId || interaction.channel.parent?.id;
-      if (parentId !== TICKET_CATEGORY) {
-        return interaction.reply({ content: '❌ You can only use this inside ticket channels.', ephemeral: true });
+    // BUTTONS & MODAL HANDLING
+    if (interaction.isButton()) {
+      if (interaction.customId === 'openTicket') {
+        const modal = new ModalBuilder()
+          .setCustomId('ticketModal')
+          .setTitle('Middleman Request')
+          .addComponents(
+            new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('q1').setLabel("What's the trade?").setStyle(TextInputStyle.Short).setRequired(true)),
+            new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('q2').setLabel("What's your side?").setStyle(TextInputStyle.Paragraph).setRequired(true)),
+            new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('q3').setLabel("What's their side?").setStyle(TextInputStyle.Paragraph).setRequired(true)),
+            new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('q4').setLabel("Their Discord ID?").setStyle(TextInputStyle.Short).setRequired(true))
+          );
+        return await interaction.showModal(modal);
       }
-      await interaction.deferReply({ ephemeral: true }).catch(() => {});
-      await handleTranscript(interaction, interaction.channel);
-    }
 
-    // ✅ BUTTON: Delete
-    if (interaction.isButton() && interaction.customId === 'delete') {
-      await interaction.channel.delete().catch(console.error);
+      if (interaction.customId === 'transcript') {
+        const parentId = interaction.channel.parentId || interaction.channel.parent?.id;
+        if (parentId !== TICKET_CATEGORY) {
+          return interaction.reply({ content: '❌ You can only use this inside ticket channels.', ephemeral: true });
+        }
+        await interaction.deferReply({ ephemeral: true }).catch(() => {});
+        return await handleTranscript(interaction, interaction.channel);
+      }
+
+      if (interaction.customId === 'delete') {
+        return await interaction.channel.delete().catch(console.error);
+      }
     }
 
     if (interaction.isModalSubmit() && interaction.customId === 'ticketModal') {
@@ -229,6 +228,7 @@ client.on('interactionCreate', async interaction => {
       const q3 = interaction.fields.getTextInputValue('q3');
       const q4 = interaction.fields.getTextInputValue('q4');
       const targetMention = /^\d{17,19}$/.test(q4) ? `<@${q4}>` : 'Unknown User';
+
       const ticket = await interaction.guild.channels.create({
         name: `ticket-${interaction.user.username}`,
         type: ChannelType.GuildText,
@@ -240,13 +240,31 @@ client.on('interactionCreate', async interaction => {
           { id: MIDDLEMAN_ROLE, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] }
         ]
       });
+
       const embed = new EmbedBuilder()
-        .setTitle('🎟️ Middleman Request')
-        .setColor('#00b0f4')
-        .setDescription(`**User 1:** <@${interaction.user.id}>\n**User 2:** ${targetMention}\n\n**What's the trade?**\n${q1}\n\n**User 1 is giving:**\n${q2}\n\n**User 2 is giving:**\n${q3}`)
+        .setColor('#2b2d31')
+        .setAuthor({ name: `Middleman Request`, iconURL: interaction.user.displayAvatarURL() })
+        .setDescription([
+          `**User 1:** <@${interaction.user.id}>`,
+          `**User 2:** ${targetMention}`,
+          '',
+          `**💬 What’s the trade?**`,
+          `${q1}`,
+          '',
+          `**📦 User 1 is giving:**`,
+          `${q2}`,
+          '',
+          `**🎁 User 2 is giving:**`,
+          `${q3}`
+        ].join('\n'))
         .setFooter({ text: `Ticket by ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
         .setTimestamp();
-      await ticket.send({ content: `<@${interaction.user.id}> <@${OWNER_ID}> <@&${MIDDLEMAN_ROLE}>`, embeds: [embed] });
+
+      await ticket.send({
+        content: `<@${interaction.user.id}> <@&${MIDDLEMAN_ROLE}>`,
+        embeds: [embed]
+      });
+
       await interaction.reply({ content: `✅ Ticket created: ${ticket}`, ephemeral: true });
     }
   } catch (err) {
@@ -260,8 +278,8 @@ async function handleTranscript(interaction, channel) {
   const participants = new Map();
   const lines = sorted.map(m => {
     participants.set(m.author.id, (participants.get(m.author.id) || 0) + 1);
-    const tag = `${m.author.username}#${m.author.discriminator}`;
-    return `<p><strong>${tag}</strong> <em>${new Date(m.createdTimestamp).toLocaleString()}</em>: ${m.cleanContent}</p>`;
+    const tagStr = `${m.author.username}#${m.author.discriminator}`;
+    return `<p><strong>${tagStr}</strong> <em>${new Date(m.createdTimestamp).toLocaleString()}</em>: ${m.cleanContent}</p>`;
   });
   const stats = [...participants.entries()].map(([id, count]) => `<li><strong><a href="https://discord.com/users/${id}">${id}</a></strong>: ${count} messages</li>`).join('');
   const html = `<html><head><title>Transcript for ${channel.name}</title></head><body><h2>${channel.name}</h2><h3>Participants</h3><ul>${stats}</ul><hr>${lines.join('')}<hr></body></html>`;
@@ -269,30 +287,29 @@ async function handleTranscript(interaction, channel) {
   const filepath = path.join(__dirname, 'transcripts');
   if (!fs.existsSync(filepath)) fs.mkdirSync(filepath);
   fs.writeFileSync(path.join(filepath, filename), html);
-  const htmlLink = `${BASE_URL}/transcripts/${filename}`;
-  const txtLines = sorted.map(m => `[${new Date(m.createdTimestamp).toISOString()}] ${m.author.tag}: ${m.cleanContent || '[Embed/Attachment]'}`).join('\n');
   const txtPath = path.join(filepath, `transcript-${channel.id}.txt`);
+  const txtLines = sorted.map(m => `[${new Date(m.createdTimestamp).toISOString()}] ${m.author.tag}: ${m.cleanContent || '[Embed/Attachment]'}`).join('\n');
   fs.writeFileSync(txtPath, txtLines);
-  const embed = new EmbedBuilder()
+  const htmlLink = `${BASE_URL}/transcripts/${filename}`;
+  const embedTrans = new EmbedBuilder()
     .setTitle('📄 Transcript Ready')
     .setDescription(`[Click to view HTML Transcript](${htmlLink})`)
     .addFields(
       { name: 'Ticket Name', value: channel.name, inline: true },
-      {
-        name: 'Participants',
-        value: [...participants.entries()].map(([id, count]) => `<@${id}> — \`${count}\` messages`).join('\n').slice(0, 1024) || 'None',
-        inline: false
-      }
+      { name: 'Participants', value: [...participants.entries()].map(([id, count]) => `<@${id}> — \`${count}\` messages`).join('\n').slice(0, 1024) }
     )
     .setColor('#4fc3f7')
     .setTimestamp();
-  await interaction.editReply({ embeds: [embed], files: [new AttachmentBuilder(txtPath)] }).catch(() => {});
+
+  await interaction.editReply({ embeds: [embedTrans], files: [new AttachmentBuilder(txtPath)] }).catch(() => {});
   const logChannel = client.channels.cache.get(TRANSCRIPT_CHANNEL);
-  if (logChannel) await logChannel.send({ embeds: [embed], files: [new AttachmentBuilder(txtPath)] });
+  if (logChannel) await logChannel.send({ embeds: [embedTrans], files: [new AttachmentBuilder(txtPath)] });
 }
 
 client.on('error', console.error);
 process.on('unhandledRejection', (reason, p) => console.error('Unhandled Rejection:', reason));
+
 client.login(process.env.TOKEN);
+
 const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
-setInterval(() => { fetch(BASE_URL).catch(() => {}); }, 5 * 60 * 1000);
+setInterval(() => { if (BASE_URL) fetch(BASE_URL).catch(() => {}); }, 5 * 60 * 1000);
