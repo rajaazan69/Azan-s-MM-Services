@@ -260,10 +260,7 @@ client.on('interactionCreate', async interaction => {
         });
 
         await interaction.reply({ content: `✅ Ticket created: ${ticket}`, ephemeral: true });
-      } catch (err) {
-        console.error('❌ Ticket creation error:', err);
-        await interaction.reply({ content: '❌ Failed to create ticket.', ephemeral: true });
-      }
+      
     }
 
   } catch (err) {
