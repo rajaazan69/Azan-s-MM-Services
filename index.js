@@ -33,7 +33,7 @@ const client = new Client({
 
 const PORT = process.env.PORT || 3000;
 const OWNER_ID = '1356149794040446998';
-const MIDDLEMAN_ROLE = '1373062797545570525'; // kept for permissions
+const MIDDLEMAN_ROLE = '1373062797545570525';
 const TICKET_CATEGORY = '1373027564926406796';
 const TRANSCRIPT_CHANNEL = '1373058123547283568';
 const BASE_URL = process.env.BASE_URL;
@@ -86,7 +86,6 @@ client.on('interactionCreate', async interaction => {
   try {
     const { commandName, options, channel, guild } = interaction;
 
-    // Slash commands
     if (interaction.isChatInputCommand()) {
       switch (commandName) {
         case 'setup': {
@@ -130,8 +129,7 @@ client.on('interactionCreate', async interaction => {
           return interaction.reply({ embeds: [embed], components: [row] });
         }
         case 'delete': {
-          const parentId = channel.parentId;
-          if (parentId === TICKET_CATEGORY) return channel.delete();
+          if (channel.parentId === TICKET_CATEGORY) return channel.delete();
           else return interaction.reply({ content: '❌ Only delete ticket channels', ephemeral: true });
         }
         case 'rename': {
@@ -162,7 +160,13 @@ client.on('interactionCreate', async interaction => {
           if (channel.parentId !== TICKET_CATEGORY)
             return interaction.reply({ content: '❌ Only generate in tickets', ephemeral: true });
           await interaction.deferReply({ ephemeral: true });
-          return handleTranscript(interaction, channel);
+          try {
+            await handleTranscript(interaction, channel);
+          } catch (err) {
+            console.error('❌ Transcript error (slash):', err);
+            await interaction.editReply({ content: '❌ Failed to generate transcript.', ephemeral: true });
+          }
+          break;
         }
         case 'tagcreate': {
           await interaction.deferReply({ ephemeral: true });
@@ -200,22 +204,17 @@ client.on('interactionCreate', async interaction => {
         }
       }
     }
-    
-    // Button handlers
+
     if (interaction.isButton()) {
       if (interaction.customId === 'openTicket') {
         const modal = new ModalBuilder()
           .setCustomId('ticketModal')
           .setTitle('Middleman Request')
           .addComponents(
-            new ActionRowBuilder().addComponents(
-              new TextInputBuilder().setCustomId('q1').setLabel("What's the trade?").setStyle(TextInputStyle.Short).setRequired(true)),
-            new ActionRowBuilder().addComponents(
-              new TextInputBuilder().setCustomId('q2').setLabel("What's your side?").setStyle(TextInputStyle.Paragraph).setRequired(true)),
-            new ActionRowBuilder().addComponents(
-              new TextInputBuilder().setCustomId('q3').setLabel("What's their side?").setStyle(TextInputStyle.Paragraph).setRequired(true)),
-            new ActionRowBuilder().addComponents(
-              new TextInputBuilder().setCustomId('q4').setLabel("Their Discord ID?").setStyle(TextInputStyle.Short).setRequired(true))
+            new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('q1').setLabel("What's the trade?").setStyle(TextInputStyle.Short).setRequired(true)),
+            new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('q2').setLabel("What's your side?").setStyle(TextInputStyle.Paragraph).setRequired(true)),
+            new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('q3').setLabel("What's their side?").setStyle(TextInputStyle.Paragraph).setRequired(true)),
+            new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('q4').setLabel("Their Discord ID?").setStyle(TextInputStyle.Short).setRequired(true))
           );
         return interaction.showModal(modal);
       }
@@ -224,7 +223,12 @@ client.on('interactionCreate', async interaction => {
         if (channel.parentId !== TICKET_CATEGORY)
           return interaction.reply({ content: '❌ Only in tickets', ephemeral: true });
         await interaction.deferReply({ ephemeral: true });
-        return handleTranscript(interaction, channel);
+        try {
+          await handleTranscript(interaction, channel);
+        } catch (err) {
+          console.error('❌ Transcript error (button):', err);
+          await interaction.editReply({ content: '❌ Failed to generate transcript.', ephemeral: true });
+        }
       }
 
       if (interaction.customId === 'delete') {
@@ -232,7 +236,6 @@ client.on('interactionCreate', async interaction => {
       }
     }
 
-    // Modal submit – only here!
     if (interaction.isModalSubmit() && interaction.customId === 'ticketModal') {
       const q1 = interaction.fields.getTextInputValue('q1');
       const q2 = interaction.fields.getTextInputValue('q2');
@@ -258,7 +261,11 @@ client.on('interactionCreate', async interaction => {
         .setFooter({ text: `Ticket by ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
         .setTimestamp();
 
-      await ticket.send({ content: `<@${interaction.user.id}> <@${OWNER_ID}>`, embeds: [embed] });
+      await ticket.send({
+        content: `<@${interaction.user.id}> <@${OWNER_ID}>`,
+        embeds: [embed],
+        allowedMentions: { users: [interaction.user.id, OWNER_ID] }
+      });
       await interaction.reply({ content: `✅ Ticket created: ${ticket}`, ephemeral: true });
     }
   } catch (err) {
@@ -266,7 +273,6 @@ client.on('interactionCreate', async interaction => {
   }
 });
 
-// Transcript helper
 async function handleTranscript(interaction, channel) {
   const messages = await channel.messages.fetch({ limit: 100 });
   const sorted = messages.sort((a, b) => a.createdTimestamp - b.createdTimestamp);
@@ -274,8 +280,8 @@ async function handleTranscript(interaction, channel) {
   for (const m of sorted) participants.set(m.author.id, (participants.get(m.author.id) || 0) + 1);
 
   const lines = sorted.map(m =>
-  `<p><strong>${m.author.username}#${m.author.discriminator}</strong> <em>${new Date(m.createdTimestamp).toLocaleString()}</em>: ${m.cleanContent}</p>`
-);
+    `<p><strong>${m.author.username}#${m.author.discriminator}</strong> <em>${new Date(m.createdTimestamp).toLocaleString()}</em>: ${m.cleanContent}</p>`
+  );
   const stats = [...participants.entries()].map(([id, cnt]) =>
     `<li><strong><a href="https://discord.com/users/${id}">${id}</a></strong>: ${cnt} messages</li>`
   ).join('');
