@@ -277,7 +277,7 @@ await interaction.reply({ content: `✅ Ticket created: ${ticket}`, ephemeral: t
     console.error('❌ Ticket creation error:', err);
     await interaction.reply({ content: '❌ Failed to create ticket. Please try again.', ephemeral: true });
   }
-}
+} // ✅ This was missing 👈👈👈
 
 async function handleTranscript(interaction, channel) {
   const messages = await channel.messages.fetch({ limit: 100 });
