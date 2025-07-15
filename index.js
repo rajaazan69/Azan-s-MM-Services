@@ -257,10 +257,10 @@ client.on('interactionCreate', async interaction => {
   .setTimestamp();
 
         await ticket.send({
-          content: `<@${interaction.user.id}> <@${OWNER_ID}>`,
-          embeds: [embed],
-          allowedMentions: { users: [interaction.user.id, OWNER_ID] }
-        });
+  content: `<@${interaction.user.id}> <@${OWNER_ID}> <@&${MIDDLEMAN_ROLE}>`,
+  embeds: [embed]
+});
+          
 
         await interaction.reply({ content: `✅ Ticket created: ${ticket}`, ephemeral: true });
       
