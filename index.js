@@ -258,7 +258,11 @@ client.on('interactionCreate', async interaction => {
 
         await ticket.send({
   content: `<@${interaction.user.id}> <@${OWNER_ID}> <@&${MIDDLEMAN_ROLE}>`,
-  embeds: [embed]
+  embeds: [embed],
+  allowedMentions: {
+    users: [interaction.user.id, OWNER_ID],
+    roles: [] // ✅ prevent role ping
+  }
 });
           
 
