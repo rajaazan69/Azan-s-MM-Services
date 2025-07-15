@@ -236,7 +236,6 @@ client.on('interactionCreate', async interaction => {
   const q3 = interaction.fields.getTextInputValue('q3');
   const q4 = interaction.fields.getTextInputValue('q4');
   const targetMention = /^\d{17,19}$/.test(q4) ? `<@${q4}>` : 'Unknown User';
-      const targetMention = /^\d{17,19}$/.test(q4) ? `<@${q4}>` : 'Unknown User';
       const ticket = await interaction.guild.channels.create({
         name: `ticket-${interaction.user.username}`,
         type: ChannelType.GuildText,
@@ -265,7 +264,7 @@ client.on('interactionCreate', async interaction => {
   .setTimestamp();
 
         await ticket.send({
-  content: `<@${interaction.user.id}> <@${OWNER_ID}>`,
+  content: `**Welcome To Azan Middleman Services**\nYou Will Be Assisted Shortly\n\n<@${interaction.user.id}> <@${OWNER_ID}>`,
   embeds: [embed]
 });
           
