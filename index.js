@@ -37,7 +37,6 @@ const PANEL_CHANNEL = '1373048211538841702';
 const TICKET_CATEGORY = '1373027564926406796';
 const TRANSCRIPT_CHANNEL = '1373058123547283568';
 const BASE_URL = process.env.BASE_URL;
-const activeTickets = new Set();
 
 app.get('/', (req, res) => res.send('Bot is online.'));
 app.get('/transcripts/:filename', (req, res) => {
@@ -225,17 +224,11 @@ client.on('interactionCreate', async interaction => {
     }
 
     if (interaction.isModalSubmit() && interaction.customId === 'ticketModal') {
-  if (activeTickets.has(interaction.user.id)) {
-    return interaction.reply({ content: '❌ You already submitted a ticket. Please wait a moment.', ephemeral: true });
-  }
-
-  activeTickets.add(interaction.user.id);
-
-  const q1 = interaction.fields.getTextInputValue('q1');
-  const q2 = interaction.fields.getTextInputValue('q2');
-  const q3 = interaction.fields.getTextInputValue('q3');
-  const q4 = interaction.fields.getTextInputValue('q4');
-  const targetMention = /^\d{17,19}$/.test(q4) ? `<@${q4}>` : 'Unknown User';
+      const q1 = interaction.fields.getTextInputValue('q1');
+      const q2 = interaction.fields.getTextInputValue('q2');
+      const q3 = interaction.fields.getTextInputValue('q3');
+      const q4 = interaction.fields.getTextInputValue('q4');
+      const targetMention = /^\d{17,19}$/.test(q4) ? `<@${q4}>` : 'Unknown User';
       const ticket = await interaction.guild.channels.create({
         name: `ticket-${interaction.user.username}`,
         type: ChannelType.GuildText,
@@ -264,14 +257,12 @@ client.on('interactionCreate', async interaction => {
   .setTimestamp();
 
         await ticket.send({
-  content: `**Welcome To Azan Middleman Services**\nYou Will Be Assisted Shortly\n\n<@${interaction.user.id}> <@${OWNER_ID}>`,
+  content: `<@${interaction.user.id}> <@${OWNER_ID}>`,
   embeds: [embed]
 });
           
 
         await interaction.reply({ content: `✅ Ticket created: ${ticket}`, ephemeral: true });
-          setTimeout(() => activeTickets.delete(interaction.user.id), 15000);
-}
       
     }
 
