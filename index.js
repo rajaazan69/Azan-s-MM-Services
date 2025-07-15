@@ -257,7 +257,7 @@ client.on('interactionCreate', async interaction => {
   .setTimestamp();
 
         await ticket.send({
-  content: `<@${interaction.user.id}> <@${OWNER_ID}>`,
+  content: `**Welcome To Azan Middleman Services**\nYou Will Be Assisted Shortly\n\n<@${interaction.user.id}> <@${OWNER_ID}>`,
   embeds: [embed]
 });
           
