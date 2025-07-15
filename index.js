@@ -257,12 +257,8 @@ client.on('interactionCreate', async interaction => {
   .setTimestamp();
 
         await ticket.send({
-  content: `<@${interaction.user.id}> <@${OWNER_ID}> <@&${MIDDLEMAN_ROLE}>`,
-  embeds: [embed],
-  allowedMentions: {
-    users: [interaction.user.id, OWNER_ID],
-    roles: [] // ✅ prevent role ping
-  }
+  content: `<@${interaction.user.id}> <@${OWNER_ID}>`,
+  embeds: [embed]
 });
           
 
