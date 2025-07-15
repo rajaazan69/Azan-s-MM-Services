@@ -241,17 +241,20 @@ client.on('interactionCreate', async interaction => {
         ]
       });
       const embed = new EmbedBuilder()
-          .setTitle('🎟️ New Middleman Ticket')
-          .setColor('#00b0f4')
-          .setDescription([
-            `🔹 **User 1:** <@${interaction.user.id}>`,
-            `🔹 **User 2:** ${targetMention}`,
-            `💬 **Trade**\n\`\`\`${q1}\`\`\``,
-            `📤 **User 1 Offers**\n\`\`\`${q2}\`\`\``,
-            `📥 **User 2 Offers**\n\`\`\`${q3}\`\`\``
-          ].join('\n'))
-          .setFooter({ text: `Ticket by ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
-          .setTimestamp();
+  .setTitle('Middleman Request')
+  .setColor('#2B2D31')
+  .setDescription(
+    `**User 1:** <@${interaction.user.id}>\n` +
+    `**User 2:** ${targetMention}\n\n` +
+    `**Trade Details**\n` +
+    `> ${q1}\n\n` +
+    `**User 1 is giving:**\n` +
+    `> ${q2}\n\n` +
+    `**User 2 is giving:**\n` +
+    `> ${q3}`
+  )
+  .setFooter({ text: `Ticket by ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
+  .setTimestamp();
 
         await ticket.send({
           content: `<@${interaction.user.id}> <@${OWNER_ID}>`,
