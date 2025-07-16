@@ -164,13 +164,15 @@ client.on('interactionCreate', async interaction => {
       }
 
       if (commandName === 'close') {
-  try {
-    // Acknowledge interaction early
-    await interaction.deferReply({ ephemeral: true });
+  console.log('[DEBUG] Close command triggered');
 
-    // Validate it's in ticket category
+  try {
+    await interaction.deferReply({ ephemeral: true });
+    console.log('[DEBUG] Interaction deferred');
+
     const parentId = channel.parentId || channel.parent?.id;
     if (parentId !== TICKET_CATEGORY) {
+      console.log('[DEBUG] Not in ticket category');
       return interaction.editReply({
         content: '❌ You can only close ticket channels!'
       });
@@ -184,13 +186,14 @@ client.on('interactionCreate', async interaction => {
       po.id !== guild.id
     )?.id;
 
-    // Lock ticket for all users except staff/owner
+    console.log('[DEBUG] Owner found:', ticketOwner);
+
     for (const [id] of perms) {
       if (![OWNER_ID, MIDDLEMAN_ROLE, guild.id].includes(id)) {
         await channel.permissionOverwrites.edit(id, {
           SendMessages: false,
           ViewChannel: false
-        }).catch(() => {});
+        }).catch(console.error);
       }
     }
 
@@ -224,17 +227,17 @@ client.on('interactionCreate', async interaction => {
     );
 
     await interaction.editReply({ embeds: [embed], components: [row] });
+    console.log('[DEBUG] Embed and buttons sent');
 
   } catch (err) {
     console.error('❌ /close command error:', err);
     try {
-      await interaction.editReply({ content: '❌ Something went wrong.' });
-    } catch {
-      // fail silently
+      await interaction.editReply({ content: '❌ Something went wrong while closing the ticket.' });
+    } catch (inner) {
+      console.error('❌ Failed to reply with error message:', inner);
     }
   }
 }
-
       if (commandName === 'delete') {
         const parentId = channel.parentId || channel.parent?.id;
         if (parentId === TICKET_CATEGORY) await channel.delete();
