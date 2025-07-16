@@ -165,7 +165,6 @@ client.on('interactionCreate', async interaction => {
 
       if (commandName === 'close') {
   try {
-    // Prevent Discord timeout
     await interaction.deferReply({ ephemeral: true });
 
     const parentId = channel.parentId || channel.parent?.id;
@@ -213,15 +212,12 @@ client.on('interactionCreate', async interaction => {
     );
 
     await interaction.editReply({ embeds: [embed], components: [row] });
-    
+
   } catch (err) {
     console.error('❌ /close command error:', err);
     await interaction.editReply({ content: '❌ Something went wrong while closing the ticket.' }).catch(() => {});
   }
 }
-
-  await interaction.editReply({ embeds: [embed], components: [row] });
-}mm
 
       if (commandName === 'delete') {
         const parentId = channel.parentId || channel.parent?.id;
