@@ -164,18 +164,22 @@ client.on('interactionCreate', async interaction => {
       }
 
       if (commandName === 'close') {
-  console.log('[DEBUG] /close command started');
+  console.log('[DEBUG] /close command triggered');
+
+  // Step 1: Try to reply or defer
+  let responded = false;
+  try {
+    await interaction.deferReply({ ephemeral: true });
+    responded = true;
+    console.log('[DEBUG] Interaction deferred');
+  } catch (err) {
+    console.error('[ERROR] Could not defer:', err);
+    return; // interaction expired, don't continue
+  }
 
   try {
-    // SAFELY defer if not already replied or deferred
-    if (!interaction.deferred && !interaction.replied) {
-      console.log('[DEBUG] Deferring reply...');
-      await interaction.deferReply({ ephemeral: true });
-    }
-
     const parentId = channel.parentId || channel.parent?.id;
     if (parentId !== TICKET_CATEGORY) {
-      console.log('[DEBUG] Not in a ticket category');
       return interaction.editReply({ content: '❌ You can only close ticket channels!' });
     }
 
@@ -187,9 +191,7 @@ client.on('interactionCreate', async interaction => {
       po.id !== guild.id
     )?.id;
 
-    console.log('[DEBUG] Ticket owner found:', ticketOwner);
-
-    // Lock everyone except owner/staff
+    // Lock the ticket
     for (const [id] of perms) {
       if (![OWNER_ID, MIDDLEMAN_ROLE, guild.id].includes(id)) {
         await channel.permissionOverwrites.edit(id, {
@@ -218,34 +220,17 @@ client.on('interactionCreate', async interaction => {
       .setTimestamp();
 
     const row = new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId('transcript')
-        .setLabel('📄 Transcript')
-        .setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder()
-        .setCustomId('delete')
-        .setLabel('🗑️ Delete')
-        .setStyle(ButtonStyle.Danger)
+      new ButtonBuilder().setCustomId('transcript').setLabel('📄 Transcript').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('delete').setLabel('🗑️ Delete').setStyle(ButtonStyle.Danger)
     );
 
     await interaction.editReply({ embeds: [embed], components: [row] });
-    console.log('[DEBUG] Reply sent with embed and buttons');
+    console.log('[DEBUG] Embed and buttons sent');
+
   } catch (err) {
     console.error('❌ /close command error:', err);
-
-    // Try to respond if interaction hasn't been responded to
-    if (!interaction.replied && !interaction.deferred) {
-      try {
-        await interaction.reply({ content: '❌ An error occurred.', ephemeral: true });
-      } catch (e) {
-        console.error('❌ Failed to reply in error fallback:', e);
-      }
-    } else {
-      try {
-        await interaction.editReply({ content: '❌ An error occurred.' });
-      } catch (e) {
-        console.error('❌ Failed to edit reply in error fallback:', e);
-      }
+    if (responded) {
+      await interaction.editReply({ content: '❌ Failed to close ticket.' }).catch(() => {});
     }
   }
 }
