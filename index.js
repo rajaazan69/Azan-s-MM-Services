@@ -165,12 +165,15 @@ client.on('interactionCreate', async interaction => {
 
       if (commandName === 'close') {
   try {
-    // Always defer immediately
+    // Acknowledge interaction early
     await interaction.deferReply({ ephemeral: true });
 
+    // Validate it's in ticket category
     const parentId = channel.parentId || channel.parent?.id;
     if (parentId !== TICKET_CATEGORY) {
-      return interaction.editReply({ content: '❌ You can only close ticket channels!' });
+      return interaction.editReply({
+        content: '❌ You can only close ticket channels!'
+      });
     }
 
     const perms = channel.permissionOverwrites.cache;
@@ -181,6 +184,7 @@ client.on('interactionCreate', async interaction => {
       po.id !== guild.id
     )?.id;
 
+    // Lock ticket for all users except staff/owner
     for (const [id] of perms) {
       if (![OWNER_ID, MIDDLEMAN_ROLE, guild.id].includes(id)) {
         await channel.permissionOverwrites.edit(id, {
@@ -195,26 +199,38 @@ client.on('interactionCreate', async interaction => {
       .setDescription('Select an option below to generate the transcript or delete the ticket.')
       .addFields(
         { name: 'Ticket Name', value: channel.name, inline: true },
-        { name: 'Owner', value: ticketOwner ? `<@${ticketOwner}> (${ticketOwner})` : 'Unknown', inline: true }
+        {
+          name: 'Owner',
+          value: ticketOwner ? `<@${ticketOwner}> (${ticketOwner})` : 'Unknown',
+          inline: true
+        }
       )
       .setColor('#2B2D31')
-      .setFooter({ text: `Closed by ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
+      .setFooter({
+        text: `Closed by ${interaction.user.tag}`,
+        iconURL: interaction.user.displayAvatarURL()
+      })
       .setTimestamp();
 
     const row = new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('transcript').setLabel('📄 Transcript').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('delete').setLabel('🗑️ Delete').setStyle(ButtonStyle.Danger)
+      new ButtonBuilder()
+        .setCustomId('transcript')
+        .setLabel('📄 Transcript')
+        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
+        .setCustomId('delete')
+        .setLabel('🗑️ Delete')
+        .setStyle(ButtonStyle.Danger)
     );
 
     await interaction.editReply({ embeds: [embed], components: [row] });
 
   } catch (err) {
     console.error('❌ /close command error:', err);
-
     try {
-      await interaction.editReply({ content: '❌ Something went wrong while closing the ticket.' });
+      await interaction.editReply({ content: '❌ Something went wrong.' });
     } catch {
-      // ignored — interaction probably already acknowledged
+      // fail silently
     }
   }
 }
