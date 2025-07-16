@@ -164,33 +164,43 @@ client.on('interactionCreate', async interaction => {
       }
 
       if (commandName === 'close') {
-        const parentId = channel.parentId || channel.parent?.id;
-        if (parentId !== TICKET_CATEGORY) return interaction.reply({ content: '❌ You can only close ticket channels!', ephemeral: true });
-        const perms = channel.permissionOverwrites.cache;
-        const ticketOwner = [...perms.values()].find(po => po.allow.has(PermissionsBitField.Flags.ViewChannel) && po.id !== OWNER_ID && po.id !== MIDDLEMAN_ROLE && po.id !== guild.id)?.id;
-        for (const [id] of perms) {
-          if (![OWNER_ID, MIDDLEMAN_ROLE, guild.id].includes(id)) {
-            await channel.permissionOverwrites.edit(id, { SendMessages: false, ViewChannel: false }).catch(() => {});
-          }
-        }
-        const embed = new EmbedBuilder()
-          .setTitle('🔒 Ticket Closed')
-          .setDescription('Select an option below to generate the transcript or delete the ticket.')
-          .addFields(
-            { name: 'Ticket Name', value: channel.name, inline: true },
-            { name: 'Owner', value: ticketOwner ? `<@${ticketOwner}> (${ticketOwner})` : 'Unknown', inline: true }
-          )
-          .setColor('#2B2D31')
-          .setFooter({ text: `Closed by ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
-          .setTimestamp();
+  await interaction.deferReply({ ephemeral: true }).catch(() => {}); // ✅ Prevent timeout
 
-        const row = new ActionRowBuilder().addComponents(
-          new ButtonBuilder().setCustomId('transcript').setLabel('📄 Transcript').setStyle(ButtonStyle.Secondary),
-          new ButtonBuilder().setCustomId('delete').setLabel('🗑️ Delete').setStyle(ButtonStyle.Danger)
-        );
+  const parentId = channel.parentId || channel.parent?.id;
+  if (parentId !== TICKET_CATEGORY) return interaction.editReply({ content: '❌ You can only close ticket channels!' });
 
-        await interaction.reply({ embeds: [embed], components: [row] });
-      }
+  const perms = channel.permissionOverwrites.cache;
+  const ticketOwner = [...perms.values()].find(po => 
+    po.allow.has(PermissionsBitField.Flags.ViewChannel) && 
+    po.id !== OWNER_ID && 
+    po.id !== MIDDLEMAN_ROLE && 
+    po.id !== guild.id
+  )?.id;
+
+  for (const [id] of perms) {
+    if (![OWNER_ID, MIDDLEMAN_ROLE, guild.id].includes(id)) {
+      await channel.permissionOverwrites.edit(id, { SendMessages: false, ViewChannel: false }).catch(() => {});
+    }
+  }
+
+  const embed = new EmbedBuilder()
+    .setTitle('🔒 Ticket Closed')
+    .setDescription('Select an option below to generate the transcript or delete the ticket.')
+    .addFields(
+      { name: 'Ticket Name', value: channel.name, inline: true },
+      { name: 'Owner', value: ticketOwner ? `<@${ticketOwner}> (${ticketOwner})` : 'Unknown', inline: true }
+    )
+    .setColor('#2B2D31')
+    .setFooter({ text: `Closed by ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
+    .setTimestamp();
+
+  const row = new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId('transcript').setLabel('📄 Transcript').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('delete').setLabel('🗑️ Delete').setStyle(ButtonStyle.Danger)
+  );
+
+  await interaction.editReply({ embeds: [embed], components: [row] });
+}
 
       if (commandName === 'delete') {
         const parentId = channel.parentId || channel.parent?.id;
