@@ -164,17 +164,27 @@ client.on('interactionCreate', async interaction => {
       }
 
       if (commandName === 'close') {
-  // Must be FIRST to avoid "Unknown Interaction"
-  await interaction.deferReply({ ephemeral: true }).catch(() => {});
-if (interaction.replied || interaction.deferred === false) return;
+  let alreadyHandled = false;
+
+  if (interaction.replied || interaction.deferred) {
+    alreadyHandled = true;
+  } else {
+    try {
+      await interaction.deferReply({ ephemeral: true });
+    } catch {
+      alreadyHandled = true;
+    }
+  }
 
   try {
-    // If the interaction is already expired, stop
-    if (interaction.replied || interaction.deferred === false) return;
-
     const parentId = channel.parentId || channel.parent?.id;
     if (parentId !== TICKET_CATEGORY) {
-      return interaction.editReply({ content: '❌ You can only close ticket channels!' }).catch(() => {});
+      // respond only if not already replied
+      if (!alreadyHandled) {
+        return interaction.editReply({ content: '❌ You can only close ticket channels!' }).catch(() => {});
+      } else {
+        return;
+      }
     }
 
     const perms = channel.permissionOverwrites.cache;
@@ -210,11 +220,14 @@ if (interaction.replied || interaction.deferred === false) return;
       new ButtonBuilder().setCustomId('delete').setLabel('🗑️ Delete').setStyle(ButtonStyle.Danger)
     );
 
-    await interaction.editReply({ embeds: [embed], components: [row] }).catch(() => {});
-    
+    if (!alreadyHandled) {
+      await interaction.editReply({ embeds: [embed], components: [row] }).catch(() => {});
+    }
   } catch (err) {
     console.error('❌ /close command error:', err);
-    await interaction.editReply({ content: '❌ Something went wrong while closing the ticket.' }).catch(() => {});
+    if (!alreadyHandled) {
+      await interaction.editReply({ content: '❌ Something went wrong while closing the ticket.' }).catch(() => {});
+    }
   }
 }
 
