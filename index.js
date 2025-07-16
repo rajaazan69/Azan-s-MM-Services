@@ -105,20 +105,21 @@ client.on('interactionCreate', async interaction => {
       }
 
       if (commandName === 'tagcreate') {
-        await interaction.deferReply({ ephemeral: true }).catch(() => {});
-        const name = options.getString('name');
-        const message = options.getString('message');
-        try {
-  await tagsCollection.updateOne(
-    { name },
-    { $set: { message } },
-    { upsert: true }
-  );
-  await interaction.editReply({ content: `✅ Tag \`${name}\` saved.` });
-} catch (err) {
-  console.error('❌ Tag create failed:', err);
-  await interaction.editReply({ content: '❌ Failed to create tag.' });
-}
+  await interaction.deferReply({ ephemeral: true }).catch(() => {});
+  const name = options.getString('name');
+  const message = options.getString('message');
+  try {
+    await tagsCollection.updateOne(
+      { name },
+      { $set: { message } },
+      { upsert: true }
+    );
+    await interaction.editReply({ content: `✅ Tag \`${name}\` saved.` });
+  } catch (err) {
+    console.error('❌ Tag create failed:', err);
+    await interaction.editReply({ content: '❌ Failed to create tag.' });
+  }
+} // ✅ <---- This is needed!
 
       if (commandName === 'tag') {
         const name = options.getString('name');
