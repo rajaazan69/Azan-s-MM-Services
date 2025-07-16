@@ -166,6 +166,7 @@ client.on('interactionCreate', async interaction => {
       if (commandName === 'close') {
   // Must be FIRST to avoid "Unknown Interaction"
   await interaction.deferReply({ ephemeral: true }).catch(() => {});
+if (interaction.replied || interaction.deferred === false) return;
 
   try {
     // If the interaction is already expired, stop
@@ -281,6 +282,15 @@ client.on('interactionCreate', async interaction => {
     }
 
     if (interaction.isModalSubmit() && interaction.customId === 'ticketModal') {
+      // Prevent multiple tickets per user
+const existing = interaction.guild.channels.cache.find(c =>
+  c.parentId === TICKET_CATEGORY &&
+  c.permissionOverwrites.cache.has(interaction.user.id)
+);
+
+if (existing) {
+  return interaction.reply({ content: `❌ You already have an open ticket: ${existing}`, ephemeral: true });
+}
       const q1 = interaction.fields.getTextInputValue('q1');
       const q2 = interaction.fields.getTextInputValue('q2');
       const q3 = interaction.fields.getTextInputValue('q3');
