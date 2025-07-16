@@ -192,14 +192,21 @@ client.on('interactionCreate', async interaction => {
     )?.id;
 
     // Lock the ticket
-    for (const [id] of perms) {
-      if (![OWNER_ID, MIDDLEMAN_ROLE, guild.id].includes(id)) {
-        await channel.permissionOverwrites.edit(id, {
-          SendMessages: false,
-          ViewChannel: false
-        }).catch(console.error);
-      }
+    for (const [id, overwrite] of perms) {
+  const isUserOrRole = guild.members.cache.has(id) || guild.roles.cache.has(id);
+  const isStaff = [OWNER_ID, MIDDLEMAN_ROLE, guild.id].includes(id);
+
+  if (!isStaff && isUserOrRole) {
+    try {
+      await channel.permissionOverwrites.edit(id, {
+        SendMessages: false,
+        ViewChannel: false
+      });
+    } catch (err) {
+      console.error(`[PERMS] Failed to lock ID ${id}:`, err);
     }
+  }
+}
 
     const embed = new EmbedBuilder()
       .setTitle('🔒 Ticket Closed')
