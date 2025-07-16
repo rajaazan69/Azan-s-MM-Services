@@ -194,7 +194,7 @@ client.on('interactionCreate', async interaction => {
     )?.id;
 
     // Lock the ticket
-    for (const [id] of perms) {
+    for (const [id, overwrite] of perms.entries()) {
       if (![OWNER_ID, MIDDLEMAN_ROLE, guild.id].includes(id)) {
         try {
           await channel.permissionOverwrites.edit(id, {
@@ -234,12 +234,15 @@ client.on('interactionCreate', async interaction => {
     console.log('[DEBUG] Close panel sent');
 
   } catch (err) {
-    console.error('❌ /close command error:', err);
-    try {
+  console.error('❌ /close command error:', err);
+  try {
+    if (!interaction.replied && !interaction.deferred) {
+      await interaction.reply({ content: '❌ Failed to close ticket.', ephemeral: true });
+    } else {
       await interaction.editReply({ content: '❌ Failed to close ticket.' });
-    } catch (editErr) {
-      console.error('❌ Failed to send error reply:', editErr);
     }
+  } catch (editErr) {
+    console.error('❌ Failed to send error reply:', editErr);
   }
 }
       if (commandName === 'delete') {
