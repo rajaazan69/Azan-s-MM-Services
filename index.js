@@ -132,8 +132,9 @@ client.on('interactionCreate', async interaction => {
       }
 
       if (commandName === 'close') {
+        await interaction.deferReply({ ephemeral: true });
         const parentId = channel.parentId || channel.parent?.id;
-        if (parentId !== TICKET_CATEGORY) return interaction.reply({ content: '❌ You can only close ticket channels!', ephemeral: true });
+        if (parentId !== TICKET_CATEGORY) return interaction.editReply({ content: '❌ You can only close ticket channels!' });
         const perms = channel.permissionOverwrites.cache;
         const ticketOwner = [...perms.values()].find(po => po.allow.has(PermissionsBitField.Flags.ViewChannel) && po.id !== OWNER_ID && po.id !== MIDDLEMAN_ROLE && po.id !== guild.id)?.id;
         for (const [id] of perms) {
