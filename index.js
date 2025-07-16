@@ -164,27 +164,13 @@ client.on('interactionCreate', async interaction => {
       }
 
       if (commandName === 'close') {
-  let alreadyHandled = false;
-
-  if (interaction.replied || interaction.deferred) {
-    alreadyHandled = true;
-  } else {
-    try {
-      await interaction.deferReply({ ephemeral: true });
-    } catch {
-      alreadyHandled = true;
-    }
-  }
-
   try {
+    // Always defer immediately
+    await interaction.deferReply({ ephemeral: true });
+
     const parentId = channel.parentId || channel.parent?.id;
     if (parentId !== TICKET_CATEGORY) {
-      // respond only if not already replied
-      if (!alreadyHandled) {
-        return interaction.editReply({ content: '❌ You can only close ticket channels!' }).catch(() => {});
-      } else {
-        return;
-      }
+      return interaction.editReply({ content: '❌ You can only close ticket channels!' });
     }
 
     const perms = channel.permissionOverwrites.cache;
@@ -220,13 +206,15 @@ client.on('interactionCreate', async interaction => {
       new ButtonBuilder().setCustomId('delete').setLabel('🗑️ Delete').setStyle(ButtonStyle.Danger)
     );
 
-    if (!alreadyHandled) {
-      await interaction.editReply({ embeds: [embed], components: [row] }).catch(() => {});
-    }
+    await interaction.editReply({ embeds: [embed], components: [row] });
+
   } catch (err) {
     console.error('❌ /close command error:', err);
-    if (!alreadyHandled) {
-      await interaction.editReply({ content: '❌ Something went wrong while closing the ticket.' }).catch(() => {});
+
+    try {
+      await interaction.editReply({ content: '❌ Something went wrong while closing the ticket.' });
+    } catch {
+      // ignored — interaction probably already acknowledged
     }
   }
 }
