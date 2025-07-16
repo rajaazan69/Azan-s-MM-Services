@@ -14,16 +14,13 @@ const mongoUri = process.env.MONGO_URI;
 const mongoClient = new MongoClient(mongoUri);
 let tagsCollection;
 
-(async () => {
-  try {
-    await mongoClient.connect();
-    const db = mongoClient.db('ticketbot');
-    tagsCollection = db.collection('tags');
-    console.log('✅ Connected to MongoDB Atlas');
-  } catch (err) {
-    console.error('❌ MongoDB connection error:', err);
-  }
-})();
+mongoClient.connect().then(() => {
+  const db = mongoClient.db('ticketbot');
+  tagsCollection = db.collection('tags');
+  console.log('✅ Connected to MongoDB Atlas');
+}).catch(err => {
+  console.error('❌ MongoDB connection error:', err);
+});
 
 const tagsPath = path.join(__dirname, 'tag.json');
 let tags = {};
