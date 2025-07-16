@@ -166,18 +166,23 @@ client.on('interactionCreate', async interaction => {
       if (commandName === 'close') {
   console.log('[DEBUG] /close command triggered');
 
-  try {
-    await interaction.deferReply({ ephemeral: true });
-    console.log('[DEBUG] Interaction deferred');
-  } catch (err) {
-    console.error('[ERROR] Could not defer interaction:', err);
-    return; // Can't continue if defer failed
+  // Safely defer if not already responded
+  if (!interaction.deferred && !interaction.replied) {
+    try {
+      await interaction.deferReply({ ephemeral: true });
+      console.log('[DEBUG] Interaction deferred');
+    } catch (err) {
+      console.error('[ERROR] Could not defer interaction:', err);
+      return; // If we can't defer, abort
+    }
   }
 
   try {
     const parentId = channel.parentId || channel.parent?.id;
     if (parentId !== TICKET_CATEGORY) {
-      return interaction.editReply({ content: '❌ You can only close ticket channels!' });
+      return interaction.editReply({
+        content: '❌ You can only close ticket channels!'
+      });
     }
 
     const perms = channel.permissionOverwrites.cache;
@@ -188,19 +193,16 @@ client.on('interactionCreate', async interaction => {
       po.id !== guild.id
     )?.id;
 
+    // Lock the ticket
     for (const [id] of perms) {
-      const isValidUser = guild.members.cache.has(id);
-      const isValidRole = guild.roles.cache.has(id);
-      const isExempt = [OWNER_ID, MIDDLEMAN_ROLE, guild.id].includes(id);
-
-      if (!isExempt && (isValidUser || isValidRole)) {
+      if (![OWNER_ID, MIDDLEMAN_ROLE, guild.id].includes(id)) {
         try {
           await channel.permissionOverwrites.edit(id, {
             SendMessages: false,
             ViewChannel: false
           });
         } catch (permErr) {
-          console.error(`[PERM ERROR] Couldn't update perms for ${id}:`, permErr);
+          console.warn(`⚠️ Could not update permissions for ${id}:`, permErr);
         }
       }
     }
@@ -217,7 +219,10 @@ client.on('interactionCreate', async interaction => {
         }
       )
       .setColor('#2B2D31')
-      .setFooter({ text: `Closed by ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
+      .setFooter({
+        text: `Closed by ${interaction.user.tag}`,
+        iconURL: interaction.user.displayAvatarURL()
+      })
       .setTimestamp();
 
     const row = new ActionRowBuilder().addComponents(
@@ -230,7 +235,11 @@ client.on('interactionCreate', async interaction => {
 
   } catch (err) {
     console.error('❌ /close command error:', err);
-    await interaction.editReply({ content: '❌ Failed to close ticket.' }).catch(console.error);
+    try {
+      await interaction.editReply({ content: '❌ Failed to close ticket.' });
+    } catch (editErr) {
+      console.error('❌ Failed to send error reply:', editErr);
+    }
   }
 }
       if (commandName === 'delete') {
