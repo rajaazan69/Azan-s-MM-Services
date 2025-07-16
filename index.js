@@ -166,14 +166,13 @@ client.on('interactionCreate', async interaction => {
       if (commandName === 'close') {
   console.log('[DEBUG] /close command triggered');
 
-  // Safely defer reply if not already acknowledged
   if (!interaction.deferred && !interaction.replied) {
     try {
       await interaction.deferReply({ ephemeral: true });
       console.log('[DEBUG] Interaction deferred');
     } catch (err) {
       console.error('[ERROR] Could not defer interaction:', err);
-      return; // Abort if defer fails
+      return;
     }
   }
 
@@ -185,7 +184,6 @@ client.on('interactionCreate', async interaction => {
       });
     }
 
-    // Find ticket owner from permission overwrites
     const perms = channel.permissionOverwrites.cache;
     const ticketOwner = [...perms.values()].find(po =>
       po.allow.has(PermissionsBitField.Flags.ViewChannel) &&
@@ -194,21 +192,20 @@ client.on('interactionCreate', async interaction => {
       po.id !== guild.id
     )?.id;
 
-    // Lock the ticket: remove Send/View from all others
-    for (const [id] of perms) {
-      if (![OWNER_ID, MIDDLEMAN_ROLE, guild.id].includes(id)) {
-        try {
-          await channel.permissionOverwrites.edit(id, {
-            SendMessages: false,
-            ViewChannel: false
-          });
-        } catch (permErr) {
-          console.warn(`⚠️ Could not update permissions for ${id}:`, permErr);
-        }
-      }
-    }
+    // Lock the ticket - don't await each one individually
+    const updates = [...perms.entries()]
+      .filter(([id]) => ![OWNER_ID, MIDDLEMAN_ROLE, guild.id].includes(id))
+      .map(([id]) =>
+        channel.permissionOverwrites.edit(id, {
+          SendMessages: false,
+          ViewChannel: false
+        }).catch(err => {
+          console.warn(`⚠️ Could not update permissions for ${id}:`, err.code || err.message);
+        })
+      );
 
-    // Build embed and button menu
+    await Promise.allSettled(updates);
+
     const embed = new EmbedBuilder()
       .setTitle('🔒 Ticket Closed')
       .setDescription('Select an option below to generate the transcript or delete the ticket.')
@@ -228,30 +225,20 @@ client.on('interactionCreate', async interaction => {
       .setTimestamp();
 
     const row = new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId('transcript')
-        .setLabel('📄 Transcript')
-        .setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder()
-        .setCustomId('delete')
-        .setLabel('🗑️ Delete')
-        .setStyle(ButtonStyle.Danger)
+      new ButtonBuilder().setCustomId('transcript').setLabel('📄 Transcript').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('delete').setLabel('🗑️ Delete').setStyle(ButtonStyle.Danger)
     );
 
     await interaction.editReply({ embeds: [embed], components: [row] });
     console.log('[DEBUG] Close panel sent');
+
   } catch (err) {
     console.error('❌ /close command error:', err);
     try {
       if (!interaction.replied && !interaction.deferred) {
-        await interaction.reply({
-          content: '❌ Failed to close ticket.',
-          ephemeral: true
-        });
+        await interaction.reply({ content: '❌ Failed to close ticket.', ephemeral: true });
       } else {
-        await interaction.editReply({
-          content: '❌ Failed to close ticket.'
-        });
+        await interaction.editReply({ content: '❌ Failed to close ticket.' });
       }
     } catch (editErr) {
       console.error('❌ Failed to send error reply:', editErr);
