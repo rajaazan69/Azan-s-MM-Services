@@ -166,15 +166,12 @@ client.on('interactionCreate', async interaction => {
       if (commandName === 'close') {
   console.log('[DEBUG] /close command triggered');
 
-  // Step 1: Try to reply or defer
-  let responded = false;
   try {
     await interaction.deferReply({ ephemeral: true });
-    responded = true;
     console.log('[DEBUG] Interaction deferred');
   } catch (err) {
-    console.error('[ERROR] Could not defer:', err);
-    return; // interaction expired, don't continue
+    console.error('[ERROR] Could not defer interaction:', err);
+    return; // Can't continue if defer failed
   }
 
   try {
@@ -191,22 +188,22 @@ client.on('interactionCreate', async interaction => {
       po.id !== guild.id
     )?.id;
 
-    // Lock the ticket
-    for (const [id, overwrite] of perms) {
-  const isUserOrRole = guild.members.cache.has(id) || guild.roles.cache.has(id);
-  const isStaff = [OWNER_ID, MIDDLEMAN_ROLE, guild.id].includes(id);
+    for (const [id] of perms) {
+      const isValidUser = guild.members.cache.has(id);
+      const isValidRole = guild.roles.cache.has(id);
+      const isExempt = [OWNER_ID, MIDDLEMAN_ROLE, guild.id].includes(id);
 
-  if (!isStaff && isUserOrRole) {
-    try {
-      await channel.permissionOverwrites.edit(id, {
-        SendMessages: false,
-        ViewChannel: false
-      });
-    } catch (err) {
-      console.error(`[PERMS] Failed to lock ID ${id}:`, err);
+      if (!isExempt && (isValidUser || isValidRole)) {
+        try {
+          await channel.permissionOverwrites.edit(id, {
+            SendMessages: false,
+            ViewChannel: false
+          });
+        } catch (permErr) {
+          console.error(`[PERM ERROR] Couldn't update perms for ${id}:`, permErr);
+        }
+      }
     }
-  }
-}
 
     const embed = new EmbedBuilder()
       .setTitle('🔒 Ticket Closed')
@@ -220,10 +217,7 @@ client.on('interactionCreate', async interaction => {
         }
       )
       .setColor('#2B2D31')
-      .setFooter({
-        text: `Closed by ${interaction.user.tag}`,
-        iconURL: interaction.user.displayAvatarURL()
-      })
+      .setFooter({ text: `Closed by ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
       .setTimestamp();
 
     const row = new ActionRowBuilder().addComponents(
@@ -232,13 +226,11 @@ client.on('interactionCreate', async interaction => {
     );
 
     await interaction.editReply({ embeds: [embed], components: [row] });
-    console.log('[DEBUG] Embed and buttons sent');
+    console.log('[DEBUG] Close panel sent');
 
   } catch (err) {
     console.error('❌ /close command error:', err);
-    if (responded) {
-      await interaction.editReply({ content: '❌ Failed to close ticket.' }).catch(() => {});
-    }
+    await interaction.editReply({ content: '❌ Failed to close ticket.' }).catch(console.error);
   }
 }
       if (commandName === 'delete') {
