@@ -164,12 +164,16 @@ client.on('interactionCreate', async interaction => {
       }
 
       if (commandName === 'close') {
+  // Must be FIRST to avoid "Unknown Interaction"
+  await interaction.deferReply({ ephemeral: true }).catch(() => {});
+
   try {
-    await interaction.deferReply({ ephemeral: true });
+    // If the interaction is already expired, stop
+    if (interaction.replied || interaction.deferred === false) return;
 
     const parentId = channel.parentId || channel.parent?.id;
     if (parentId !== TICKET_CATEGORY) {
-      return interaction.editReply({ content: '❌ You can only close ticket channels!' });
+      return interaction.editReply({ content: '❌ You can only close ticket channels!' }).catch(() => {});
     }
 
     const perms = channel.permissionOverwrites.cache;
@@ -201,18 +205,12 @@ client.on('interactionCreate', async interaction => {
       .setTimestamp();
 
     const row = new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId('transcript')
-        .setLabel('📄 Transcript')
-        .setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder()
-        .setCustomId('delete')
-        .setLabel('🗑️ Delete')
-        .setStyle(ButtonStyle.Danger)
+      new ButtonBuilder().setCustomId('transcript').setLabel('📄 Transcript').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('delete').setLabel('🗑️ Delete').setStyle(ButtonStyle.Danger)
     );
 
-    await interaction.editReply({ embeds: [embed], components: [row] });
-
+    await interaction.editReply({ embeds: [embed], components: [row] }).catch(() => {});
+    
   } catch (err) {
     console.error('❌ /close command error:', err);
     await interaction.editReply({ content: '❌ Something went wrong while closing the ticket.' }).catch(() => {});
