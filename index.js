@@ -164,18 +164,24 @@ client.on('interactionCreate', async interaction => {
       }
 
       if (commandName === 'close') {
-  console.log('[DEBUG] Close command triggered');
+  console.log('[DEBUG] /close command triggered');
+
+  if (!interaction.deferred && !interaction.replied) {
+    try {
+      await interaction.deferReply({ ephemeral: true });
+      console.log('[DEBUG] Interaction deferred');
+    } catch (deferErr) {
+      console.error('[ERROR] Failed to defer interaction:', deferErr);
+    }
+  }
 
   try {
-    await interaction.deferReply({ ephemeral: true });
-    console.log('[DEBUG] Interaction deferred');
-
     const parentId = channel.parentId || channel.parent?.id;
     if (parentId !== TICKET_CATEGORY) {
-      console.log('[DEBUG] Not in ticket category');
+      console.log('[DEBUG] Not a ticket channel');
       return interaction.editReply({
         content: '❌ You can only close ticket channels!'
-      });
+      }).catch(console.error);
     }
 
     const perms = channel.permissionOverwrites.cache;
@@ -186,7 +192,7 @@ client.on('interactionCreate', async interaction => {
       po.id !== guild.id
     )?.id;
 
-    console.log('[DEBUG] Owner found:', ticketOwner);
+    console.log('[DEBUG] Ticket owner:', ticketOwner || 'Unknown');
 
     for (const [id] of perms) {
       if (![OWNER_ID, MIDDLEMAN_ROLE, guild.id].includes(id)) {
@@ -226,15 +232,23 @@ client.on('interactionCreate', async interaction => {
         .setStyle(ButtonStyle.Danger)
     );
 
-    await interaction.editReply({ embeds: [embed], components: [row] });
-    console.log('[DEBUG] Embed and buttons sent');
+    await interaction.editReply({ embeds: [embed], components: [row] }).catch(console.error);
+    console.log('[DEBUG] Close panel sent');
 
   } catch (err) {
-    console.error('❌ /close command error:', err);
-    try {
-      await interaction.editReply({ content: '❌ Something went wrong while closing the ticket.' });
-    } catch (inner) {
-      console.error('❌ Failed to reply with error message:', inner);
+    console.error('❌ /close command failed:', err);
+    if (!interaction.replied && !interaction.deferred) {
+      try {
+        await interaction.reply({ content: '❌ Something went wrong.', ephemeral: true });
+      } catch (e) {
+        console.error('❌ Could not send fallback reply:', e);
+      }
+    } else {
+      try {
+        await interaction.editReply({ content: '❌ Something went wrong.' });
+      } catch (e) {
+        console.error('❌ Could not edit reply with error:', e);
+      }
     }
   }
 }
