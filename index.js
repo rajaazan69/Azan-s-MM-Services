@@ -166,14 +166,14 @@ client.on('interactionCreate', async interaction => {
       if (commandName === 'close') {
   console.log('[DEBUG] /close command triggered');
 
-  // Safely defer if not already responded
+  // Safely defer reply if not already acknowledged
   if (!interaction.deferred && !interaction.replied) {
     try {
       await interaction.deferReply({ ephemeral: true });
       console.log('[DEBUG] Interaction deferred');
     } catch (err) {
       console.error('[ERROR] Could not defer interaction:', err);
-      return; // If we can't defer, abort
+      return; // Abort if defer fails
     }
   }
 
@@ -185,6 +185,7 @@ client.on('interactionCreate', async interaction => {
       });
     }
 
+    // Find ticket owner from permission overwrites
     const perms = channel.permissionOverwrites.cache;
     const ticketOwner = [...perms.values()].find(po =>
       po.allow.has(PermissionsBitField.Flags.ViewChannel) &&
@@ -193,8 +194,8 @@ client.on('interactionCreate', async interaction => {
       po.id !== guild.id
     )?.id;
 
-    // Lock the ticket
-    for (const [id, overwrite] of perms.entries()) {
+    // Lock the ticket: remove Send/View from all others
+    for (const [id] of perms) {
       if (![OWNER_ID, MIDDLEMAN_ROLE, guild.id].includes(id)) {
         try {
           await channel.permissionOverwrites.edit(id, {
@@ -207,6 +208,7 @@ client.on('interactionCreate', async interaction => {
       }
     }
 
+    // Build embed and button menu
     const embed = new EmbedBuilder()
       .setTitle('🔒 Ticket Closed')
       .setDescription('Select an option below to generate the transcript or delete the ticket.')
@@ -226,23 +228,34 @@ client.on('interactionCreate', async interaction => {
       .setTimestamp();
 
     const row = new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('transcript').setLabel('📄 Transcript').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('delete').setLabel('🗑️ Delete').setStyle(ButtonStyle.Danger)
+      new ButtonBuilder()
+        .setCustomId('transcript')
+        .setLabel('📄 Transcript')
+        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
+        .setCustomId('delete')
+        .setLabel('🗑️ Delete')
+        .setStyle(ButtonStyle.Danger)
     );
 
     await interaction.editReply({ embeds: [embed], components: [row] });
     console.log('[DEBUG] Close panel sent');
-
   } catch (err) {
-  console.error('❌ /close command error:', err);
-  try {
-    if (!interaction.replied && !interaction.deferred) {
-      await interaction.reply({ content: '❌ Failed to close ticket.', ephemeral: true });
-    } else {
-      await interaction.editReply({ content: '❌ Failed to close ticket.' });
+    console.error('❌ /close command error:', err);
+    try {
+      if (!interaction.replied && !interaction.deferred) {
+        await interaction.reply({
+          content: '❌ Failed to close ticket.',
+          ephemeral: true
+        });
+      } else {
+        await interaction.editReply({
+          content: '❌ Failed to close ticket.'
+        });
+      }
+    } catch (editErr) {
+      console.error('❌ Failed to send error reply:', editErr);
     }
-  } catch (editErr) {
-    console.error('❌ Failed to send error reply:', editErr);
   }
 }
       if (commandName === 'delete') {
