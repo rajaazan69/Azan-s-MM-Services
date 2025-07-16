@@ -8,10 +8,22 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 require('dotenv').config();
-const sqlite3 = require('sqlite3').verbose();
-const db = new sqlite3.Database('./tags.db');
+const { MongoClient } = require('mongodb');
 
-db.run(`CREATE TABLE IF NOT EXISTS tags (name TEXT PRIMARY KEY, message TEXT NOT NULL)`);
+const mongoUri = process.env.MONGO_URI;
+const mongoClient = new MongoClient(mongoUri);
+let tagsCollection;
+
+(async () => {
+  try {
+    await mongoClient.connect();
+    const db = mongoClient.db('ticketbot');
+    tagsCollection = db.collection('tags');
+    console.log('✅ Connected to MongoDB Atlas');
+  } catch (err) {
+    console.error('❌ MongoDB connection error:', err);
+  }
+})();
 
 const tagsPath = path.join(__dirname, 'tag.json');
 let tags = {};
@@ -99,36 +111,58 @@ client.on('interactionCreate', async interaction => {
         await interaction.deferReply({ ephemeral: true }).catch(() => {});
         const name = options.getString('name');
         const message = options.getString('message');
-        db.run(`INSERT OR REPLACE INTO tags(name, message) VALUES(?, ?)`, [name, message], err => {
-          if (err) return interaction.editReply({ content: '❌ Failed to create tag.' });
-          interaction.editReply({ content: `✅ Tag \`${name}\` saved.` });
-        });
-      }
+        try {
+  await tagsCollection.updateOne(
+    { name },
+    { $set: { message } },
+    { upsert: true }
+  );
+  await interaction.editReply({ content: `✅ Tag \`${name}\` saved.` });
+} catch (err) {
+  console.error('❌ Tag create failed:', err);
+  await interaction.editReply({ content: '❌ Failed to create tag.' });
+}
 
       if (commandName === 'tag') {
         const name = options.getString('name');
-        db.get('SELECT message FROM tags WHERE name = ?', [name], (err, row) => {
-          if (err) return interaction.reply({ content: '❌ Error reading tag.' });
-          if (row) interaction.reply({ content: row.message.slice(0, 2000) });
-          else interaction.reply({ content: `❌ Tag \`${name}\` not found.` });
-        });
+        try {
+  const tag = await tagsCollection.findOne({ name });
+  if (tag) {
+    await interaction.reply({ content: tag.message.slice(0, 2000) });
+  } else {
+    await interaction.reply({ content: `❌ Tag \`${name}\` not found.` });
+  }
+} catch (err) {
+  console.error('❌ Tag read error:', err);
+  await interaction.reply({ content: '❌ Error reading tag.' });
+}
       }
 
       if (commandName === 'tagdelete') {
         await interaction.deferReply({ ephemeral: true }).catch(() => {});
         const name = options.getString('name');
-        db.run('DELETE FROM tags WHERE name = ?', [name], function (err) {
-          if (err) return interaction.editReply({ content: '❌ Failed to delete tag.' });
-          interaction.editReply({ content: this.changes === 0 ? `❌ Tag \`${name}\` not found.` : `🗑️ Tag \`${name}\` deleted.` });
-        });
+       try {
+  const result = await tagsCollection.deleteOne({ name });
+  if (result.deletedCount === 0) {
+    await interaction.editReply({ content: `❌ Tag \`${name}\` not found.` });
+  } else {
+    await interaction.editReply({ content: `🗑️ Tag \`${name}\` deleted.` });
+  }
+} catch (err) {
+  console.error('❌ Tag delete error:', err);
+  await interaction.editReply({ content: '❌ Failed to delete tag.' });
+}
       }
 
       if (commandName === 'taglist') {
-        db.all('SELECT name FROM tags', (err, rows) => {
-          if (err) return interaction.reply({ content: '❌ Failed to fetch tag list.' });
-          const list = rows.map(r => `• \`${r.name}\``).join('\n') || 'No tags found.';
-          interaction.reply({ content: list });
-        });
+        try {
+  const tags = await tagsCollection.find({}).toArray();
+  const list = tags.map(t => `• \`${t.name}\``).join('\n') || 'No tags found.';
+  await interaction.reply({ content: list });
+} catch (err) {
+  console.error('❌ Tag list error:', err);
+  await interaction.reply({ content: '❌ Failed to fetch tag list.' });
+}
       }
 
       if (commandName === 'close') {
