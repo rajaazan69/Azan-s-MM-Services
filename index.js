@@ -278,7 +278,7 @@ client.on('interactionCreate', async interaction => {
         await handleTranscript(interaction, channel);
       }
     }
-    
+
     // ✅ BUTTON: Open Modal
     if (interaction.isButton() && interaction.customId === 'openTicket') {
       const modal = new ModalBuilder()
@@ -302,96 +302,6 @@ client.on('interactionCreate', async interaction => {
       await interaction.deferReply({ ephemeral: true }).catch(() => {});
       await handleTranscript(interaction, interaction.channel);
     }
-    const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
-
-// Format creation date & time ago
-if (commandName === 'i') {
-  try {
-    await interaction.deferReply();
-
-    const username = options.getString('username');
-
-    if (!username) {
-      return await interaction.editReply('Please provide a Roblox username or ID.');
-    }
-
-    const axios = require('axios');
-
-    let userId = null;
-    let userData = null;
-    let userThumbnailUrl = 'https://www.roblox.com/images/logo/roblox_logo_300x300.png';
-
-    const query = username;
-
-    if (isNaN(parseInt(query))) {
-      const usernameResponse = await axios.post('https://users.roblox.com/v1/usernames/users', {
-        usernames: [query],
-        excludeBannedUsers: false
-      });
-
-      if (usernameResponse.data && usernameResponse.data.data && usernameResponse.data.data.length > 0) {
-        userId = usernameResponse.data.data[0].id;
-      } else {
-        return await interaction.editReply(`Could not find a Roblox user with the username "${query}".`);
-      }
-    } else {
-      userId = parseInt(query);
-    }
-
-    const userDetailsResponse = await axios.get(`https://users.roblox.com/v1/users/${userId}`);
-    userData = userDetailsResponse.data;
-
-    const thumbnailResponse = await axios.get(`https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${userId}&size=150x150&format=Png&isCircular=false`);
-    if (thumbnailResponse.data && thumbnailResponse.data.data && thumbnailResponse.data.data.length > 0) {
-      userThumbnailUrl = thumbnailResponse.data.data[0].imageUrl;
-    }
-
-    const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
-
-    const embed = new EmbedBuilder()
-      .setColor('#000000')
-      .setAuthor({ name: userData.name, iconURL: userThumbnailUrl, url: `https://www.roblox.com/users/${userId}/profile` })
-      .setThumbnail(userThumbnailUrl)
-      .addFields(
-        { name: 'Display Name', value: `\`${userData.displayName}\``, inline: false },
-        { name: 'ID', value: `\`[ ${userData.id} ]\``, inline: false },
-        { name: 'Created', value: new Date(userData.created).toLocaleString(), inline: false }
-      )
-      .setFooter({ text: `Requested by ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
-      .setTimestamp();
-
-    if (userData.description && userData.description.trim() !== '') {
-      embed.addFields({
-        name: 'Description',
-        value: userData.description.length > 1020 ? userData.description.substring(0, 1020) + '...' : userData.description,
-        inline: false
-      });
-    }
-
-    if (userData.isBanned) {
-      embed.addFields({ name: 'Status', value: 'BANNED', inline: true });
-      embed.setColor(0xFF0000);
-    }
-
-    const row = new ActionRowBuilder()
-      .addComponents(
-        new ButtonBuilder()
-          .setLabel('Profile Link')
-          .setStyle(ButtonStyle.Link)
-          .setURL(`https://www.roblox.com/users/${userId}/profile`)
-      );
-
-    await interaction.editReply({ embeds: [embed], components: [row] });
-
-  } catch (error) {
-    console.error(`[RobloxInfo] Error:`, error);
-    if (interaction.replied || interaction.deferred) {
-      await interaction.editReply("❌ An error occurred while fetching Roblox info.");
-    } else {
-      await interaction.reply("❌ Something went wrong.");
-    }
-  }
-}
 
     // ✅ BUTTON: Delete
     if (interaction.isButton() && interaction.customId === 'delete') {
