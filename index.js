@@ -1,15 +1,10 @@
-
+require('dotenv').config();
 const fs = require('node:fs');
 const path = require('node:path');
 const { Client, Collection, GatewayIntentBits, Partials, Events, EmbedBuilder } = require('discord.js');
 
-const { 
-    token, 
-    prefix, 
-    roles, 
-    mmTiers, 
-    leaderboardChannelId: lbcIdFromConfig, 
-    newAccountAgeDays, 
+const { prefix, roles, mmTiers, leaderboardChannelId: lbcIdFromConfig, newAccountAgeDays } = require('./config.json');
+const token = process.env.TOKEN;
    
 } = require('./config.json'); 
 const { loadDB, saveDB } = require('./utils/db');
