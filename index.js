@@ -480,7 +480,7 @@ if (commandName === 'mute') {
     await interaction.reply({ content: '❌ Failed to timeout the user.', ephemeral: true });
   }
 }
-f (commandName === 'unban') {
+if (commandName === 'unban') {
   const userId = options.getString('userid');
 
   if (!interaction.member.permissions.has(PermissionFlagsBits.BanMembers))
