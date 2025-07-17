@@ -108,15 +108,16 @@ client.once('ready', async () => {
       new SlashCommandBuilder().setName('tagdelete').setDescription('Delete a tag').addStringOption(o => o.setName('name').setDescription('Tag name').setRequired(true)),
       new SlashCommandBuilder().setName('taglist').setDescription('List all tags')
       new SlashCommandBuilder()
-  .setName('i')
-  .setDescription('Get Roblox account info')
-  .addStringOption(option =>
-    option.setName('username')
-      .setDescription('The Roblox username')
-      .setRequired(true)
-  )
-    .toJSON()
-    ].map(cmd => cmd.toJSON());
+ [
+  new SlashCommandBuilder()
+    .setName('i')
+    .setDescription('Get Roblox account info')
+    .addStringOption(option =>
+      option.setName('username')
+        .setDescription('The Roblox username')
+        .setRequired(true)
+    )
+].map(cmd => cmd.toJSON());
 
     await rest.put(Routes.applicationCommands(client.user.id), { body: commands });
     console.log('✅ Slash commands registered');
