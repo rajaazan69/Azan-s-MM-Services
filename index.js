@@ -319,17 +319,21 @@ client.on('interactionCreate', async interaction => {
     const yearsOld = ((now - createdDate) / (1000 * 60 * 60 * 24 * 365)).toFixed(1);
 
     const embed = new EmbedBuilder()
-      .setTitle(`${profile.displayName} (@${profile.name})`)
-      .setThumbnail(`https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${user.id}&size=150x150&format=Png&isCircular=true`)
+      .setTitle(`🧾 Roblox User Information`)
       .setColor('#E2231A')
+      .setThumbnail(`https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${user.id}&size=150x150&format=Png&isCircular=true`)
+      .setImage(`https://thumbnails.roblox.com/v1/users/avatar?userIds=${user.id}&size=420x420&format=Png`)
+      .setDescription(`**Display Name:** ${profile.displayName}\n**Username:** \`${profile.name}\`\n**User ID:** \`${user.id}\``)
       .addFields(
-        { name: '🆔 User ID', value: `\`${user.id}\``, inline: true },
-        { name: '📅 Created On', value: `<t:${Math.floor(createdDate.getTime() / 1000)}:F>`, inline: true },
-        { name: '⏳ Account Age', value: `${yearsOld} years`, inline: true },
-        { name: '👥 Followers', value: followers.count.toLocaleString(), inline: true },
-        { name: '➡️ Following', value: following.count.toLocaleString(), inline: true }
+        { name: 'Account Created', value: `<t:${Math.floor(createdDate.getTime() / 1000)}:F>`, inline: true },
+        { name: ' Account Age', value: `**${yearsOld}** years`, inline: true },
+        { name: '\u200B', value: '\u200B', inline: true }, // spacer row
+
+        { name: 'Followers', value: `**${followers.count.toLocaleString()}**`, inline: true },
+        { name: 'Following', value: `**${following.count.toLocaleString()}**`, inline: true },
+        { name: '\u200B', value: '\u200B', inline: true }
       )
-      .setFooter({ text: 'Roblox User Info', iconURL: 'https://tr.rbxcdn.com/4f82333f5f54d234e95d1f81251a67dc/150/150/Image/Png' })
+      .setFooter({ text: 'Roblox Profile Info', iconURL: 'https://tr.rbxcdn.com/4f82333f5f54d234e95d1f81251a67dc/150/150/Image/Png' })
       .setTimestamp();
 
     const button = new ActionRowBuilder().addComponents(
