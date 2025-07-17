@@ -1,57 +1,116 @@
-// index.js
-require('dotenv').config();
-const { Client, GatewayIntentBits, Partials, Collection } = require('discord.js');
-const express = require('express');
-const path = require('path');
-const fs = require('fs');
-const { MongoClient } = require('mongodb');
+// ----- add.js -----
+const { SlashCommandBuilder } = require('discord.js');
 
-const client = new Client({
-  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent],
-  partials: [Partials.Channel]
-});
+module.exports = {
+  data: new SlashCommandBuilder()
+    .setName('add')
+    .setDescription('Adds a user to the ticket'),
 
-client.commands = new Collection();
-const commandFiles = fs.readdirSync('./commands').filter(f => f.endsWith('.js'));
-for (const file of commandFiles) {
-  const command = require(`./commands/${file}`);
-  client.commands.set(command.data.name, command);
-}
-
-const mongoClient = new MongoClient(process.env.MONGO_URI);
-mongoClient.connect().then(() => {
-  client.db = mongoClient.db('ticketbot');
-  console.log('✅ Connected to MongoDB Atlas');
-}).catch(console.error);
-
-// Express server
-const app = express();
-const PORT = process.env.PORT || 3000;
-app.get('/', (_, res) => res.send('Bot is online.'));
-app.use('/transcripts', express.static(path.join(__dirname, 'transcripts')));
-app.listen(PORT, () => console.log(`Uptime server running on port ${PORT}`));
-
-// Command interaction handler
-client.on('interactionCreate', async interaction => {
-  if (!interaction.isChatInputCommand()) return;
-  const command = client.commands.get(interaction.commandName);
-  if (!command) return;
-  try {
-    await command.execute(interaction, client);
-  } catch (err) {
-    console.error(`❌ Error in command "${interaction.commandName}":`, err);
-    if (!interaction.replied) {
-      await interaction.reply({ content: '❌ There was an error executing this command.', ephemeral: true });
-    }
+  async execute(interaction, client) {
+    // your existing add logic here
   }
-});
+};
 
-// Login
-client.on('ready', () => {
-  console.log(`✅ Logged in as ${client.user.tag}`);
-});
-client.login(process.env.TOKEN);
+// ----- close.js -----
+const { SlashCommandBuilder } = require('discord.js');
 
-// Keep alive ping
-const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
-setInterval(() => fetch(process.env.BASE_URL).catch(() => {}), 5 * 60 * 1000);
+module.exports = {
+  data: new SlashCommandBuilder()
+    .setName('close')
+    .setDescription('Closes the ticket'),
+
+  async execute(interaction, client) {
+    // your existing close logic here
+  }
+};
+
+// ----- delete.js -----
+const { SlashCommandBuilder } = require('discord.js');
+
+module.exports = {
+  data: new SlashCommandBuilder()
+    .setName('delete')
+    .setDescription('Deletes the ticket channel'),
+
+  async execute(interaction, client) {
+    // your existing delete logic here
+  }
+};
+
+// ----- kick.js -----
+const { SlashCommandBuilder } = require('discord.js');
+
+module.exports = {
+  data: new SlashCommandBuilder()
+    .setName('kick')
+    .setDescription('Kicks a member from the server'),
+
+  async execute(interaction, client) {
+    // your existing kick logic here, converted from message-based
+  }
+};
+
+// ----- open.js -----
+const { SlashCommandBuilder } = require('discord.js');
+
+module.exports = {
+  data: new SlashCommandBuilder()
+    .setName('open')
+    .setDescription('Re-opens a closed ticket'),
+
+  async execute(interaction, client) {
+    // your existing open logic here
+  }
+};
+
+// ----- remove.js -----
+const { SlashCommandBuilder } = require('discord.js');
+
+module.exports = {
+  data: new SlashCommandBuilder()
+    .setName('remove')
+    .setDescription('Removes a user from the ticket'),
+
+  async execute(interaction, client) {
+    // your existing remove logic here
+  }
+};
+
+// ----- rename.js -----
+const { SlashCommandBuilder } = require('discord.js');
+
+module.exports = {
+  data: new SlashCommandBuilder()
+    .setName('rename')
+    .setDescription('Renames the ticket channel'),
+
+  async execute(interaction, client) {
+    // your existing rename logic here
+  }
+};
+
+// ----- setup.js -----
+const { SlashCommandBuilder } = require('discord.js');
+
+module.exports = {
+  data: new SlashCommandBuilder()
+    .setName('setup')
+    .setDescription('Sets up the ticket panel'),
+
+  async execute(interaction, client) {
+    // your existing setup logic here
+  }
+};
+
+// ----- transcript.js -----
+const { SlashCommandBuilder } = require('discord.js');
+
+module.exports = {
+  data: new SlashCommandBuilder()
+    .setName('transcript')
+    .setDescription('Generates a transcript of the ticket'),
+
+  async execute(interaction, client) {
+    // your existing transcript logic here
+  }
+};
