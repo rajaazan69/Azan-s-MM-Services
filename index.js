@@ -32,8 +32,7 @@ const {
   Client, GatewayIntentBits, Partials, ChannelType, PermissionsBitField,
   ActionRowBuilder, ModalBuilder, TextInputBuilder, TextInputStyle,
   EmbedBuilder, ButtonBuilder, ButtonStyle, AttachmentBuilder,
-  SlashCommandBuilder, REST, Routes
-} = require('discord.js');
+  const { SlashCommandBuilder, REST, Routes, ... } = require('discord.js');
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
@@ -109,13 +108,13 @@ client.once('ready', async () => {
       new SlashCommandBuilder().setName('tagdelete').setDescription('Delete a tag').addStringOption(o => o.setName('name').setDescription('Tag name').setRequired(true)),
       new SlashCommandBuilder().setName('taglist').setDescription('List all tags')
       new SlashCommandBuilder()
-    .setName('i')
-    .setDescription('Fetch Roblox info by username or ID')
-    .addStringOption(option =>
-        option.setName('username_or_id')
-            .setDescription('Roblox username or ID')
-            .setRequired(true)
-    )
+  .setName('i')
+  .setDescription('Get Roblox account info')
+  .addStringOption(option =>
+    option.setName('username')
+      .setDescription('The Roblox username')
+      .setRequired(true)
+  )
     .toJSON()
     ].map(cmd => cmd.toJSON());
 
@@ -381,7 +380,53 @@ client.on('interactionCreate', async interaction => {
       await interaction.deferReply({ ephemeral: true }).catch(() => {});
       await handleTranscript(interaction, interaction.channel);
     }
+    
+if (interaction.commandName === 'i') {
+  const username = interaction.options.getString('username');
+  await interaction.deferReply({ ephemeral: true });
 
+  try {
+    const response = await axios.post(
+      'https://users.roblox.com/v1/usernames/users',
+      { usernames: [username], excludeBannedUsers: false },
+      { headers: { 'Content-Type': 'application/json' } }
+    );
+
+    const user = response.data.data[0];
+    if (!user) return interaction.editReply({ content: `❌ No user found for **${username}**.` });
+
+    const [userInfo, friends, followers, following] = await Promise.all([
+      axios.get(`https://users.roblox.com/v1/users/${user.id}`),
+      axios.get(`https://friends.roblox.com/v1/users/${user.id}/friends/count`),
+      axios.get(`https://friends.roblox.com/v1/users/${user.id}/followers/count`),
+      axios.get(`https://friends.roblox.com/v1/users/${user.id}/followings/count`)
+    ]);
+
+    const info = userInfo.data;
+    const joined = new Date(info.created).toLocaleDateString();
+
+    const embed = new EmbedBuilder()
+      .setTitle(`${user.name}'s Roblox Info`)
+      .setURL(`https://www.roblox.com/users/${user.id}/profile`)
+      .setThumbnail(`https://www.roblox.com/headshot-thumbnail/image?userId=${user.id}&width=420&height=420&format=png`)
+      .addFields(
+        { name: 'Username', value: user.name, inline: true },
+        { name: 'Display Name', value: user.displayName, inline: true },
+        { name: 'User ID', value: String(user.id), inline: true },
+        { name: 'Friends', value: friends.data.count.toString(), inline: true },
+        { name: 'Followers', value: followers.data.count.toString(), inline: true },
+        { name: 'Following', value: following.data.count.toString(), inline: true },
+        { name: 'Join Date', value: joined, inline: true },
+        { name: 'Description', value: info.description || 'No description set.' }
+      )
+      .setColor('#00b0f4');
+
+    await interaction.editReply({ embeds: [embed] });
+  } catch (err) {
+    console.error(err);
+    interaction.editReply({ content: '⚠️ Failed to fetch user info.' });
+  }
+}
     // ✅ BUTTON: Delete
     if (interaction.isButton() && interaction.customId === 'delete') {
       await interaction.channel.delete().catch(console.error);
