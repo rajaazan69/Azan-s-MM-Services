@@ -77,6 +77,14 @@ client.once('ready', async () => {
       new SlashCommandBuilder().setName('tag').setDescription('Send a saved tag').addStringOption(o => o.setName('name').setDescription('Tag name').setRequired(true)),
       new SlashCommandBuilder().setName('tagdelete').setDescription('Delete a tag').addStringOption(o => o.setName('name').setDescription('Tag name').setRequired(true)),
       new SlashCommandBuilder().setName('taglist').setDescription('List all tags')
+      new SlashCommandBuilder()
+  .setName('i')
+  .setDescription('Fetch Roblox account info by username')
+  .addStringOption(option =>
+    option.setName('username')
+      .setDescription('The Roblox username to look up')
+      .setRequired(true)
+  )
     ].map(cmd => cmd.toJSON());
 
     await rest.put(Routes.applicationCommands(client.user.id), { body: commands });
@@ -277,6 +285,58 @@ client.on('interactionCreate', async interaction => {
         await interaction.deferReply({ ephemeral: true }).catch(() => {});
         await handleTranscript(interaction, channel);
       }
+      if (commandName === 'i') {
+  const username = options.getString('username');
+  await interaction.deferReply({ ephemeral: true }).catch(() => {});
+
+  try {
+    const res = await fetch('https://users.roblox.com/v1/usernames/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ usernames: [username], excludeBannedUsers: false })
+    });
+
+    const data = await res.json();
+    const user = data?.data?.[0];
+
+    if (!user) {
+      return interaction.editReply({ content: `❌ No account found for \`${username}\`.` });
+    }
+
+    const id = user.id;
+
+    const [avatarRes, friendsRes, followersRes, followingRes] = await Promise.all([
+      fetch(`https://thumbnails.roblox.com/v1/users/avatar?userIds=${id}&size=420x420&format=Png&isCircular=false`),
+      fetch(`https://friends.roblox.com/v1/users/${id}/friends/count`),
+      fetch(`https://friends.roblox.com/v1/users/${id}/followers/count`),
+      fetch(`https://friends.roblox.com/v1/users/${id}/followings/count`)
+    ]);
+
+    const avatarData = await avatarRes.json();
+    const friendsData = await friendsRes.json();
+    const followersData = await followersRes.json();
+    const followingData = await followingRes.json();
+
+    const embed = new EmbedBuilder()
+      .setTitle(`${user.name} (${user.displayName})`)
+      .setThumbnail(avatarData?.data?.[0]?.imageUrl || null)
+      .addFields(
+        { name: 'User ID', value: id.toString(), inline: true },
+        { name: 'Friends', value: friendsData?.count?.toString() || '0', inline: true },
+        { name: 'Followers', value: followersData?.count?.toString() || '0', inline: true },
+        { name: 'Following', value: followingData?.count?.toString() || '0', inline: true },
+        { name: 'Profile', value: `https://www.roblox.com/users/${id}/profile` }
+      )
+      .setColor('Blurple')
+      .setFooter({ text: 'Roblox Lookup' });
+
+    await interaction.editReply({ embeds: [embed] });
+
+  } catch (err) {
+    console.error('❌ Error in /i command:', err);
+    await interaction.editReply({ content: '❌ Something went wrong while fetching data.' });
+  }
+}
     }
 
     // ✅ BUTTON: Open Modal
