@@ -77,7 +77,16 @@ client.once('ready', async () => {
       new SlashCommandBuilder().setName('tag').setDescription('Send a saved tag').addStringOption(o => o.setName('name').setDescription('Tag name').setRequired(true)),
       new SlashCommandBuilder().setName('tagdelete').setDescription('Delete a tag').addStringOption(o => o.setName('name').setDescription('Tag name').setRequired(true)),
       new SlashCommandBuilder().setName('taglist').setDescription('List all tags')
+    new SlashCommandBuilder()
+  .setName('i')
+  .setDescription('Get Roblox user info')
+  .addStringOption(opt =>
+    opt.setName('username')
+      .setDescription('The Roblox username to look up')
+      .setRequired(true)
+  ),
     ].map(cmd => cmd.toJSON());
+  
 
     await rest.put(Routes.applicationCommands(client.user.id), { body: commands });
     console.log('✅ Slash commands registered');
@@ -278,6 +287,65 @@ client.on('interactionCreate', async interaction => {
         await handleTranscript(interaction, channel);
       }
     }
+    if (commandName === 'i') {
+  const username = options.getString('username');
+  await interaction.deferReply();
+
+  try {
+    const userRes = await fetch(`https://users.roblox.com/v1/usernames/users`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ usernames: [username], excludeBannedUsers: false })
+    });
+    const userData = await userRes.json();
+    const user = userData.data?.[0];
+
+    if (!user) {
+      return interaction.editReply({ content: '❌ User not found.' });
+    }
+
+    const [profileRes, followersRes, followingRes] = await Promise.all([
+      fetch(`https://users.roblox.com/v1/users/${user.id}`),
+      fetch(`https://friends.roblox.com/v1/users/${user.id}/followers/count`),
+      fetch(`https://friends.roblox.com/v1/users/${user.id}/followings/count`)
+    ]);
+
+    const profile = await profileRes.json();
+    const followers = await followersRes.json();
+    const following = await followingRes.json();
+
+    const createdDate = new Date(profile.created);
+    const now = new Date();
+    const yearsOld = ((now - createdDate) / (1000 * 60 * 60 * 24 * 365)).toFixed(1);
+
+    const embed = new EmbedBuilder()
+      .setTitle(`${profile.displayName} (@${profile.name})`)
+      .setThumbnail(`https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${user.id}&size=150x150&format=Png&isCircular=true`)
+      .setColor('#E2231A')
+      .addFields(
+        { name: '🆔 User ID', value: `\`${user.id}\``, inline: true },
+        { name: '📅 Created On', value: `<t:${Math.floor(createdDate.getTime() / 1000)}:F>`, inline: true },
+        { name: '⏳ Account Age', value: `${yearsOld} years`, inline: true },
+        { name: '👥 Followers', value: followers.count.toLocaleString(), inline: true },
+        { name: '➡️ Following', value: following.count.toLocaleString(), inline: true }
+      )
+      .setFooter({ text: 'Roblox User Info', iconURL: 'https://tr.rbxcdn.com/4f82333f5f54d234e95d1f81251a67dc/150/150/Image/Png' })
+      .setTimestamp();
+
+    const button = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setLabel('🔗 View Profile')
+        .setStyle(ButtonStyle.Link)
+        .setURL(`https://www.roblox.com/users/${user.id}/profile`)
+    );
+
+    await interaction.editReply({ embeds: [embed], components: [button] });
+
+  } catch (err) {
+    console.error('❌ Roblox user info error:', err);
+    await interaction.editReply({ content: '❌ Failed to fetch user info.' });
+  }
+}
 
     // ✅ BUTTON: Open Modal
     if (interaction.isButton() && interaction.customId === 'openTicket') {
