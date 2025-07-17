@@ -325,7 +325,6 @@ client.on('interactionCreate', async interaction => {
   .setTitle(`Roblox User Information`)
   .setColor('#000000')
   .setThumbnail(`https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${user.id}&size=150x150&format=Png&isCircular=true`)
-  if (avatarUrl) embed.setImage(avatarUrl);
   .addFields(
     { name: 'Display Name', value: `${profile.displayName}`, inline: false },
     { name: 'Username', value: `${profile.name}`, inline: false },
@@ -341,6 +340,7 @@ client.on('interactionCreate', async interaction => {
   )
   .setFooter({ text: 'Roblox Profile Info', iconURL: 'https://tr.rbxcdn.com/4f82333f5f54d234e95d1f81251a67dc/150/150/Image/Png' })
   .setTimestamp();
+   if (avatarUrl) embed.setImage(avatarUrl);
     const button = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setLabel('View Profile')
