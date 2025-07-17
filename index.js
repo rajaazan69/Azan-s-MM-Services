@@ -289,8 +289,30 @@ client.on('interactionCreate', async interaction => {
   const username = options.getString('username');
   await interaction.deferReply({ ephemeral: false }).catch(() => {});
 
+  const fetch = require('node-fetch');
+  const { EmbedBuilder, ButtonBuilder, ActionRowBuilder, ButtonStyle } = require('discord.js');
+
+  function formatDate(dateString) {
+    const date = new Date(dateString);
+    return `<t:${Math.floor(date.getTime() / 1000)}:F>`;
+  }
+
+  function timeAgo(dateString) {
+    const createdDate = new Date(dateString);
+    const now = new Date();
+    const diff = now - createdDate;
+
+    const years = Math.floor(diff / (1000 * 60 * 60 * 24 * 365));
+    if (years > 0) return `\`${years} year${years > 1 ? 's' : ''} ago\``;
+
+    const months = Math.floor(diff / (1000 * 60 * 60 * 24 * 30));
+    if (months > 0) return `\`${months} month${months > 1 ? 's' : ''} ago\``;
+
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    return `\`${days} day${days !== 1 ? 's' : ''} ago\``;
+  }
+
   try {
-    // Get user ID by username
     const res = await fetch('https://users.roblox.com/v1/usernames/users', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -298,68 +320,56 @@ client.on('interactionCreate', async interaction => {
     });
 
     const data = await res.json();
-    const user = data?.data?.[0];
-    if (!user) {
+    const userData = data?.data?.[0];
+
+    if (!userData) {
       return interaction.editReply({ content: `❌ No account found for \`${username}\`.` });
     }
 
-    const id = user.id;
+    const id = userData.id;
+    const profileLink = `https://www.roblox.com/users/${id}/profile`;
 
-    // Fetch all other data
-    const [avatarRes, friendsRes, followersRes, followingRes, userInfoRes] = await Promise.all([
-      fetch(`https://thumbnails.roblox.com/v1/users/avatar?userIds=${id}&size=420x420&format=Png&isCircular=false`),
-      fetch(`https://friends.roblox.com/v1/users/${id}/friends/count`),
-      fetch(`https://friends.roblox.com/v1/users/${id}/followers/count`),
-      fetch(`https://friends.roblox.com/v1/users/${id}/followings/count`),
-      fetch(`https://users.roblox.com/v1/users/${id}`)
-    ]);
-
+    const avatarRes = await fetch(`https://thumbnails.roblox.com/v1/users/avatar?userIds=${id}&size=420x420&format=Png&isCircular=false`);
     const avatarData = await avatarRes.json();
-    const friendsData = await friendsRes.json();
-    const followersData = await followersRes.json();
-    const followingData = await followingRes.json();
-    const userData = await userInfoRes.json();
+    const userThumbnailUrl = avatarData?.data?.[0]?.imageUrl;
+    const [friendsRes, followersRes, followingRes] = await Promise.all([
+  fetch(`https://friends.roblox.com/v1/users/${id}/friends/count`),
+  fetch(`https://friends.roblox.com/v1/users/${id}/followers/count`),
+  fetch(`https://friends.roblox.com/v1/users/${id}/followings/count`)
+]);
 
-    const thumbnail = avatarData?.data?.[0]?.imageUrl || null;
-    const profileUrl = `https://www.roblox.com/users/${id}/profile`;
+const friends = (await friendsRes.json())?.count || 0;
+const followers = (await followersRes.json())?.count || 0;
+const following = (await followingRes.json())?.count || 0;
 
-    // Format date
-    const createdTimestamp = Math.floor(new Date(userData.created).getTime() / 1000);
-    const yearsAgo = new Date().getFullYear() - new Date(userData.created).getFullYear();
-
-    // Build embed
     const embed = new EmbedBuilder()
-      .setColor('#000000')
-      .setAuthor({ name: userData.name, iconURL: thumbnail, url: profileUrl })
-      .setThumbnail(thumbnail)
-      .addFields(
-        { name: 'Display Name', value: `\`${userData.displayName}\``, inline: true },
-        { name: 'ID', value: `\`[ ${userData.id} ]\``, inline: true },
-        { name: 'Created', value: `<t:${createdTimestamp}:F>\n\`${yearsAgo} year(s) ago\``, inline: false },
-        { name: 'Friends', value: `\`${friendsData?.count || 0}\``, inline: true },
-        { name: 'Followers', value: `\`${followersData?.count || 0}\``, inline: true },
-        { name: 'Following', value: `\`${followingData?.count || 0}\``, inline: true }
-      )
-      .setFooter({ text: 'Roblox Lookup' })
+      .setColor(userData.isBanned ? 0xFF0000 : '#000000')
+      .setAuthor({ name: userData.name, iconURL: userThumbnailUrl, url: profileLink })
+      .setThumbnail(userThumbnailUrl)
+     .addFields(
+  { name: 'Display Name', value: `\`${userData.displayName}\``, inline: false },
+  { name: 'ID', value: `\`[ ${userData.id} ]\``, inline: false },
+  { name: 'Created', value: `${formatDate(userData.created)}\n${timeAgo(userData.created)}`, inline: false },
+  { name: 'Friends', value: `\`${friends}\``, inline: true },
+  { name: 'Followers', value: `\`${followers}\``, inline: true },
+  { name: 'Following', value: `\`${following}\``, inline: true }
+)
+      .setFooter({ text: `Requested by ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
       .setTimestamp();
 
-    // Optional description field
-    if (userData.description?.trim()) {
-      embed.addFields({
-        name: 'Description',
-        value: userData.description.length > 1020
-          ? userData.description.substring(0, 1020) + '...'
-          : userData.description,
-        inline: false
-      });
+    if (userData.description && userData.description.trim() !== '') {
+      embed.addFields({ name: 'Description', value: userData.description.length > 1020 ? userData.description.substring(0, 1020) + '...' : userData.description });
     }
 
-    // Add profile button
+    if (userData.isBanned) {
+      embed.addFields({ name: 'Status', value: 'BANNED', inline: true });
+    }
+
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setLabel('Profile Link')
         .setStyle(ButtonStyle.Link)
-        .setURL(profileUrl)
+        .setURL(profileLink)
     );
 
     await interaction.editReply({ embeds: [embed], components: [row] });
