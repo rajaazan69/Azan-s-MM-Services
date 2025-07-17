@@ -1,189 +1,226 @@
-// 📦 Required Modules
-const {
-	Client, GatewayIntentBits, Partials, EmbedBuilder, PermissionsBitField,
-	ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder,
-	ButtonBuilder, ButtonStyle
-} = require('discord.js');
-const express = require('express');
+// index.js
+
+require('dotenv').config();
+const { Client, GatewayIntentBits, Partials, ChannelType, PermissionsBitField, EmbedBuilder, ButtonBuilder, ButtonStyle, ActionRowBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, Events } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
-const dotenv = require('dotenv');
+const express = require('express');
 const mongoose = require('mongoose');
-dotenv.config();
+const { QuickDB } = require('quick.db');
+const db = new QuickDB();
+const app = express();
 
-// ⚙️ Config
+// --- CONFIGURATION (edit your own IDs here) ---
 const OWNER_ID = '1356149794040446998';
 const MIDDLEMAN_ROLE = '1373062797545570525';
 const PANEL_CHANNEL = '1373048211538841702';
 const TICKET_CATEGORY = '1373027564926406796';
 const TRANSCRIPT_CHANNEL = '1373058123547283568';
+const TOKEN = process.env.TOKEN;
+const PORT = 3000;
 
-// 📡 Bot Client
+// --- SETUP ---
 const client = new Client({
-	intents: [
-		GatewayIntentBits.Guilds,
-		GatewayIntentBits.GuildMessages,
-		GatewayIntentBits.MessageContent,
-		GatewayIntentBits.GuildMembers
-	],
-	partials: [Partials.Channel]
+    intents: [
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.MessageContent,
+        GatewayIntentBits.GuildMembers
+    ],
+    partials: [Partials.Message, Partials.Channel, Partials.GuildMember, Partials.User]
 });
 
-// 🌍 Express Setup
-const app = express();
-const PORT = 3000;
-app.get('/', (_, res) => res.send('Bot is alive.'));
-app.use('/transcripts', express.static(path.join(__dirname, 'transcripts')));
-app.listen(PORT, () => console.log(`🌐 Express running on port ${PORT}`));
-setInterval(() => {
-	require('node-fetch')(`http://localhost:${PORT}`).catch(() => {});
-}, 5 * 60 * 1000);
+// --- MONGOOSE TAG SYSTEM ---
+mongoose.connect('mongodb://127.0.0.1:27017/tagdb').then(() => {
+    console.log('[MONGO] Connected.');
+}).catch(err => console.error('[MONGO] Error:', err));
 
-// 🌐 MongoDB Setup
-mongoose.connect(process.env.MONGO_URI, {
-	useNewUrlParser: true,
-	useUnifiedTopology: true
-}).then(() => console.log("✅ Connected to MongoDB"))
-  .catch(err => console.error("❌ MongoDB Error:", err));
-
-// 🧠 MongoDB Schema
 const tagSchema = new mongoose.Schema({
-	name: String,
-	content: String,
-	author: String,
+    guildId: String,
+    name: String,
+    content: String,
+    creatorId: String,
 });
 const Tag = mongoose.model('Tag', tagSchema);
 
-// 💬 Command Handler
-client.commands = new Map();
-const prefix = "$";
+// --- EXPRESS + SELF PING ---
+app.get('/', (req, res) => res.send('Bot is alive!'));
+app.listen(PORT, () => console.log(`[EXPRESS] Web server listening on port ${PORT}`));
+setInterval(() => require('node-fetch')(`http://localhost:${PORT}`), 60_000);
 
-client.on('messageCreate', async (message) => {
-	if (!message.content.startsWith(prefix) || message.author.bot) return;
-
-	const args = message.content.slice(prefix.length).trim().split(/ +/);
-	const commandName = args.shift().toLowerCase();
-
-	// ---- $tag ----
-	if (commandName === 'tag') {
-		const name = args[0];
-		if (!name) return message.reply('❌ Provide a tag name.');
-		const tag = await Tag.findOne({ name });
-		if (!tag) return message.reply('❌ Tag not found.');
-		return message.channel.send(tag.content);
-	}
-
-	// ---- $tagcreate ----
-	if (commandName === 'tagcreate') {
-		const name = args.shift();
-		const content = args.join(' ');
-		if (!name || !content) return message.reply('❌ Provide a tag name and content.');
-		const exists = await Tag.findOne({ name });
-		if (exists) return message.reply('❌ Tag already exists.');
-		await Tag.create({ name, content, author: message.author.id });
-		return message.reply(`✅ Tag \`${name}\` created.`);
-	}
-
-	// ---- $tagdelete ----
-	if (commandName === 'tagdelete') {
-		const name = args[0];
-		if (!name) return message.reply('❌ Provide a tag name.');
-		const tag = await Tag.findOne({ name });
-		if (!tag) return message.reply('❌ Tag not found.');
-		if (tag.author !== message.author.id && message.author.id !== OWNER_ID)
-			return message.reply('❌ You are not the owner of this tag.');
-		await Tag.deleteOne({ name });
-		return message.reply(`✅ Tag \`${name}\` deleted.`);
-	}
-
-	// ---- $tagedit ----
-	if (commandName === 'tagedit') {
-		const name = args.shift();
-		const newContent = args.join(' ');
-		if (!name || !newContent) return message.reply('❌ Provide tag name and new content.');
-		const tag = await Tag.findOne({ name });
-		if (!tag) return message.reply('❌ Tag not found.');
-		if (tag.author !== message.author.id && message.author.id !== OWNER_ID)
-			return message.reply('❌ You are not the owner of this tag.');
-		tag.content = newContent;
-		await tag.save();
-		return message.reply(`✅ Tag \`${name}\` updated.`);
-	}
-
-	// ---- $taglist ----
-	if (commandName === 'taglist') {
-		const tags = await Tag.find({});
-		if (!tags.length) return message.reply('📭 No tags found.');
-		const embed = new EmbedBuilder()
-			.setTitle('📚 All Tags')
-			.setDescription(tags.map(t => `• \`${t.name}\``).join('\n'))
-			.setColor('Blue');
-		return message.channel.send({ embeds: [embed] });
-	}
+// --- BOT READY ---
+client.once('ready', () => {
+    console.log(`[BOT] Logged in as ${client.user.tag}`);
 });
 
-// 🎫 Interactions
-client.on('interactionCreate', async (interaction) => {
-	if (interaction.isButton()) {
-		if (interaction.customId === 'createTicket') {
-			const modal = new ModalBuilder().setCustomId('ticketModal').setTitle('Middleman Ticket');
+// --- COMMANDS ---
+client.on('messageCreate', async message => {
+    if (!message.guild || message.author.bot) return;
 
-			const inputs = [
-				new TextInputBuilder().setCustomId('q1').setLabel("What's the trade?").setStyle(TextInputStyle.Short),
-				new TextInputBuilder().setCustomId('q2').setLabel("What's your side?").setStyle(TextInputStyle.Short),
-				new TextInputBuilder().setCustomId('q3').setLabel("What's their side?").setStyle(TextInputStyle.Short),
-				new TextInputBuilder().setCustomId('q4').setLabel("Their Roblox User ID?").setStyle(TextInputStyle.Short).setRequired(false)
-			];
+    const prefix = '$';
+    if (!message.content.startsWith(prefix)) return;
+    const args = message.content.slice(prefix.length).trim().split(/ +/);
+    const command = args.shift().toLowerCase();
 
-			modal.addComponents(...inputs.map(i => new ActionRowBuilder().addComponents(i)));
-			return interaction.showModal(modal);
-		}
+    // $setup
+    if (command === 'setup') {
+        const embed = new EmbedBuilder()
+            .setTitle('Middleman Request')
+            .setDescription('Click the button below to open a ticket.
+You will be asked:
+1. What's the trade?
+2. What's the side?
+3. What's their side?
+4. What's their user ID?')
+            .setColor(0x00AE86);
 
-		if (interaction.customId === 'deleteTicket') {
-			await interaction.channel.delete().catch(() => {});
-		}
+        const button = new ButtonBuilder()
+            .setCustomId('create_ticket')
+            .setLabel('Request Middleman')
+            .setStyle(ButtonStyle.Success);
 
-		if (interaction.customId === 'transcript') {
-			const messages = await interaction.channel.messages.fetch({ limit: 100 });
-			const content = [...messages.values()].reverse().map(m => `${m.author.tag}: ${m.content}`).join('\n');
-			const fileName = `${interaction.channel.id}.html`;
-			const filePath = path.join(__dirname, 'transcripts', fileName);
-			const html = `<html><body><pre>${content}</pre></body></html>`;
-			fs.writeFileSync(filePath, html);
-			const url = `http://localhost:${PORT}/transcripts/${fileName}`;
-			const embed = new EmbedBuilder().setTitle('📄 Transcript').setDescription(`[View Transcript](${url})`).setColor('Green');
-			return interaction.reply({ embeds: [embed], ephemeral: true });
-		}
-	}
+        const row = new ActionRowBuilder().addComponents(button);
 
-	if (interaction.isModalSubmit() && interaction.customId === 'ticketModal') {
-		const q1 = interaction.fields.getTextInputValue('q1');
-		const q2 = interaction.fields.getTextInputValue('q2');
-		const q3 = interaction.fields.getTextInputValue('q3');
-		const q4 = interaction.fields.getTextInputValue('q4') || 'Unknown';
+        const channel = await client.channels.fetch(PANEL_CHANNEL);
+        if (channel) channel.send({ embeds: [embed], components: [row] });
+        return message.reply('â Panel has been sent.');
+    }
 
-		const ticketChannel = await interaction.guild.channels.create({
-			name: `ticket-${interaction.user.username}`,
-			type: 0,
-			parent: TICKET_CATEGORY,
-			permissionOverwrites: [
-				{ id: interaction.guild.roles.everyone, deny: [PermissionsBitField.Flags.ViewChannel] },
-				{ id: interaction.user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
-				{ id: OWNER_ID, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
-				{ id: MIDDLEMAN_ROLE, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] }
-			]
-		});
+    // $tagcreate <name> <content>
+    if (command === 'tagcreate') {
+        const [name, ...contentArr] = args;
+        const content = contentArr.join(' ');
+        if (!name || !content) return message.reply('Usage: `$tagcreate <name> <content>`');
+        const exists = await Tag.findOne({ guildId: message.guild.id, name });
+        if (exists) return message.reply('â Tag already exists.');
+        await Tag.create({ guildId: message.guild.id, name, content, creatorId: message.author.id });
+        return message.reply(`â Tag \`${name}\` created.`);
+    }
 
-		const embed = new EmbedBuilder()
-			.setTitle('🎟️ New Ticket')
-			.setDescription(`**Trade:** ${q1}\n**Their Side:** ${q3}\n**Your Side:** ${q2}\n**User ID:** ${q4}`)
-			.setColor('Blue')
-			.setFooter({ text: `User: ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() });
+    // $tag <name>
+    if (command === 'tag') {
+        const name = args[0];
+        if (!name) return message.reply('Usage: `$tag <name>`');
+        const tag = await Tag.findOne({ guildId: message.guild.id, name });
+        if (!tag) return message.reply('â Tag not found.');
+        return message.channel.send(tag.content);
+    }
 
-		ticketChannel.send({ content: `<@${interaction.user.id}> <@&${MIDDLEMAN_ROLE}>`, embeds: [embed] });
-		return interaction.reply({ content: `✅ Ticket created: ${ticketChannel}`, ephemeral: true });
-	}
+    // $tagdelete <name>
+    if (command === 'tagdelete') {
+        const name = args[0];
+        if (!name) return message.reply('Usage: `$tagdelete <name>`');
+        const deleted = await Tag.findOneAndDelete({ guildId: message.guild.id, name });
+        if (!deleted) return message.reply('â Tag not found.');
+        return message.reply(`â Tag \`${name}\` deleted.`);
+    }
+
+    // $close
+    if (command === 'close') {
+        if (message.channel.parentId !== TICKET_CATEGORY) return message.reply('â Not a ticket channel.');
+
+        const member = message.guild.members.cache.get(message.channel.topic);
+        if (member) await message.channel.permissionOverwrites.edit(member, { SendMessages: false, ViewChannel: false });
+
+        const row = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId('transcript').setLabel('Transcript').setStyle(ButtonStyle.Primary),
+            new ButtonBuilder().setCustomId('delete').setLabel('Delete').setStyle(ButtonStyle.Danger)
+        );
+
+        return message.channel.send({ content: 'Ticket closed. What do you want to do next?', components: [row] });
+    }
+
+    // $open
+    if (command === 'open') {
+        if (message.channel.parentId !== TICKET_CATEGORY) return message.reply('â Not a ticket channel.');
+        const member = message.guild.members.cache.get(message.channel.topic);
+        if (member) await message.channel.permissionOverwrites.edit(member, { SendMessages: true, ViewChannel: true });
+        return message.reply('â Ticket reopened.');
+    }
+
+    // $delete
+    if (command === 'delete') {
+        if (message.channel.parentId !== TICKET_CATEGORY) return message.reply('â Not a ticket channel.');
+        return message.channel.delete();
+    }
+
+    // $transcript
+    if (command === 'transcript') {
+        const messages = await message.channel.messages.fetch({ limit: 100 });
+        const content = messages.reverse().map(m => `${m.author.tag}: ${m.content}`).join('<br>');
+        const html = `<html><body><pre>${content}</pre></body></html>`;
+        const fileName = `transcript-${message.channel.id}.html`;
+        const filePath = path.join(__dirname, 'transcripts', fileName);
+
+        fs.mkdirSync(path.dirname(filePath), { recursive: true });
+        fs.writeFileSync(filePath, html);
+
+        const url = `http://localhost:${PORT}/transcripts/${fileName}`;
+        const transcriptEmbed = new EmbedBuilder()
+            .setTitle('Transcript')
+            .setDescription(`[Click to view transcript](${url})`)
+            .setColor(0x3498db);
+
+        const channel = await client.channels.fetch(TRANSCRIPT_CHANNEL);
+        if (channel?.isTextBased()) channel.send({ embeds: [transcriptEmbed] });
+        return message.reply({ embeds: [transcriptEmbed] });
+    }
 });
 
-// ✅ Login
-client.login(process.env.TOKEN);
+// --- PANEL INTERACTION ---
+client.on('interactionCreate', async interaction => {
+    if (interaction.isButton() && interaction.customId === 'create_ticket') {
+        const modal = new ModalBuilder()
+            .setCustomId('ticket_modal')
+            .setTitle('Middleman Ticket')
+            .addComponents(
+                new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('q1').setLabel("What's the trade?").setStyle(TextInputStyle.Short).setRequired(true)),
+                new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('q2').setLabel("What's the side?").setStyle(TextInputStyle.Short).setRequired(true)),
+                new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('q3').setLabel("What's their side?").setStyle(TextInputStyle.Short).setRequired(true)),
+                new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('q4').setLabel("What's their user ID?").setStyle(TextInputStyle.Short).setRequired(false))
+            );
+        await interaction.showModal(modal);
+    }
+
+    if (interaction.isModalSubmit() && interaction.customId === 'ticket_modal') {
+        const [q1, q2, q3, q4] = ['q1', 'q2', 'q3', 'q4'].map(id => interaction.fields.getTextInputValue(id));
+        const userId = q4 || 'Unknown User';
+        const ticketName = `ticket-${interaction.user.username}`;
+        const channel = await interaction.guild.channels.create({
+            name: ticketName,
+            type: ChannelType.GuildText,
+            parent: TICKET_CATEGORY,
+            topic: interaction.user.id,
+            permissionOverwrites: [
+                { id: interaction.guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
+                { id: interaction.user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
+                { id: OWNER_ID, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
+                { id: MIDDLEMAN_ROLE, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] }
+            ]
+        });
+
+        const embed = new EmbedBuilder()
+            .setTitle('New Ticket Created')
+            .addFields(
+                { name: 'What's the trade?', value: q1 },
+                { name: 'What's the side?', value: q2 },
+                { name: 'What's their side?', value: q3 },
+                { name: 'User ID', value: userId }
+            )
+            .setColor(0x00AE86);
+
+        await channel.send({ content: `<@${interaction.user.id}> <@&${MIDDLEMAN_ROLE}>`, embeds: [embed] });
+        await interaction.reply({ content: `â Ticket created: ${channel}`, ephemeral: true });
+    }
+
+    if (interaction.isButton() && interaction.customId === 'transcript') {
+        interaction.deferReply();
+        message.channel.send('$transcript');
+    }
+
+    if (interaction.isButton() && interaction.customId === 'delete') {
+        interaction.channel.delete();
+    }
+});
+
+client.login(TOKEN);
