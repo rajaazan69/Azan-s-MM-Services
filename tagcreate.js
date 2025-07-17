@@ -1,9 +1,6 @@
 // commands/tagcreate.js
 const { SlashCommandBuilder } = require('discord.js');
-const fs = require('fs');
-const path = require('path');
-
-const tagsPath = path.join(__dirname, '../data/tags.json');
+const Tag = require('../models/Tag');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -15,21 +12,25 @@ module.exports = {
       option.setName('content').setDescription('Content of the tag').setRequired(true)),
 
   async execute(interaction) {
-    const name = interaction.options.getString('name');
+    const name = interaction.options.getString('name').toLowerCase();
     const content = interaction.options.getString('content');
 
-    let tags = {};
-    if (fs.existsSync(tagsPath)) {
-      tags = JSON.parse(fs.readFileSync(tagsPath));
+    try {
+      const existing = await Tag.findOne({ name });
+      if (existing) {
+        return interaction.reply({ content: '❌ That tag already exists.', ephemeral: true });
+      }
+
+      await Tag.create({
+        name,
+        content,
+        createdBy: interaction.user.tag
+      });
+
+      return interaction.reply({ content: `✅ Tag \`${name}\` created successfully.`, ephemeral: true });
+    } catch (err) {
+      console.error('Error creating tag:', err);
+      return interaction.reply({ content: '❌ Failed to create tag due to an error.', ephemeral: true });
     }
-
-    if (tags[name]) {
-      return interaction.reply({ content: '❌ That tag already exists.', ephemeral: true });
-    }
-
-    tags[name] = { content, createdBy: interaction.user.tag };
-    fs.writeFileSync(tagsPath, JSON.stringify(tags, null, 2));
-
-    await interaction.reply({ content: `✅ Tag \`${name}\` has been created.`, ephemeral: true });
   }
 };
