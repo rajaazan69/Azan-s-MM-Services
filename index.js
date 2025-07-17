@@ -1,3 +1,33 @@
+function formatDate(dateString) {
+    const date = new Date(dateString);
+    const M = date.getMonth() + 1;
+    const D = date.getDate();
+    const Y = date.getFullYear();
+    let H = date.getHours();
+    const MIN = date.getMinutes().toString().padStart(2, '0');
+    const S = date.getSeconds().toString().padStart(2, '0');
+    const ampm = H >= 12 ? 'PM' : 'AM';
+    H = H % 12 || 12;
+    return `${M}/${D}/${Y} - ${H}:${MIN}:${S} ${ampm}`;
+}
+
+function timeAgo(dateString) {
+    const date = new Date(dateString);
+    const now = new Date();
+    const seconds = Math.round((now - date) / 1000);
+    const minutes = Math.round(seconds / 60);
+    const hours = Math.round(minutes / 60);
+    const days = Math.round(hours / 24);
+    const months = Math.round(days / 30.4375);
+    const years = Math.round(days / 365.25);
+
+    if (years > 0) return `${years} year${years > 1 ? 's' : ''} ago`;
+    if (months > 0) return `${months} month${months > 1 ? 's' : ''} ago`;
+    if (days > 0) return `${days} day${days > 1 ? 's' : ''} ago`;
+    if (hours > 0) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+    if (minutes > 0) return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
+    return `${seconds} second${seconds !== 1 ? 's' : ''} ago`;
+}
 const {
   Client, GatewayIntentBits, Partials, ChannelType, PermissionsBitField,
   ActionRowBuilder, ModalBuilder, TextInputBuilder, TextInputStyle,
@@ -9,6 +39,8 @@ const fs = require('fs');
 const path = require('path');
 require('dotenv').config();
 const { MongoClient } = require('mongodb');
+const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const axios = require('axios');
 
 const mongoUri = process.env.MONGO_URI;
 const mongoClient = new MongoClient(mongoUri);
@@ -77,6 +109,15 @@ client.once('ready', async () => {
       new SlashCommandBuilder().setName('tag').setDescription('Send a saved tag').addStringOption(o => o.setName('name').setDescription('Tag name').setRequired(true)),
       new SlashCommandBuilder().setName('tagdelete').setDescription('Delete a tag').addStringOption(o => o.setName('name').setDescription('Tag name').setRequired(true)),
       new SlashCommandBuilder().setName('taglist').setDescription('List all tags')
+      new SlashCommandBuilder()
+    .setName('i')
+    .setDescription('Fetch Roblox info by username or ID')
+    .addStringOption(option =>
+        option.setName('username_or_id')
+            .setDescription('Roblox username or ID')
+            .setRequired(true)
+    )
+    .toJSON()
     ].map(cmd => cmd.toJSON());
 
     await rest.put(Routes.applicationCommands(client.user.id), { body: commands });
@@ -278,6 +319,45 @@ client.on('interactionCreate', async interaction => {
         await handleTranscript(interaction, channel);
       }
     }
+          if (commandName === 'i') {
+        const username = options.getString('username');
+        if (!username) return interaction.reply({ content: '❌ Provide a Roblox username.', ephemeral: true });
+
+        try {
+          await interaction.deferReply({ ephemeral: true });
+          const userInfo = await axios.get(`https://users.roblox.com/v1/usernames/users`, {
+            headers: { 'Content-Type': 'application/json' },
+            data: { usernames: [username], excludeBannedUsers: false },
+            method: 'POST'
+          });
+
+          if (!userInfo.data.data.length) {
+            return interaction.editReply({ content: '❌ No user found with that username.' });
+          }
+
+          const id = userInfo.data.data[0].id;
+          const details = await axios.get(`https://users.roblox.com/v1/users/${id}`);
+          const avatar = await axios.get(`https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${id}&size=420x420&format=png`);
+
+          const embed = new EmbedBuilder()
+            .setTitle(`🔎 Roblox Info for ${details.data.name}`)
+            .setThumbnail(avatar.data.data[0].imageUrl)
+            .setColor('Random')
+            .addFields(
+              { name: 'Display Name', value: details.data.displayName || 'Unknown', inline: true },
+              { name: 'Username', value: details.data.name, inline: true },
+              { name: 'User ID', value: id.toString(), inline: true },
+              { name: 'Description', value: details.data.description || 'No description.', inline: false },
+              { name: 'Profile', value: `https://roblox.com/users/${id}/profile`, inline: false }
+            )
+            .setFooter({ text: 'Powered by Roblox API' });
+
+          return interaction.editReply({ embeds: [embed] });
+        } catch (err) {
+          console.error(err);
+          return interaction.editReply({ content: '❌ Failed to fetch user info.' });
+        }
+      }
 
     // ✅ BUTTON: Open Modal
     if (interaction.isButton() && interaction.customId === 'openTicket') {
