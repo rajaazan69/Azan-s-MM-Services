@@ -4,7 +4,9 @@ const {
   EmbedBuilder, ButtonBuilder, ButtonStyle, AttachmentBuilder,
   SlashCommandBuilder, REST, Routes
 } = require('discord.js');
+
 const express = require('express');
+const fetch = require('node-fetch');
 const fs = require('fs');
 const path = require('path');
 require('dotenv').config();
@@ -292,8 +294,6 @@ client.on('interactionCreate', async interaction => {
   const username = options.getString('username');
   await interaction.deferReply({ ephemeral: false }).catch(() => {});
 
-  const fetch = require('node-fetch');
-  const { EmbedBuilder, ButtonBuilder, ActionRowBuilder, ButtonStyle } = require('discord.js');
 
   function formatDate(dateString) {
     const date = new Date(dateString);
