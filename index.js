@@ -1,3 +1,4 @@
+const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } = require('discord.js');
 const {
   Client, GatewayIntentBits, Partials, ChannelType, PermissionsBitField,
   ActionRowBuilder, ModalBuilder, TextInputBuilder, TextInputStyle,
@@ -279,23 +280,6 @@ client.on('interactionCreate', async interaction => {
       }
     }
     
-if (commandName === 'i') {
-  try {
-    await interaction.deferReply();
-    const username = options.getString('username');
-
-    // Your existing Roblox lookup logic goes here...
-
-  } catch (error) {
-    console.error("An error occurred in /i command:", error);
-    if (interaction.replied || interaction.deferred) {
-      await interaction.editReply("An unexpected error occurred while processing the user info.");
-    } else {
-      await interaction.reply("An unexpected error occurred.");
-    }
-  }
-}
-
     // ✅ BUTTON: Open Modal
     if (interaction.isButton() && interaction.customId === 'openTicket') {
       const modal = new ModalBuilder()
