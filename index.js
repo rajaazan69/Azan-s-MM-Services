@@ -304,41 +304,46 @@ client.on('interactionCreate', async interaction => {
       return interaction.editReply({ content: '❌ User not found.' });
     }
 
-    const [profileRes, followersRes, followingRes] = await Promise.all([
+    const [profileRes, followersRes, followingRes, avatarRes] = await Promise.all([
       fetch(`https://users.roblox.com/v1/users/${user.id}`),
       fetch(`https://friends.roblox.com/v1/users/${user.id}/followers/count`),
-      fetch(`https://friends.roblox.com/v1/users/${user.id}/followings/count`)
+      fetch(`https://friends.roblox.com/v1/users/${user.id}/followings/count`),
+      fetch(`https://thumbnails.roblox.com/v1/users/avatar?userIds=${user.id}&size=720x720&format=Png&isCircular=false`)
     ]);
 
     const profile = await profileRes.json();
     const followers = await followersRes.json();
     const following = await followingRes.json();
+    const avatarData = await avatarRes.json();
+    const avatarUrl = avatarData.data?.[0]?.imageUrl || null;
 
     const createdDate = new Date(profile.created);
     const now = new Date();
     const yearsOld = ((now - createdDate) / (1000 * 60 * 60 * 24 * 365)).toFixed(1);
 
     const embed = new EmbedBuilder()
-      .setTitle(`🧾 Roblox User Information`)
-      .setColor('#E2231A')
-      .setThumbnail(`https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${user.id}&size=150x150&format=Png&isCircular=true`)
-      .setImage(`https://thumbnails.roblox.com/v1/users/avatar?userIds=${user.id}&size=420x420&format=Png`)
-      .setDescription(`**Display Name:** ${profile.displayName}\n**Username:** \`${profile.name}\`\n**User ID:** \`${user.id}\``)
-      .addFields(
-        { name: 'Account Created', value: `<t:${Math.floor(createdDate.getTime() / 1000)}:F>`, inline: true },
-        { name: ' Account Age', value: `**${yearsOld}** years`, inline: true },
-        { name: '\u200B', value: '\u200B', inline: true }, // spacer row
+  .setTitle(`Roblox User Information`)
+  .setColor('#000000')
+  .setThumbnail(`https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${user.id}&size=150x150&format=Png&isCircular=true`)
+  .setImage(avatarUrl)
+  .addFields(
+    { name: 'Display Name', value: `${profile.displayName}`, inline: false },
+    { name: 'Username', value: `${profile.name}`, inline: false },
+    { name: 'User ID', value: `${user.id}`, inline: false },
+    { name: '\u200B', value: '\u200B', inline: false },
 
-        { name: 'Followers', value: `**${followers.count.toLocaleString()}**`, inline: true },
-        { name: 'Following', value: `**${following.count.toLocaleString()}**`, inline: true },
-        { name: '\u200B', value: '\u200B', inline: true }
-      )
-      .setFooter({ text: 'Roblox Profile Info', iconURL: 'https://tr.rbxcdn.com/4f82333f5f54d234e95d1f81251a67dc/150/150/Image/Png' })
-      .setTimestamp();
+    { name: 'Account Created', value: `<t:${Math.floor(createdDate.getTime() / 1000)}:F>`, inline: false },
+    { name: 'Account Age', value: `${yearsOld} years`, inline: false },
+    { name: '\u200B', value: '\u200B', inline: false },
 
+    { name: 'Followers', value: `${followers.count.toLocaleString()}`, inline: false },
+    { name: 'Following', value: `${following.count.toLocaleString()}`, inline: false }
+  )
+  .setFooter({ text: 'Roblox Profile Info', iconURL: 'https://tr.rbxcdn.com/4f82333f5f54d234e95d1f81251a67dc/150/150/Image/Png' })
+  .setTimestamp();
     const button = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
-        .setLabel('🔗 View Profile')
+        .setLabel('View Profile')
         .setStyle(ButtonStyle.Link)
         .setURL(`https://www.roblox.com/users/${user.id}/profile`)
     );
