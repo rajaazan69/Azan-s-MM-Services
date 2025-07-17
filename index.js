@@ -1,5 +1,5 @@
 const {
-  Client, GatewayIntentBits, Partials, ChannelType, PermissionsBitField,
+  Client, GatewayIntentBits, Partials, ChannelType, PermissionsBitField, PermissionFlagsBits,
   ActionRowBuilder, ModalBuilder, TextInputBuilder, TextInputStyle,
   EmbedBuilder, ButtonBuilder, ButtonStyle, AttachmentBuilder,
   SlashCommandBuilder, REST, Routes
