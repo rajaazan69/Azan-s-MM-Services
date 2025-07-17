@@ -32,7 +32,7 @@ const {
   Client, GatewayIntentBits, Partials, ChannelType, PermissionsBitField,
   ActionRowBuilder, ModalBuilder, TextInputBuilder, TextInputStyle,
   EmbedBuilder, ButtonBuilder, ButtonStyle, AttachmentBuilder,
-  const { SlashCommandBuilder, REST, Routes, ... } = require('discord.js');
+  const { SlashCommandBuilder, REST, Routes } = require('discord.js');
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
