@@ -5,21 +5,22 @@ const {
   SlashCommandBuilder, REST, Routes
 } = require('discord.js');
 const express = require('express');
-const fetch = require('node-fetch');
 const fs = require('fs');
 const path = require('path');
 require('dotenv').config();
 const { MongoClient } = require('mongodb');
 
-const mongoClient = new MongoClient(process.env.MONGO_URI);
+const mongoUri = process.env.MONGO_URI;
+const mongoClient = new MongoClient(mongoUri);
 let tagsCollection;
 
-mongoClient.connect()
-  .then(() => {
-    tagsCollection = mongoClient.db('ticketbot').collection('tags');
-    console.log('✅ Connected to MongoDB Atlas');
-  })
-  .catch(err => console.error('❌ MongoDB connection error:', err));
+mongoClient.connect().then(() => {
+  const db = mongoClient.db('ticketbot');
+  tagsCollection = db.collection('tags');
+  console.log('✅ Connected to MongoDB Atlas');
+}).catch(err => {
+  console.error('❌ MongoDB connection error:', err);
+});
 
 const tagsPath = path.join(__dirname, 'tag.json');
 let tags = {};
@@ -41,6 +42,7 @@ const client = new Client({
 const PORT = process.env.PORT || 3000;
 const OWNER_ID = '1356149794040446998';
 const MIDDLEMAN_ROLE = '1373062797545570525';
+const PANEL_CHANNEL = '1373048211538841702';
 const TICKET_CATEGORY = '1373027564926406796';
 const TRANSCRIPT_CHANNEL = '1373058123547283568';
 const BASE_URL = process.env.BASE_URL;
@@ -57,8 +59,8 @@ client.once('ready', async () => {
   console.log(`Bot online as ${client.user.tag}`);
   if (process.env.REGISTER_COMMANDS === 'true') {
     const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
-    const existing = await rest.get(Routes.applicationCommands(client.user.id));
-    for (const cmd of existing) {
+    const old = await rest.get(Routes.applicationCommands(client.user.id));
+    for (const cmd of old) {
       await rest.delete(Routes.applicationCommand(client.user.id, cmd.id));
     }
     console.log('✅ Old commands deleted');
@@ -74,22 +76,21 @@ client.once('ready', async () => {
       new SlashCommandBuilder().setName('tagcreate').setDescription('Create a tag').addStringOption(o => o.setName('name').setDescription('Tag name').setRequired(true)).addStringOption(o => o.setName('message').setDescription('Tag message').setRequired(true)),
       new SlashCommandBuilder().setName('tag').setDescription('Send a saved tag').addStringOption(o => o.setName('name').setDescription('Tag name').setRequired(true)),
       new SlashCommandBuilder().setName('tagdelete').setDescription('Delete a tag').addStringOption(o => o.setName('name').setDescription('Tag name').setRequired(true)),
-      new SlashCommandBuilder().setName('taglist').setDescription('List all tags'),
-      new SlashCommandBuilder().setName('i').setDescription('Fetch Roblox account info by username').addStringOption(option => option.setName('username').setDescription('The Roblox username to look up').setRequired(true)),
+      new SlashCommandBuilder().setName('taglist').setDescription('List all tags')
     ].map(cmd => cmd.toJSON());
 
     await rest.put(Routes.applicationCommands(client.user.id), { body: commands });
     console.log('✅ Slash commands registered');
   } else {
-    console.log('🟡 Skipping command registration');
+    console.log('🟡 Skipping command registration (REGISTER_COMMANDS is false)');
   }
 });
 
 client.on('interactionCreate', async interaction => {
   try {
-    if (interaction.isChatInputCommand()) {
-      const { commandName, options, channel, guild } = interaction;
+    const { commandName, options, channel, guild } = interaction;
 
+    if (interaction.isChatInputCommand()) {
       if (commandName === 'setup') {
         const target = options.getChannel('channel');
         const embed = new EmbedBuilder()
@@ -100,109 +101,185 @@ client.on('interactionCreate', async interaction => {
           new ButtonBuilder().setCustomId('openTicket').setLabel('Request Middleman').setStyle(ButtonStyle.Primary)
         );
         await target.send({ embeds: [embed], components: [btn] });
-        await interaction.reply({ content: '✅ Setup complete.', ephemeral: true });
+        await interaction.reply({ content: '✅ Setup complete.', ephemeral: true }).catch(() => {});
       }
 
       if (commandName === 'tagcreate') {
-        await interaction.deferReply({ ephemeral: true });
-        const name = options.getString('name');
-        const message = options.getString('message');
-        try {
-          await tagsCollection.updateOne({ name }, { $set: { message } }, { upsert: true });
-          await interaction.editReply({ content: `✅ Tag \`${name}\` saved.` });
-        } catch {
-          await interaction.editReply({ content: '❌ Failed to create tag.' });
-        }
-      }
+  await interaction.deferReply({ ephemeral: true }).catch(() => {});
+  const name = options.getString('name');
+  const message = options.getString('message');
+  try {
+    await tagsCollection.updateOne(
+      { name },
+      { $set: { message } },
+      { upsert: true }
+    );
+    await interaction.editReply({ content: `✅ Tag \`${name}\` saved.` });
+  } catch (err) {
+    console.error('❌ Tag create failed:', err);
+    await interaction.editReply({ content: '❌ Failed to create tag.' });
+  }
+} // ✅ <---- This is needed!
 
       if (commandName === 'tag') {
         const name = options.getString('name');
-        const tag = await tagsCollection.findOne({ name });
-        await interaction.reply({ content: tag ? tag.message.slice(0, 2000) : `❌ Tag \`${name}\` not found.` });
+        try {
+  const tag = await tagsCollection.findOne({ name });
+  if (tag) {
+    await interaction.reply({ content: tag.message.slice(0, 2000) });
+  } else {
+    await interaction.reply({ content: `❌ Tag \`${name}\` not found.` });
+  }
+} catch (err) {
+  console.error('❌ Tag read error:', err);
+  await interaction.reply({ content: '❌ Error reading tag.' });
+}
       }
 
       if (commandName === 'tagdelete') {
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ ephemeral: true }).catch(() => {});
         const name = options.getString('name');
-        const result = await tagsCollection.deleteOne({ name });
-        await interaction.editReply({ content: result.deletedCount ? `🗑️ Tag \`${name}\` deleted.` : `❌ Tag \`${name}\` not found.` });
+       try {
+  const result = await tagsCollection.deleteOne({ name });
+  if (result.deletedCount === 0) {
+    await interaction.editReply({ content: `❌ Tag \`${name}\` not found.` });
+  } else {
+    await interaction.editReply({ content: `🗑️ Tag \`${name}\` deleted.` });
+  }
+} catch (err) {
+  console.error('❌ Tag delete error:', err);
+  await interaction.editReply({ content: '❌ Failed to delete tag.' });
+}
       }
 
       if (commandName === 'taglist') {
-        const allTags = await tagsCollection.find({}).toArray();
-        const list = allTags.map(t => `• \`${t.name}\``).join('\n') || 'No tags found.';
-        await interaction.reply({ content: list });
+        try {
+  const tags = await tagsCollection.find({}).toArray();
+  const list = tags.map(t => `• \`${t.name}\``).join('\n') || 'No tags found.';
+  await interaction.reply({ content: list });
+} catch (err) {
+  console.error('❌ Tag list error:', err);
+  await interaction.reply({ content: '❌ Failed to fetch tag list.' });
+}
       }
 
       if (commandName === 'close') {
-        await interaction.deferReply({ ephemeral: true });
-        const parentId = channel.parentId;
-        if (parentId !== TICKET_CATEGORY) return await interaction.editReply({ content: '❌ You can only close ticket channels!' });
+  console.log('[DEBUG] /close command triggered');
 
-        const perms = channel.permissionOverwrites.cache;
-        const ticketOwner = [...perms.values()].find(po =>
-          po.allow.has(PermissionsBitField.Flags.ViewChannel) &&
-          ![OWNER_ID, MIDDLEMAN_ROLE, guild.id].includes(po.id)
-        )?.id;
+  if (!interaction.deferred && !interaction.replied) {
+    try {
+      await interaction.deferReply({ ephemeral: true });
+      console.log('[DEBUG] Interaction deferred');
+    } catch (err) {
+      console.error('[ERROR] Could not defer interaction:', err);
+      return;
+    }
+  }
 
-        await Promise.all([...perms.entries()]
-          .filter(([id]) => ![OWNER_ID, MIDDLEMAN_ROLE, guild.id].includes(id))
-          .map(([id]) => channel.permissionOverwrites.edit(id, {
-            SendMessages: false, ViewChannel: false
-          }).catch(() => {})));
+  try {
+    const parentId = channel.parentId || channel.parent?.id;
+    if (parentId !== TICKET_CATEGORY) {
+      return interaction.editReply({
+        content: '❌ You can only close ticket channels!'
+      });
+    }
 
-        const embed = new EmbedBuilder()
-          .setTitle('🔒 Ticket Closed')
-          .setDescription('Select an option below to generate the transcript or delete the ticket.')
-          .addFields(
-            { name: 'Ticket Name', value: channel.name, inline: true },
-            { name: 'Owner', value: ticketOwner ? `<@${ticketOwner}> (${ticketOwner})` : 'Unknown', inline: true }
-          )
-          .setColor('#2B2D31')
-          .setFooter({ text: `Closed by ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
-          .setTimestamp();
+    const perms = channel.permissionOverwrites.cache;
+    const ticketOwner = [...perms.values()].find(po =>
+      po.allow.has(PermissionsBitField.Flags.ViewChannel) &&
+      po.id !== OWNER_ID &&
+      po.id !== MIDDLEMAN_ROLE &&
+      po.id !== guild.id
+    )?.id;
 
-        const row = new ActionRowBuilder().addComponents(
-          new ButtonBuilder().setCustomId('transcript').setLabel('📄 Transcript').setStyle(ButtonStyle.Secondary),
-          new ButtonBuilder().setCustomId('delete').setLabel('🗑️ Delete').setStyle(ButtonStyle.Danger)
-        );
-        await interaction.editReply({ embeds: [embed], components: [row] });
+    // Lock the ticket - don't await each one individually
+    const updates = [...perms.entries()]
+      .filter(([id]) => ![OWNER_ID, MIDDLEMAN_ROLE, guild.id].includes(id))
+      .map(([id]) =>
+        channel.permissionOverwrites.edit(id, {
+          SendMessages: false,
+          ViewChannel: false
+        }).catch(err => {
+          console.warn(`⚠️ Could not update permissions for ${id}:`, err.code || err.message);
+        })
+      );
+
+    await Promise.allSettled(updates);
+
+    const embed = new EmbedBuilder()
+      .setTitle('🔒 Ticket Closed')
+      .setDescription('Select an option below to generate the transcript or delete the ticket.')
+      .addFields(
+        { name: 'Ticket Name', value: channel.name, inline: true },
+        {
+          name: 'Owner',
+          value: ticketOwner ? `<@${ticketOwner}> (${ticketOwner})` : 'Unknown',
+          inline: true
+        }
+      )
+      .setColor('#2B2D31')
+      .setFooter({
+        text: `Closed by ${interaction.user.tag}`,
+        iconURL: interaction.user.displayAvatarURL()
+      })
+      .setTimestamp();
+
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('transcript').setLabel('📄 Transcript').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('delete').setLabel('🗑️ Delete').setStyle(ButtonStyle.Danger)
+    );
+
+    await interaction.editReply({ embeds: [embed], components: [row] });
+    console.log('[DEBUG] Close panel sent');
+
+  } catch (err) {
+    console.error('❌ /close command error:', err);
+    try {
+      if (!interaction.replied && !interaction.deferred) {
+        await interaction.reply({ content: '❌ Failed to close ticket.', ephemeral: true });
+      } else {
+        await interaction.editReply({ content: '❌ Failed to close ticket.' });
       }
-
+    } catch (editErr) {
+      console.error('❌ Failed to send error reply:', editErr);
+    }
+  }
+}
       if (commandName === 'delete') {
-        const parentId = channel.parentId;
+        const parentId = channel.parentId || channel.parent?.id;
         if (parentId === TICKET_CATEGORY) await channel.delete();
         else await interaction.reply({ content: '❌ You can only delete ticket channels!', ephemeral: true });
       }
 
       if (commandName === 'rename') {
-        if (channel.parentId !== TICKET_CATEGORY) return await interaction.reply({ content: '❌ You can only rename ticket channels!', ephemeral: true });
         const newName = options.getString('name');
+        if ((channel.parentId || channel.parent?.id) !== TICKET_CATEGORY) return interaction.reply({ content: '❌ You can only rename ticket channels!', ephemeral: true });
         await channel.setName(newName);
-        await interaction.reply({ content: `✅ Renamed to \`${newName}\``, ephemeral: true });
+        return interaction.reply({ content: `✅ Renamed to \`${newName}\``, ephemeral: true });
       }
 
       if (commandName === 'add') {
-        if (channel.parentId !== TICKET_CATEGORY) return await interaction.reply({ content: '❌ You can only add users in ticket channels!', ephemeral: true });
         const user = options.getUser('user');
+        if ((channel.parentId || channel.parent?.id) !== TICKET_CATEGORY) return interaction.reply({ content: '❌ You can only add users in ticket channels!', ephemeral: true });
         await channel.permissionOverwrites.edit(user.id, { SendMessages: true, ViewChannel: true });
         await interaction.reply({ content: `✅ ${user} added.`, ephemeral: true });
       }
 
       if (commandName === 'remove') {
-        if (channel.parentId !== TICKET_CATEGORY) return await interaction.reply({ content: '❌ You can only remove users in ticket channels!', ephemeral: true });
         const user = options.getUser('user');
+        if ((channel.parentId || channel.parent?.id) !== TICKET_CATEGORY) return interaction.reply({ content: '❌ You can only remove users in ticket channels!', ephemeral: true });
         await channel.permissionOverwrites.delete(user.id);
         await interaction.reply({ content: `✅ ${user} removed.`, ephemeral: true });
       }
 
       if (commandName === 'transcript') {
-        if (channel.parentId !== TICKET_CATEGORY) return await interaction.reply({ content: '❌ You can only generate transcripts in ticket channels!', ephemeral: true });
-        await interaction.deferReply({ ephemeral: true });
+        if ((channel.parentId || channel.parent?.id) !== TICKET_CATEGORY) return interaction.reply({ content: '❌ You can only generate transcripts in ticket channels!', ephemeral: true });
+        await interaction.deferReply({ ephemeral: true }).catch(() => {});
         await handleTranscript(interaction, channel);
       }
-
-      if (commandName === 'i') {
+    }
+    
+if (commandName === 'i') {
         await interaction.deferReply();
         const username = options.getString('username');
         // Roblox lookup logic remains untouched...
@@ -210,69 +287,234 @@ client.on('interactionCreate', async interaction => {
       }
     }
 
-    if (interaction.isButton()) {
-      if (interaction.customId === 'openTicket') {
-        const modal = new ModalBuilder()
-          .setCustomId('ticketModal')
-          .setTitle('Middleman Request')
-          .addComponents(
-            new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('q1').setLabel("What's the trade?").setStyle(TextInputStyle.Short).setRequired(true)),
-            new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('q2').setLabel("What's your side?").setStyle(TextInputStyle.Paragraph).setRequired(true)),
-            new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('q3').setLabel("What's their side?").setStyle(TextInputStyle.Paragraph).setRequired(true)),
-            new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('q4').setLabel("Their Discord ID?").setStyle(TextInputStyle.Short).setRequired(true))
-          );
-        await interaction.showModal(modal);
-      }
+    // ✅ BUTTON: Open Modal
+    if (interaction.isButton() && interaction.customId === 'openTicket') {
+      const modal = new ModalBuilder()
+        .setCustomId('ticketModal')
+        .setTitle('Middleman Request')
+        .addComponents(
+          new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('q1').setLabel("What's the trade?").setStyle(TextInputStyle.Short).setRequired(true)),
+          new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('q2').setLabel("What's your side?").setStyle(TextInputStyle.Paragraph).setRequired(true)),
+          new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('q3').setLabel("What's their side?").setStyle(TextInputStyle.Paragraph).setRequired(true)),
+          new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('q4').setLabel("Their Discord ID?").setStyle(TextInputStyle.Short).setRequired(true))
+        );
+      await interaction.showModal(modal).catch(console.error);
+    }
 
-      if (interaction.customId === 'transcript') {
-        if (interaction.channel.parentId !== TICKET_CATEGORY) return await interaction.reply({ content: '❌ You can only use this inside ticket channels.', ephemeral: true });
-        await interaction.deferReply({ ephemeral: true });
-        await handleTranscript(interaction, interaction.channel);
+    // ✅ BUTTON: Transcript Fix
+    if (interaction.isButton() && interaction.customId === 'transcript') {
+      const parentId = interaction.channel.parentId || interaction.channel.parent?.id;
+      if (parentId !== TICKET_CATEGORY) {
+        return interaction.reply({ content: '❌ You can only use this inside ticket channels.', ephemeral: true });
       }
+      await interaction.deferReply({ ephemeral: true }).catch(() => {});
+      await handleTranscript(interaction, interaction.channel);
+    }
+    const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 
-      if (interaction.customId === 'delete') {
-        await interaction.channel.delete().catch(() => {});
-      }
+// Format creation date & time ago
+const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const axios = (() => { try { return require('axios'); } catch (e) { return null; } })();
+
+function formatDate(dateString) {
+    const date = new Date(dateString);
+    const M = date.getMonth() + 1;
+    const D = date.getDate();
+    const Y = date.getFullYear();
+    let H = date.getHours();
+    const MIN = date.getMinutes().toString().padStart(2, '0');
+    const S = date.getSeconds().toString().padStart(2, '0');
+    const ampm = H >= 12 ? 'PM' : 'AM';
+    H = H % 12;
+    H = H ? H : 12;
+    return `${M}/${D}/${Y} - ${H}:${MIN}:${S} ${ampm}`;
+}
+
+function timeAgo(dateString) {
+    const date = new Date(dateString);
+    const now = new Date();
+    const seconds = Math.round(Math.abs(now - date) / 1000);
+    const minutes = Math.round(seconds / 60);
+    const hours = Math.round(minutes / 60);
+    const days = Math.round(hours / 24);
+    const months = Math.round(days / 30.4375);
+    const years = Math.round(days / 365.25);
+
+    if (years > 0) return `${years} year${years > 1 ? 's' : ''} ago`;
+    if (months > 0) return `${months} month${months > 1 ? 's' : ''} ago`;
+    if (days > 0) return `${days} day${days > 1 ? 's' : ''} ago`;
+    if (hours > 0) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+    if (minutes > 0) return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
+    return `${seconds} second${seconds !== 1 ? 's' : ''} ago`;
+}
+
+module.exports = {
+    data: new SlashCommandBuilder()
+        .setName('robloxuser')
+        .setDescription('Fetch Roblox user info by username or ID')
+        .addStringOption(option =>
+            option.setName('query')
+                .setDescription('Roblox username or ID')
+                .setRequired(true)
+        ),
+    async execute(interaction) {
+        if (!axios) {
+            return interaction.reply({ content: 'Axios is not installed. Please install it using `npm install axios`.', ephemeral: true });
+        }
+
+        const query = interaction.options.getString('query');
+        let userId = null;
+        let userData = null;
+        let userThumbnailUrl = 'https://www.roblox.com/images/logo/roblox_logo_300x300.png';
+
+        await interaction.deferReply();
+
+        try {
+            if (isNaN(parseInt(query))) {
+                const usernameResponse = await axios.post('https://users.roblox.com/v1/usernames/users', {
+                    usernames: [query],
+                    excludeBannedUsers: false
+                });
+                if (usernameResponse.data?.data?.length > 0) {
+                    userId = usernameResponse.data.data[0].id;
+                } else {
+                    return interaction.editReply(`Could not find a Roblox user with the username "${query}".`);
+                }
+            } else {
+                userId = parseInt(query);
+            }
+
+            if (!userId) {
+                return interaction.editReply(`Could not resolve "${query}" to a Roblox User ID.`);
+            }
+
+            const userDetailsResponse = await axios.get(`https://users.roblox.com/v1/users/${userId}`);
+            userData = userDetailsResponse.data;
+
+            try {
+                const thumbnailResponse = await axios.get(`https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${userId}&size=150x150&format=Png&isCircular=false`);
+                if (thumbnailResponse.data?.data?.length > 0) {
+                    userThumbnailUrl = thumbnailResponse.data.data[0].imageUrl;
+                }
+            } catch (thumbError) {
+                console.warn(`[RobloxInfo] Could not fetch thumbnail for user ID ${userId}: ${thumbError.message}`);
+            }
+
+            const profileLink = `https://www.roblox.com/users/${userId}/profile`;
+            const embed = new EmbedBuilder()
+                .setColor(userData.isBanned ? 0xFF0000 : '#000000')
+                .setAuthor({ name: userData.name, iconURL: userThumbnailUrl, url: profileLink })
+                .setThumbnail(userThumbnailUrl)
+                .addFields(
+                    { name: 'Display Name', value: `\`${userData.displayName}\``, inline: false },
+                    { name: 'ID', value: `\`[ ${userData.id} ]\``, inline: false },
+                    { name: 'Created', value: `${formatDate(userData.created)}\n${timeAgo(userData.created)}`, inline: false }
+                )
+                .setFooter({ text: `Requested by ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
+                .setTimestamp();
+
+            if (userData.description?.trim()) {
+                embed.addFields({ name: 'Description', value: userData.description.length > 1020 ? userData.description.substring(0, 1020) + '...' : userData.description });
+            }
+            if (userData.isBanned) {
+                embed.addFields({ name: 'Status', value: 'BANNED', inline: true });
+            }
+
+            const row = new ActionRowBuilder().addComponents(
+                new ButtonBuilder()
+                    .setLabel('Profile Link')
+                    .setStyle(ButtonStyle.Link)
+                    .setURL(profileLink)
+            );
+
+            await interaction.editReply({ embeds: [embed], components: [row] });
+
+        } catch (error) {
+            console.error(`[RobloxInfo] Error:`, error.isAxiosError ? error.toJSON() : error);
+            let errorMsg = 'Error fetching Roblox info.';
+            if (error.response?.data?.errors?.[0]?.message) {
+                errorMsg = `Roblox API Error: ${error.response.data.errors[0].message}`;
+            } else if (error.message?.includes('ENOTFOUND')) {
+                errorMsg = 'Network error. Could not connect to Roblox services.';
+            }
+            await interaction.editReply(errorMsg);
+        }
+    },
+};
+
+    // ✅ BUTTON: Delete
+    if (interaction.isButton() && interaction.customId === 'delete') {
+      await interaction.channel.delete().catch(console.error);
     }
 
     if (interaction.isModalSubmit() && interaction.customId === 'ticketModal') {
-      const existing = interaction.guild.channels.cache.find(c =>
-        c.parentId === TICKET_CATEGORY && c.permissionOverwrites.cache.has(interaction.user.id)
-      );
-      if (existing) return await interaction.reply({ content: `❌ You already have an open ticket: ${existing}`, ephemeral: true });
+      // Prevent multiple tickets per user
+const existing = interaction.guild.channels.cache.find(c =>
+  c.parentId === TICKET_CATEGORY &&
+  c.permissionOverwrites.cache.has(interaction.user.id)
+);
 
-      const [q1, q2, q3, q4] = ['q1','q2','q3','q4'].map(id => interaction.fields.getTextInputValue(id));
-      const isValidId = /^\d{17,19}$/.test(q4);
-      const permissionOverwrites = [
-        { id: interaction.guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
-        { id: interaction.user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
-        { id: OWNER_ID, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
-        { id: MIDDLEMAN_ROLE, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] }
-      ];
-      if (isValidId && interaction.guild.members.cache.has(q4)) {
-        permissionOverwrites.push({ id: q4, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] });
-      }
+if (existing) {
+  return interaction.reply({ content: `❌ You already have an open ticket: ${existing}`, ephemeral: true });
+}
+      const q1 = interaction.fields.getTextInputValue('q1');
+      const q2 = interaction.fields.getTextInputValue('q2');
+      const q3 = interaction.fields.getTextInputValue('q3');
+      const q4 = interaction.fields.getTextInputValue('q4');
+const isValidId = /^\d{17,19}$/.test(q4);
+const targetMention = isValidId ? `<@${q4}>` : 'Unknown User';
 
-      const ticket = await interaction.guild.channels.create({
-        name: `ticket-${interaction.user.username}`,
-        type: ChannelType.GuildText,
-        parent: TICKET_CATEGORY,
-        permissionOverwrites
-      });
+// Prepare permission overwrites array
+const permissionOverwrites = [
+  { id: interaction.guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
+  { id: interaction.user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
+  { id: OWNER_ID, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
+  { id: MIDDLEMAN_ROLE, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] }
+];
 
+// Add the target user to permission overwrites if ID is valid and member exists
+if (isValidId) {
+  const member = interaction.guild.members.cache.get(q4);
+  if (member) {
+    permissionOverwrites.push({
+      id: q4,
+      allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages]
+    });
+  }
+}
+
+const ticket = await interaction.guild.channels.create({
+  name: `ticket-${interaction.user.username}`,
+  type: ChannelType.GuildText,
+  parent: TICKET_CATEGORY,
+  permissionOverwrites
+});
       const embed = new EmbedBuilder()
-        .setTitle('Middleman Request')
-        .setColor('#2B2D31')
-        .setDescription(
-          `**User 1:** <@${interaction.user.id}>\n**User 2:** ${isValidId ? `<@${q4}>` : 'Unknown User'}\n\n` +
-          `**Trade Details**\n> ${q1}\n\n**User 1 is giving:**\n> ${q2}\n\n**User 2 is giving:**\n> ${q3}`
-        )
-        .setFooter({ text: `Ticket by ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
-        .setTimestamp();
+  .setTitle('Middleman Request')
+  .setColor('#2B2D31')
+  .setDescription(
+    `**User 1:** <@${interaction.user.id}>\n` +
+    `**User 2:** ${targetMention}\n\n` +
+    `**Trade Details**\n` +
+    `> ${q1}\n\n` +
+    `**User 1 is giving:**\n` +
+    `> ${q2}\n\n` +
+    `**User 2 is giving:**\n` +
+    `> ${q3}`
+  )
+  .setFooter({ text: `Ticket by ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
+  .setTimestamp();
 
-      await ticket.send({ content: `<@${interaction.user.id}> <@${OWNER_ID}>`, embeds: [embed] });
-      await interaction.reply({ content: `✅ Ticket created: ${ticket}`, ephemeral: true });
+        await ticket.send({
+  content: `<@${interaction.user.id}> <@${OWNER_ID}>`,
+  embeds: [embed]
+});
+          
+
+        await interaction.reply({ content: `✅ Ticket created: ${ticket}`, ephemeral: true });
+      
     }
+
   } catch (err) {
     console.error('❌ Interaction error:', err);
   }
@@ -284,37 +526,39 @@ async function handleTranscript(interaction, channel) {
   const participants = new Map();
   const lines = sorted.map(m => {
     participants.set(m.author.id, (participants.get(m.author.id) || 0) + 1);
-    return `<p><strong>${m.author.tag}</strong> <em>${new Date(m.createdTimestamp).toLocaleString()}</em>: ${m.cleanContent}</p>`;
+    const tag = `${m.author.username}#${m.author.discriminator}`;
+    return `<p><strong>${tag}</strong> <em>${new Date(m.createdTimestamp).toLocaleString()}</em>: ${m.cleanContent}</p>`;
   });
-
-  const stats = [...participants.entries()].map(
-    ([id, count]) => `<li><strong><a href="https://discord.com/users/${id}">${id}</a></strong>: ${count} messages</li>`
-  ).join('');
-
-  if (!fs.existsSync(path.join(__dirname, 'transcripts'))) fs.mkdirSync(path.join(__dirname, 'transcripts'));
-  const htmlFile = path.join(__dirname, 'transcripts', `${channel.id}.html`);
-  fs.writeFileSync(htmlFile, `<html><body><h2>${channel.name}</h2><ul>${stats}</ul><hr>${lines.join('')}</body></html>`);
-
-  const txtFile = path.join(__dirname, 'transcripts', `transcript-${channel.id}.txt`);
-  fs.writeFileSync(txtFile, sorted.map(m => `[${new Date(m.createdTimestamp).toISOString()}] ${m.author.tag}: ${m.cleanContent}`).join('\n'));
-
+  const stats = [...participants.entries()].map(([id, count]) => `<li><strong><a href="https://discord.com/users/${id}">${id}</a></strong>: ${count} messages</li>`).join('');
+  const html = `<html><head><title>Transcript for ${channel.name}</title></head><body><h2>${channel.name}</h2><h3>Participants</h3><ul>${stats}</ul><hr>${lines.join('')}<hr></body></html>`;
+  const filename = `${channel.id}.html`;
+  const filepath = path.join(__dirname, 'transcripts');
+  if (!fs.existsSync(filepath)) fs.mkdirSync(filepath);
+  fs.writeFileSync(path.join(filepath, filename), html);
+  const htmlLink = `${BASE_URL}/transcripts/${filename}`;
+  const txtLines = sorted.map(m => `[${new Date(m.createdTimestamp).toISOString()}] ${m.author.tag}: ${m.cleanContent || '[Embed/Attachment]'}`).join('\n');
+  const txtPath = path.join(filepath, `transcript-${channel.id}.txt`);
+  fs.writeFileSync(txtPath, txtLines);
   const embed = new EmbedBuilder()
     .setTitle('📄 Transcript Ready')
-    .setDescription(`[Click to view HTML Transcript](${BASE_URL}/transcripts/${channel.id}.html)`)
+    .setDescription(`[Click to view HTML Transcript](${htmlLink})`)
     .addFields(
       { name: 'Ticket Name', value: channel.name, inline: true },
-      { name: 'Participants', value: [...participants.entries()].map(([id, c]) => `<@${id}> — \`${c}\` messages`).join('\n').slice(0, 1024) }
+      {
+        name: 'Participants',
+        value: [...participants.entries()].map(([id, count]) => `<@${id}> — \`${count}\` messages`).join('\n').slice(0, 1024) || 'None',
+        inline: false
+      }
     )
     .setColor('#4fc3f7')
     .setTimestamp();
-
-  await interaction.editReply({ embeds: [embed], files: [new AttachmentBuilder(txtFile)] });
-  const logC = client.channels.cache.get(TRANSCRIPT_CHANNEL);
-  if (logC) await logC.send({ embeds: [embed], files: [new AttachmentBuilder(txtFile)] });
+  await interaction.editReply({ embeds: [embed], files: [new AttachmentBuilder(txtPath)] }).catch(() => {});
+  const logChannel = client.channels.cache.get(TRANSCRIPT_CHANNEL);
+  if (logChannel) await logChannel.send({ embeds: [embed], files: [new AttachmentBuilder(txtPath)] });
 }
 
 client.on('error', console.error);
+process.on('unhandledRejection', (reason, p) => console.error('Unhandled Rejection:', reason));
 client.login(process.env.TOKEN);
-
-// Uptime ping
-setInterval(() => fetch(BASE_URL).catch(() => {}), 5 * 60 * 1000);
+const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
+setInterval(() => { fetch(BASE_URL).catch(() => {}); }, 5 * 60 * 1000);
