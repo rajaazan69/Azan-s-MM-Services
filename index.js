@@ -85,6 +85,80 @@ client.once('ready', async () => {
       .setDescription('The Roblox username to look up')
       .setRequired(true)
   ),
+  new SlashCommandBuilder()
+  .setName('kick')
+  .setDescription('Kick a member from the server')
+  .addUserOption(option =>
+    option.setName('user')
+      .setDescription('User to kick')
+      .setRequired(true))
+  .addStringOption(option =>
+    option.setName('reason')
+      .setDescription('Reason for the kick')
+      .setRequired(false))
+  .setDefaultMemberPermissions(PermissionFlagsBits.KickMembers),
+
+new SlashCommandBuilder()
+  .setName('ban')
+  .setDescription('Ban a member from the server')
+  .addUserOption(option =>
+    option.setName('user')
+      .setDescription('User to ban')
+      .setRequired(true))
+  .addStringOption(option =>
+    option.setName('reason')
+      .setDescription('Reason for the ban')
+      .setRequired(false))
+  .setDefaultMemberPermissions(PermissionFlagsBits.BanMembers),
+
+new SlashCommandBuilder()
+  .setName('unban')
+  .setDescription('Unban a user by their ID')
+  .addStringOption(option =>
+    option.setName('userid')
+      .setDescription('The ID of the user to unban')
+      .setRequired(true))
+  .setDefaultMemberPermissions(PermissionFlagsBits.BanMembers),
+
+new SlashCommandBuilder()
+  .setName('timeout')
+  .setDescription('Timeout a member for a set number of minutes')
+  .addUserOption(option =>
+    option.setName('user')
+      .setDescription('User to timeout')
+      .setRequired(true))
+  .addIntegerOption(option =>
+    option.setName('duration')
+      .setDescription('Duration in minutes')
+      .setRequired(true))
+  .addStringOption(option =>
+    option.setName('reason')
+      .setDescription('Reason for timeout')
+      .setRequired(false))
+  .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers),
+
+new SlashCommandBuilder()
+  .setName('warn')
+  .setDescription('Warn a user')
+  .addUserOption(option =>
+    option.setName('user')
+      .setDescription('User to warn')
+      .setRequired(true))
+  .addStringOption(option =>
+    option.setName('reason')
+      .setDescription('Reason for the warning')
+      .setRequired(false))
+  .setDefaultMemberPermissions(PermissionFlagsBits.KickMembers),
+
+new SlashCommandBuilder()
+  .setName('lock')
+  .setDescription('Lock the current channel')
+  .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels),
+
+new SlashCommandBuilder()
+  .setName('unlock')
+  .setDescription('Unlock the current channel')
+  .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels),
     ].map(cmd => cmd.toJSON());
   
 
@@ -354,6 +428,89 @@ client.on('interactionCreate', async interaction => {
     console.error('❌ Roblox user info error:', err);
     await interaction.editReply({ content: '❌ Failed to fetch user info.' });
   }
+}
+if (commandName === 'ban') {
+  const member = options.getMember('user');
+  const reason = options.getString('reason') || 'No reason provided';
+
+  if (!interaction.member.permissions.has(PermissionFlagsBits.BanMembers))
+    return interaction.reply({ content: '❌ You do not have permission to use this command.', ephemeral: true });
+
+  if (!member || !member.bannable)
+    return interaction.reply({ content: '❌ Cannot ban this user.', ephemeral: true });
+
+  await member.ban({ reason });
+  await interaction.reply({ content: `✅ Banned ${member.user.tag} | Reason: ${reason}` });
+}
+if (commandName === 'kick') {
+  const member = options.getMember('user');
+  const reason = options.getString('reason') || 'No reason provided';
+
+  if (!interaction.member.permissions.has(PermissionFlagsBits.KickMembers))
+    return interaction.reply({ content: '❌ You do not have permission to use this command.', ephemeral: true });
+
+  if (!member || !member.kickable)
+    return interaction.reply({ content: '❌ Cannot kick this user.', ephemeral: true });
+
+  await member.kick(reason);
+  await interaction.reply({ content: `✅ Kicked ${member.user.tag} | Reason: ${reason}` });
+}
+if (commandName === 'lock') {
+  if (!interaction.member.permissions.has(PermissionFlagsBits.ManageChannels))
+    return interaction.reply({ content: '❌ You do not have permission to lock channels.', ephemeral: true });
+
+  await interaction.channel.permissionOverwrites.edit(interaction.guild.roles.everyone, {
+    SendMessages: false
+  });
+
+  await interaction.reply({ content: '🔒 Channel locked.' });
+}
+if (commandName === 'mute') {
+  const member = options.getMember('user');
+  const duration = options.getInteger('duration');
+  const reason = options.getString('reason') || 'No reason provided';
+
+  if (!interaction.member.permissions.has(PermissionFlagsBits.ModerateMembers))
+    return interaction.reply({ content: '❌ You do not have permission to use this command.', ephemeral: true });
+
+  try {
+    await member.timeout(duration * 60 * 1000, reason);
+    await interaction.reply({ content: `✅ Timed out ${member.user.tag} for ${duration} minutes.` });
+  } catch {
+    await interaction.reply({ content: '❌ Failed to timeout the user.', ephemeral: true });
+  }
+}
+f (commandName === 'unban') {
+  const userId = options.getString('userid');
+
+  if (!interaction.member.permissions.has(PermissionFlagsBits.BanMembers))
+    return interaction.reply({ content: '❌ You do not have permission to use this command.', ephemeral: true });
+
+  try {
+    await interaction.guild.members.unban(userId);
+    await interaction.reply({ content: `✅ Unbanned user with ID: ${userId}` });
+  } catch (err) {
+    await interaction.reply({ content: '❌ Failed to unban user. Make sure the ID is valid.', ephemeral: true });
+  }
+}
+if (commandName === 'unlock') {
+  if (!interaction.member.permissions.has(PermissionFlagsBits.ManageChannels))
+    return interaction.reply({ content: '❌ You do not have permission to unlock channels.', ephemeral: true });
+
+  await interaction.channel.permissionOverwrites.edit(interaction.guild.roles.everyone, {
+    SendMessages: true
+  });
+
+  await interaction.reply({ content: '🔓 Channel unlocked.' });
+}
+if (commandName === 'warn') {
+  const member = options.getMember('user');
+  const reason = options.getString('reason') || 'No reason provided';
+
+  if (!interaction.member.permissions.has(PermissionFlagsBits.KickMembers))
+    return interaction.reply({ content: '❌ You do not have permission to warn.', ephemeral: true });
+
+  await interaction.reply({ content: `⚠️ Warned ${member.user.tag} | Reason: ${reason}` });
 }
 
     // ✅ BUTTON: Open Modal
