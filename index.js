@@ -287,9 +287,10 @@ client.on('interactionCreate', async interaction => {
       }
       if (commandName === 'i') {
   const username = options.getString('username');
-  await interaction.deferReply({ ephemeral: true }).catch(() => {});
+  await interaction.deferReply({ ephemeral: false }).catch(() => {});
 
   try {
+    // Get user ID by username
     const res = await fetch('https://users.roblox.com/v1/usernames/users', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -298,46 +299,76 @@ client.on('interactionCreate', async interaction => {
 
     const data = await res.json();
     const user = data?.data?.[0];
-
     if (!user) {
       return interaction.editReply({ content: `❌ No account found for \`${username}\`.` });
     }
 
     const id = user.id;
 
-    const [avatarRes, friendsRes, followersRes, followingRes] = await Promise.all([
+    // Fetch all other data
+    const [avatarRes, friendsRes, followersRes, followingRes, userInfoRes] = await Promise.all([
       fetch(`https://thumbnails.roblox.com/v1/users/avatar?userIds=${id}&size=420x420&format=Png&isCircular=false`),
       fetch(`https://friends.roblox.com/v1/users/${id}/friends/count`),
       fetch(`https://friends.roblox.com/v1/users/${id}/followers/count`),
-      fetch(`https://friends.roblox.com/v1/users/${id}/followings/count`)
+      fetch(`https://friends.roblox.com/v1/users/${id}/followings/count`),
+      fetch(`https://users.roblox.com/v1/users/${id}`)
     ]);
 
     const avatarData = await avatarRes.json();
     const friendsData = await friendsRes.json();
     const followersData = await followersRes.json();
     const followingData = await followingRes.json();
+    const userData = await userInfoRes.json();
 
+    const thumbnail = avatarData?.data?.[0]?.imageUrl || null;
+    const profileUrl = `https://www.roblox.com/users/${id}/profile`;
+
+    // Format date
+    const createdTimestamp = Math.floor(new Date(userData.created).getTime() / 1000);
+    const yearsAgo = new Date().getFullYear() - new Date(userData.created).getFullYear();
+
+    // Build embed
     const embed = new EmbedBuilder()
-      .setTitle(`${user.name} (${user.displayName})`)
-      .setThumbnail(avatarData?.data?.[0]?.imageUrl || null)
+      .setColor('#000000')
+      .setAuthor({ name: userData.name, iconURL: thumbnail, url: profileUrl })
+      .setThumbnail(thumbnail)
       .addFields(
-        { name: 'User ID', value: id.toString(), inline: true },
-        { name: 'Friends', value: friendsData?.count?.toString() || '0', inline: true },
-        { name: 'Followers', value: followersData?.count?.toString() || '0', inline: true },
-        { name: 'Following', value: followingData?.count?.toString() || '0', inline: true },
-        { name: 'Profile', value: `https://www.roblox.com/users/${id}/profile` }
+        { name: 'Display Name', value: `\`${userData.displayName}\``, inline: true },
+        { name: 'ID', value: `\`[ ${userData.id} ]\``, inline: true },
+        { name: 'Created', value: `<t:${createdTimestamp}:F>\n\`${yearsAgo} year(s) ago\``, inline: false },
+        { name: 'Friends', value: `\`${friendsData?.count || 0}\``, inline: true },
+        { name: 'Followers', value: `\`${followersData?.count || 0}\``, inline: true },
+        { name: 'Following', value: `\`${followingData?.count || 0}\``, inline: true }
       )
-      .setColor('Blurple')
-      .setFooter({ text: 'Roblox Lookup' });
+      .setFooter({ text: 'Roblox Lookup' })
+      .setTimestamp();
 
-    await interaction.editReply({ embeds: [embed] });
+    // Optional description field
+    if (userData.description?.trim()) {
+      embed.addFields({
+        name: 'Description',
+        value: userData.description.length > 1020
+          ? userData.description.substring(0, 1020) + '...'
+          : userData.description,
+        inline: false
+      });
+    }
+
+    // Add profile button
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setLabel('Profile Link')
+        .setStyle(ButtonStyle.Link)
+        .setURL(profileUrl)
+    );
+
+    await interaction.editReply({ embeds: [embed], components: [row] });
 
   } catch (err) {
     console.error('❌ Error in /i command:', err);
     await interaction.editReply({ content: '❌ Something went wrong while fetching data.' });
   }
 }
-    }
 
     // ✅ BUTTON: Open Modal
     if (interaction.isButton() && interaction.customId === 'openTicket') {
