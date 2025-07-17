@@ -539,9 +539,7 @@ const BASE_URL = process.env.BASE_URL;
 client.on('error', console.error);
 process.on('unhandledRejection', (reason, p) => console.error('Unhandled Rejection:', reason));
 
-client.login(process.env.TOKEN);
-
-const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
+// Ping your own server every 5 minutes to prevent Render from sleeping
 setInterval(() => {
   fetch(BASE_URL).catch(() => {});
-}); // ✅ fully closed
+}, 5 * 60 * 1000);
