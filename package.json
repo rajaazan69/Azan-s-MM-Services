@@ -4,7 +4,8 @@
   "description": "Discord bot for ticket handling and tag management with transcript support.",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "clear": "node clear-commands.js"
   },
   "dependencies": {
     "discord.js": "^14.14.1",
