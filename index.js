@@ -89,7 +89,7 @@ client.once('ready', async () => {
   console.log(`Bot online as ${client.user.tag}`);
   if (process.env.REGISTER_COMMANDS === 'true') {
     const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
-    const old = await rest.get(Routes.applicationCommands(client.user.id));
+    const old = await rest.get(Routes.applicationCommands(1392944799983730849));
     for (const cmd of old) {
       await rest.delete(Routes.applicationCommand(client.user.id, cmd.id));
     }
@@ -107,8 +107,7 @@ client.once('ready', async () => {
       new SlashCommandBuilder().setName('tag').setDescription('Send a saved tag').addStringOption(o => o.setName('name').setDescription('Tag name').setRequired(true)),
       new SlashCommandBuilder().setName('tagdelete').setDescription('Delete a tag').addStringOption(o => o.setName('name').setDescription('Tag name').setRequired(true)),
       new SlashCommandBuilder().setName('taglist').setDescription('List all tags')
-      
- [
+    
   new SlashCommandBuilder()
     .setName('i')
     .setDescription('Get Roblox account info')
@@ -117,7 +116,7 @@ client.once('ready', async () => {
         .setDescription('The Roblox username')
         .setRequired(true)
     )
-].map(cmd => cmd.toJSON());
+].map(command => command.toJSON());
 
     await rest.put(Routes.applicationCommands(client.user.id), { body: commands });
     console.log('✅ Slash commands registered');
