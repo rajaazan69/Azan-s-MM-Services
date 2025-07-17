@@ -1,19 +1,26 @@
 {
-    "clientId": "1392944799983730849",
-    "mmban": "1395343230832349194",
-    "mmbanLogs": "1373077505283719330",
-    "guildId": "1373025601212125315",
-    "topTraderRoleId": "1395343649524416564",
-    "leaderboardChannelId": "1395343847403421726",
-    "transcriptLogChannelId": "1373058123547283568",
-    "serverModLogChannelId": "1395344482542686239",
-    "muteRoleId": "1395344940493701213",
-    "ticketPanelChannelId": "1373048211538841702",
+    "token": "",
+    "clientId": "",
+    "mmban": "",
+    "mmbanLogs": "",
+    "guildId": "",
+    "topTraderRoleId": "",
+	"leaderboardChannelId": "",
+	"transcriptLogChannelId": "",
+    "serverModLogChannelId": "",
+    "muteRoleId": "",
+    "backupServerId": "",
+    "traderLeaderboardChannelId": "",
+    "backupServerInviteLink": "",
+    "ticketPanelChannelId": "",
     "prefix": "$",
     "roles": {
-        "Middleman": "1373029495686037635",
-        "Beginner Middleman": "1373029459648708751",
-        "Senior Middleman": "1373029545162182838",
+        "trialMM": "",
+        "beginnerMM": "",
+        "middleman": "",
+        "seniorMM": "",
+        "supremeMM": "",
+        "headMM": "",
         "administrator": "",
         "newAccountRoleId": "",
         "staffRoles": [
@@ -62,9 +69,9 @@
             "value": "admin_mm",
             "pingRoles": ["administrator"]
         }
-    },
+	},
     "newAccountAgeDays": 7,
-    "welcomeChannelId": "",
+	"welcomeChannelId": "",
     "welcomeMessage": "Welcome {user} to **{guild}**! We hope you enjoy your stay.",
     "autoRoleIDs": [
         "",
@@ -72,3 +79,5 @@
         ""
     ]
 }
+
+
