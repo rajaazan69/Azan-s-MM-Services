@@ -370,13 +370,14 @@ client.on('interactionCreate', async interaction => {
       embeds: [embed]
     });
 
-    await interaction.reply({ content: `✅ Ticket created: ${ticket}`, ephemeral: true });
+        await interaction.reply({ content: `✅ Ticket created: ${ticket}`, ephemeral: true });
 
   } catch (err) {
     console.error('❌ Interaction error:', err);
     await interaction.reply({ content: '❌ Something went wrong while creating the ticket.', ephemeral: true });
   }
-}
+  } // CLOSES if (interaction.isModalSubmit())
+}); // CLOSES client.on('interactionCreate')
 
 async function handleTranscript(interaction, channel) {
   const messages = await channel.messages.fetch({ limit: 100 });
