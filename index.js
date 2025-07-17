@@ -477,10 +477,12 @@ const ticket = await interaction.guild.channels.create({
 });
           
 
-        await interaction.reply({ content: `✅ Ticket created: ${ticket}`, ephemeral: true });
-      
+        client.on('interactionCreate', async interaction => {
+  try {
+    if (interaction.isCommand()) {
+      // your logic here
+      await interaction.reply({ content: `✅ Ticket created: ${ticket}`, ephemeral: true });
     }
-
   } catch (err) {
     console.error('❌ Interaction error:', err);
   }
