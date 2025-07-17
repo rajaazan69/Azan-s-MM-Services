@@ -285,6 +285,9 @@ client.on('interactionCreate', async interaction => {
         await interaction.deferReply({ ephemeral: true }).catch(() => {});
         await handleTranscript(interaction, channel);
       }
+      client.on('interactionCreate', async interaction => {
+  if (!interaction.isChatInputCommand()) return;
+  const { commandName, options } = interaction;
       if (commandName === 'i') {
   const username = options.getString('username');
   await interaction.deferReply({ ephemeral: false }).catch(() => {});
@@ -379,6 +382,7 @@ const following = (await followingRes.json())?.count || 0;
     await interaction.editReply({ content: '❌ Something went wrong while fetching data.' });
   }
 }
+});
 
     // ✅ BUTTON: Open Modal
     if (interaction.isButton() && interaction.customId === 'openTicket') {
