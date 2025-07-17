@@ -29,17 +29,30 @@ function timeAgo(dateString) {
     return `${seconds} second${seconds !== 1 ? 's' : ''} ago`;
 }
 const {
-  Client, GatewayIntentBits, Partials, ChannelType, PermissionsBitField,
-  ActionRowBuilder, ModalBuilder, TextInputBuilder, TextInputStyle,
-  EmbedBuilder, ButtonBuilder, ButtonStyle, AttachmentBuilder,
-  import { SlashCommandBuilder, REST, Routes } from 'discord.js';
+  Client,
+  GatewayIntentBits,
+  Partials,
+  ChannelType,
+  PermissionsBitField,
+  ActionRowBuilder,
+  ModalBuilder,
+  TextInputBuilder,
+  TextInputStyle,
+  EmbedBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  AttachmentBuilder,
+  SlashCommandBuilder,
+  REST,
+  Routes
+} = require('discord.js');
+
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
 require('dotenv').config();
 const { MongoClient } = require('mongodb');
 const axios = require('axios');
-
 const mongoUri = process.env.MONGO_URI;
 const mongoClient = new MongoClient(mongoUri);
 let tagsCollection;
