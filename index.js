@@ -324,19 +324,23 @@ if (existing) {
       const q4 = interaction.fields.getTextInputValue('q4');
       const targetMention = /^\d{17,19}$/.test(q4) ? `<@${q4}>` : 'Unknown User';
       const ticket = await interaction.guild.channels.create({
-        name: `ticket-${interaction.user.username}`,
-        type: ChannelType.GuildText,
-        parent: TICKET_CATEGORY,
-        permissionOverwrites: [
+  name: `ticket-${interaction.user.username}`,
+  type: ChannelType.GuildText,
+  parent: TICKET_CATEGORY,
+  permissionOverwrites: overwrites
+});
   { id: interaction.guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
   { id: interaction.user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
   { id: OWNER_ID, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
-  { id: MIDDLEMAN_ROLE, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
-  ...(/^\d{17,19}$/.test(q4) ? [{
+  { id: MIDDLEMAN_ROLE, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] }
+];
+
+if (/^\d{17,19}$/.test(q4)) {
+  overwrites.push({
     id: q4,
     allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages]
-  }] : [])
-]
+  });
+}
       });
       const embed = new EmbedBuilder()
   .setTitle('Middleman Request')
