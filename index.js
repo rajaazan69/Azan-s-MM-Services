@@ -3,7 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { Client, Collection, GatewayIntentBits, Partials, Events, EmbedBuilder } = require('discord.js');
 
-const { prefix, roles, mmTiers, leaderboardChannelId: lbcIdFromConfig, newAccountAgeDays } = require('./config.json');
+const { clientId, guildId, token } = require('./config.json');
 const token = process.env.TOKEN;
    
 } = require('./config.json'); 
