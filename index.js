@@ -76,7 +76,7 @@ client.once('ready', async () => {
       new SlashCommandBuilder().setName('tagcreate').setDescription('Create a tag').addStringOption(o => o.setName('name').setDescription('Tag name').setRequired(true)).addStringOption(o => o.setName('message').setDescription('Tag message').setRequired(true)),
       new SlashCommandBuilder().setName('tag').setDescription('Send a saved tag').addStringOption(o => o.setName('name').setDescription('Tag name').setRequired(true)),
       new SlashCommandBuilder().setName('tagdelete').setDescription('Delete a tag').addStringOption(o => o.setName('name').setDescription('Tag name').setRequired(true)),
-      new SlashCommandBuilder().setName('taglist').setDescription('List all tags')
+      new SlashCommandBuilder().setName('taglist').setDescription('List all tags'),
     new SlashCommandBuilder()
   .setName('i')
   .setDescription('Get Roblox user info')
