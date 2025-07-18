@@ -750,6 +750,6 @@ const fetch = (...args) =>
 
 setInterval(() => {
   fetch(BASE_URL).catch(() => {});
-}, 5 * 60 * 1000); // ✅ this should be second last
+}, 5 * 60 * 1000); // ✅ keep this
 
-}); // ✅ closes any large block above (like interaction listener or async wrapper)
+// No extra }); if nothing is open!
