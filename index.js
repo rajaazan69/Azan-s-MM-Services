@@ -176,13 +176,30 @@ client.on('interactionCreate', async interaction => {
     if (interaction.isChatInputCommand()) {
       if (commandName === 'setup') {
         const target = options.getChannel('channel');
-        const embed = new EmbedBuilder()
-          .setTitle('**Request Middleman**')
-          .setDescription('**Click Below To Request Azan’s Services**\nPlease answer all the questions correctly for the best support.')
-          .setColor('Blue');
-        const btn = new ActionRowBuilder().addComponents(
-          new ButtonBuilder().setCustomId('openTicket').setLabel('Request Middleman').setStyle(ButtonStyle.Primary)
-        );
+        const panelEmbed = new EmbedBuilder()
+  .setColor('#000000')
+  .setTitle('Azan’s Middleman Service')
+  .setDescription(
+    `To request a middleman from this server\n` +
+    `click the \`Request Middleman\` button below.\n\n` +
+
+    `**How does a Middleman Work?**\n` +
+    `Example: Trade is Harvester (MM2) for Robux.\n` +
+    `1. Seller gives Harvester to middleman.\n` +
+    `2. Buyer pays seller robux (after middleman confirms receiving mm2).\n` +
+    `3. Middleman gives buyer Harvester (after seller received robux).\n\n` +
+
+    `**Important**\n` +
+    `• Troll tickets are not allowed. Once the trade is completed you must vouch your middleman in their respective servers.\n` +
+    `• If you have trouble getting a user's ID click [here](https://support.discord.com/hc/en-us/articles/206346498).\n` +
+    `• Make sure to read [mm-tos](https://discord.com) before making a ticket.`
+  );
+        const button = new ActionRowBuilder().addComponents(
+  new ButtonBuilder()
+    .setCustomId('request_mm')
+    .setLabel('**Request Middleman**')
+    .setStyle(ButtonStyle.Primary) // Primary is a nice blue that fits dark embeds
+);
         await target.send({ embeds: [embed], components: [btn] });
         await interaction.reply({ content: '✅ Setup complete.', ephemeral: true }).catch(() => {});
       }
