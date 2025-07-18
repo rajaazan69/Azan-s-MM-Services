@@ -606,50 +606,78 @@ const permissionOverwrites = [
   { id: MIDDLEMAN_ROLE, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] }
 ];
 
-// Add the target user to permission overwrites if ID is valid and member exists
-try {
-  if (isValidId) {
-    const member = interaction.guild.members.cache.get(q4);
-    if (member) {
-      permissionOverwrites.push({
-        id: q4,
-        allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages]
-      });
+client.on('interactionCreate', async (interaction) => {
+  if (!interaction.isModalSubmit()) return;
+  if (interaction.customId !== 'middleman-modal') return;
+
+  const q1 = interaction.fields.getTextInputValue('tradeDetails');
+  const q2 = interaction.fields.getTextInputValue('user1Gives');
+  const q3 = interaction.fields.getTextInputValue('user2Gives');
+  const q4 = interaction.fields.getTextInputValue('user2Id')?.trim();
+
+  const isValidId = q4 && /^\d{17,19}$/.test(q4);
+  const targetMention = isValidId ? `<@${q4}>` : '`Unknown User`';
+
+  const permissionOverwrites = [
+    {
+      id: interaction.guild.id,
+      deny: [PermissionsBitField.Flags.ViewChannel]
+    },
+    {
+      id: interaction.user.id,
+      allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages]
+    },
+    {
+      id: OWNER_ID,
+      allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages]
     }
-  }
+  ];
 
-  const ticket = await interaction.guild.channels.create({
-    name: `ticket-${interaction.user.username}`,
-    type: ChannelType.GuildText,
-    parent: TICKET_CATEGORY,
-    permissionOverwrites
-  });
+  try {
+    if (isValidId) {
+      const member = interaction.guild.members.cache.get(q4);
+      if (member) {
+        permissionOverwrites.push({
+          id: q4,
+          allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages]
+        });
+      }
+    }
 
-  const embed = new EmbedBuilder()
-    .setTitle('Middleman Request')
-    .setColor('#2B2D31')
-    .setDescription(
-      `**User 1:** <@${interaction.user.id}>\n` +
-      `**User 2:** ${targetMention}\n\n` +
-      `**Trade Details**\n` +
-      `> ${q1}\n\n` +
-      `**User 1 is giving:**\n` +
-      `> ${q2}\n\n` +
-      `**User 2 is giving:**\n` +
-      `> ${q3}`
-    )
-    .setFooter({ text: `Ticket by ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
-    .setTimestamp();
+    const ticket = await interaction.guild.channels.create({
+      name: `ticket-${interaction.user.username}`,
+      type: ChannelType.GuildText,
+      parent: TICKET_CATEGORY,
+      permissionOverwrites
+    });
 
-  await ticket.send({
-    content: `<@${interaction.user.id}> <@${OWNER_ID}>`,
-    embeds: [embed]
-  });
+    const embed = new EmbedBuilder()
+      .setTitle('Middleman Request')
+      .setColor('#2B2D31')
+      .setDescription(
+        `**User 1:** <@${interaction.user.id}>\n` +
+        `**User 2:** ${targetMention}\n\n` +
+        `**Trade Details**\n` +
+        `> ${q1}\n\n` +
+        `**User 1 is giving:**\n` +
+        `> ${q2}\n\n` +
+        `**User 2 is giving:**\n` +
+        `> ${q3}`
+      )
+      .setFooter({ text: `Ticket by ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
+      .setTimestamp();
+
+    await ticket.send({
+      content: `<@${interaction.user.id}> <@${OWNER_ID}>`,
+      embeds: [embed]
+    });
 
     await interaction.reply({ content: `✅ Ticket created: ${ticket}`, ephemeral: true });
-} catch (err) {
-  console.error('❌ Interaction error:', err);
-}
+
+  } catch (err) {
+    console.error('❌ Interaction error:', err);
+  }
+});
 async function handleTranscript(interaction, channel) {
   const messages = await channel.messages.fetch({ limit: 100 });
   const sorted = messages.sort((a, b) => a.createdTimestamp - b.createdTimestamp);
