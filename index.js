@@ -607,53 +607,50 @@ const permissionOverwrites = [
 ];
 
 // Add the target user to permission overwrites if ID is valid and member exists
-if (isValidId) {
-  const member = interaction.guild.members.cache.get(q4);
-  if (member) {
-    permissionOverwrites.push({
-      id: q4,
-      allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages]
-    });
-  }
-}
-
-const ticket = await interaction.guild.channels.create({
-  name: `ticket-${interaction.user.username}`,
-  type: ChannelType.GuildText,
-  parent: TICKET_CATEGORY,
-  permissionOverwrites
-});
-      const embed = new EmbedBuilder()
-  .setTitle('Middleman Request')
-  .setColor('#2B2D31')
-  .setDescription(
-    `**User 1:** <@${interaction.user.id}>\n` +
-    `**User 2:** ${targetMention}\n\n` +
-    `**Trade Details**\n` +
-    `> ${q1}\n\n` +
-    `**User 1 is giving:**\n` +
-    `> ${q2}\n\n` +
-    `**User 2 is giving:**\n` +
-    `> ${q3}`
-  )
-  .setFooter({ text: `Ticket by ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
-  .setTimestamp();
-
-        await ticket.send({
-  content: `<@${interaction.user.id}> <@${OWNER_ID}>`,
-  embeds: [embed]
-});
-          
-
-        await interaction.reply({ content: `✅ Ticket created: ${ticket}`, ephemeral: true });
-      
+try {
+  if (isValidId) {
+    const member = interaction.guild.members.cache.get(q4);
+    if (member) {
+      permissionOverwrites.push({
+        id: q4,
+        allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages]
+      });
     }
-
-  } catch (err) {
-    console.error('❌ Interaction error:', err);
   }
-});
 
+  const ticket = await interaction.guild.channels.create({
+    name: `ticket-${interaction.user.username}`,
+    type: ChannelType.GuildText,
+    parent: TICKET_CATEGORY,
+    permissionOverwrites
+  });
+
+  const embed = new EmbedBuilder()
+    .setTitle('Middleman Request')
+    .setColor('#2B2D31')
+    .setDescription(
+      `**User 1:** <@${interaction.user.id}>\n` +
+      `**User 2:** ${targetMention}\n\n` +
+      `**Trade Details**\n` +
+      `> ${q1}\n\n` +
+      `**User 1 is giving:**\n` +
+      `> ${q2}\n\n` +
+      `**User 2 is giving:**\n` +
+      `> ${q3}`
+    )
+    .setFooter({ text: `Ticket by ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
+    .setTimestamp();
+
+  await ticket.send({
+    content: `<@${interaction.user.id}> <@${OWNER_ID}>`,
+    embeds: [embed]
+  });
+
+  await interaction.reply({ content: `✅ Ticket created: ${ticket}`, ephemeral: true });
+
+} catch (err) {
+  console.error('❌ Interaction error:', err);
+}
 async function handleTranscript(interaction, channel) {
   const messages = await channel.messages.fetch({ limit: 100 });
   const sorted = messages.sort((a, b) => a.createdTimestamp - b.createdTimestamp);
