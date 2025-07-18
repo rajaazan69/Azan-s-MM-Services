@@ -537,38 +537,38 @@ if (commandName === 'lock') {
   }
 }
 if (commandName === 'timeout') {
-  const target = options.getMember('user');
-  const duration = options.getString('duration');
+  await interaction.deferReply({ ephemeral: true }).catch(() => {});
+
+  const user = options.getUser('user');
+  const member = guild.members.cache.get(user.id);
+  const duration = options.getString('duration'); // e.g. "10m", "1h"
   const reason = options.getString('reason') || 'No reason provided.';
 
-  if (!target) {
-    return interaction.reply({ content: '❌ Member not found.', ephemeral: true });
-  }
-
   const ms = require('ms');
-  const msDuration = ms(duration);
-  if (!msDuration || msDuration > 2.419e9) {
-    return interaction.reply({ content: '❌ Invalid or too long timeout duration.', ephemeral: true });
+  const time = ms(duration);
+
+  if (!time || isNaN(time)) {
+    return await interaction.editReply({ content: '❌ Invalid duration format.' });
   }
 
   try {
-    await target.timeout(msDuration, reason);
+    await member.timeout(time, reason);
 
     const embed = new EmbedBuilder()
-      .setTitle('Timeout Issued')
+      .setTitle('User Timed Out')
       .setColor('#000000')
-      .addFields(
-        { name: '**User**', value: `${target.user.tag} (<@${target.id}>)`, inline: true },
-        { name: '**Duration**', value: duration, inline: true },
-        { name: '**Reason**', value: reason }
+      .setDescription(
+        `**User:** <@${user.id}> (${user.tag})\n` +
+        `**Duration:** ${duration}\n` +
+        `**Reason:** ${reason}\n` +
+        `**Moderator:** ${interaction.user.tag}`
       )
-      .setFooter({ text: `Moderator: ${interaction.user.tag}` })
       .setTimestamp();
 
-    await interaction.reply({ embeds: [embed] });
+    await interaction.editReply({ embeds: [embed] });
   } catch (err) {
     console.error('❌ Timeout error:', err);
-    await interaction.reply({ content: '❌ Failed to timeout the user.', ephemeral: true });
+    await interaction.editReply({ content: '❌ Failed to timeout the user.' });
   }
 }
 if (commandName === 'unban') {
@@ -613,24 +613,27 @@ if (commandName === 'unlock') {
   }
 }
 if (commandName === 'warn') {
-  const target = options.getMember('user');
-  const reason = options.getString('reason') || 'No reason provided.';
+  await interaction.deferReply({ ephemeral: true }).catch(() => {});
 
-  if (!target) {
-    return interaction.reply({ content: '❌ Member not found.', ephemeral: true });
-  }
+  const user = options.getUser('user');
+  const reason = options.getString('reason') || 'No reason provided.';
 
   const embed = new EmbedBuilder()
     .setTitle('User Warned')
     .setColor('#000000')
-    .addFields(
-      { name: '**User**', value: `${target.user.tag} (<@${target.id}>)`, inline: true },
-      { name: '**Reason**', value: reason }
+    .setDescription(
+      `**User:** <@${user.id}> (${user.tag})\n` +
+      `**Reason:** ${reason}\n` +
+      `**Moderator:** ${interaction.user.tag}`
     )
-    .setFooter({ text: `Moderator: ${interaction.user.tag}` })
     .setTimestamp();
 
-  await interaction.reply({ embeds: [embed] });
+  try {
+    await interaction.editReply({ embeds: [embed] });
+  } catch (err) {
+    console.error('❌ Warn error:', err);
+    await interaction.editReply({ content: '❌ Failed to send warning embed.' });
+  }
 }
 
     // ✅ BUTTON: Open Modal
