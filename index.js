@@ -163,19 +163,17 @@ new SlashCommandBuilder()
   .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels),
     
   new SlashCommandBuilder()
-    .setName('setsticky')
-    .setDescription('Set a sticky message for a specific channel')
-    .addChannelOption(option =>
-      option.setName('channel')
-        .setDescription('Select the channel to set the sticky message in')
-        .setRequired(true))
-    .addStringOption(option =>
-      option.setName('message')
-        .setDescription('The sticky message content')
-        .setRequired(true))
-    .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages)
-    .toJSON()
-);
+  .setName('setsticky')
+  .setDescription('Set a sticky message for a specific channel')
+  .addChannelOption(option =>
+    option.setName('channel')
+      .setDescription('Select the channel to set the sticky message in')
+      .setRequired(true))
+  .addStringOption(option =>
+    option.setName('message')
+      .setDescription('The sticky message content')
+      .setRequired(true))
+  .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages)
     ].map(cmd => cmd.toJSON());
   
     await rest.put(Routes.applicationCommands(client.user.id), { body: commands });
