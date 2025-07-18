@@ -651,7 +651,6 @@ try {
 } catch (err) {
   console.error('❌ Interaction error:', err);
 }
-});
 async function handleTranscript(interaction, channel) {
   const messages = await channel.messages.fetch({ limit: 100 });
   const sorted = messages.sort((a, b) => a.createdTimestamp - b.createdTimestamp);
