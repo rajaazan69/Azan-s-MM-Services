@@ -173,37 +173,40 @@ client.on('interactionCreate', async interaction => {
   try {
     const { commandName, options, channel, guild } = interaction;
 
-    if (interaction.isChatInputCommand()) {
-      if (commandName === 'setup') {
-        const target = options.getChannel('channel');
-        const panelEmbed = new EmbedBuilder()
-  .setColor('#000000')
-  .setTitle('Azan’s Middleman Service')
-  .setDescription(
-    `To request a middleman from this server\n` +
-    `click the \`Request Middleman\` button below.\n\n` +
+if (interaction.isChatInputCommand()) {
+  if (commandName === 'setup') {
+    const target = options.getChannel('channel');
 
-    `**How does a Middleman Work?**\n` +
-    `Example: Trade is Harvester (MM2) for Robux.\n` +
-    `1. Seller gives Harvester to middleman.\n` +
-    `2. Buyer pays seller robux (after middleman confirms receiving mm2).\n` +
-    `3. Middleman gives buyer Harvester (after seller received robux).\n\n` +
+    const panelEmbed = new EmbedBuilder()
+      .setColor('#000000')
+      .setTitle('Azan’s Middleman Service')
+      .setDescription(
+        `To request a middleman from this server\n` +
+        `click the \`Request Middleman\` button below.\n\n` +
 
-    `**Important**\n` +
-    `• Troll tickets are not allowed. Once the trade is completed you must vouch your middleman in their respective servers.\n` +
-    `• If you have trouble getting a user's ID click [here](https://support.discord.com/hc/en-us/articles/206346498).\n` +
-    `• Make sure to read [mm-tos](https://discord.com) before making a ticket.`
-  );
-        const button = new ActionRowBuilder().addComponents(
-  new ButtonBuilder()
-    .setCustomId('request_mm')
-    .setLabel('**Request Middleman**')
-    .setStyle(ButtonStyle.Primary) // Primary is a nice blue that fits dark embeds
-);
-        await target.send({ embeds: [embed], components: [btn] });
-        await interaction.reply({ content: '✅ Setup complete.', ephemeral: true }).catch(() => {});
-      }
+        `**How does a Middleman Work?**\n` +
+        `Example: Trade is Harvester (MM2) for Robux.\n` +
+        `1. Seller gives Harvester to middleman.\n` +
+        `2. Buyer pays seller robux (after middleman confirms receiving mm2).\n` +
+        `3. Middleman gives buyer Harvester (after seller received robux).\n\n` +
 
+        `**Important**\n` +
+        `• Troll tickets are not allowed. Once the trade is completed you must vouch your middleman in their respective servers.\n` +
+        `• If you have trouble getting a user's ID click [here](https://youtube.com/shorts/pMG8CuIADDs?feature=shared).\n` +
+        `• Make sure to read <#1373027499738398760> before making a ticket.`
+      );
+
+    const btn = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId('openTicket')
+        .setLabel('Request Middleman')
+        .setStyle(ButtonStyle.Primary)
+    );
+
+    await target.send({ embeds: [panelEmbed], components: [btn] });
+    await interaction.reply({ content: '✅ Setup complete.', ephemeral: true }).catch(() => {});
+  }
+}
       if (commandName === 'tagcreate') {
   await interaction.deferReply({ ephemeral: true }).catch(() => {});
   const name = options.getString('name');
@@ -672,5 +675,3 @@ async function handleTranscript(interaction, channel) {
 client.on('error', console.error);
 process.on('unhandledRejection', (reason, p) => console.error('Unhandled Rejection:', reason));
 client.login(process.env.TOKEN);
-const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
-setInterval(() => { fetch(BASE_URL).catch(() => {}); }, 5 * 60 * 1000);
