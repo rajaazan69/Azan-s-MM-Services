@@ -536,9 +536,6 @@ if (commandName === 'lock') {
     await interaction.reply({ content: '❌ Failed to lock the channel.', ephemeral: true });
   }
 }
-
-  await interaction.reply({ content: '🔒 Channel locked.' });
-}
 if (commandName === 'timeout') {
   const target = options.getMember('user');
   const duration = options.getString('duration');
