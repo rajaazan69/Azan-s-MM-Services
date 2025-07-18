@@ -673,10 +673,11 @@ client.on('interactionCreate', async (interaction) => {
     });
 
         await interaction.reply({ content: `✅ Ticket created: ${ticket}`, ephemeral: true });
-  } // close interaction.isChatInputCommand
-  } catch (err) {
-    console.error('❌ Interaction error:', err);
-  }
+
+} catch (err) {
+  console.error('❌ Interaction error:', err);
+}
+
 }); // close client.on('interactionCreate')
 async function handleTranscript(interaction, channel) {
   const messages = await channel.messages.fetch({ limit: 100 });
