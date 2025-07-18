@@ -173,7 +173,19 @@ new SlashCommandBuilder()
     option.setName('message')
       .setDescription('The sticky message content')
       .setRequired(true))
-  .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages)
+  .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages),
+  new SlashCommandBuilder()
+  .setName('untimeout')
+  .setDescription('Remove timeout from a user')
+  .addUserOption(option =>
+    option.setName('user')
+      .setDescription('User to remove timeout from')
+      .setRequired(true))
+  .addStringOption(option =>
+    option.setName('reason')
+      .setDescription('Reason for removing timeout')
+      .setRequired(false))
+  .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers)
     ].map(cmd => cmd.toJSON());
   
     await rest.put(Routes.applicationCommands(client.user.id), { body: commands });
@@ -633,6 +645,36 @@ if (commandName === 'warn') {
   } catch (err) {
     console.error('❌ Warn error:', err);
     await interaction.editReply({ content: '❌ Failed to send warning embed.' });
+  }
+}
+if (commandName === 'untimeout') {
+  await interaction.deferReply().catch(() => {});
+
+  const user = options.getUser('user');
+  const member = guild.members.cache.get(user.id);
+  const reason = options.getString('reason') || 'No reason provided.';
+
+  if (!member) {
+    return await interaction.editReply({ content: '❌ Member not found in this server.' });
+  }
+
+  try {
+    await member.timeout(null, reason);
+
+    const embed = new EmbedBuilder()
+      .setTitle('Timeout Removed')
+      .setColor('#000000')
+      .setDescription(
+        `**User:** <@${user.id}> (${user.tag})\n` +
+        `**Reason:** ${reason}\n` +
+        `**Moderator:** ${interaction.user.tag}`
+      )
+      .setTimestamp();
+
+    await interaction.editReply({ embeds: [embed] });
+  } catch (err) {
+    console.error('❌ Untimeout error:', err);
+    await interaction.editReply({ content: '❌ Failed to remove timeout from the user.' });
   }
 }
 
