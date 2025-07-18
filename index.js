@@ -750,4 +750,5 @@ const fetch = (...args) =>
 
 setInterval(() => {
   fetch(BASE_URL).catch(() => {});
-}, 5 * 60 * 1000);// ✅ this should be the last line
+}, 5 * 60 * 1000); // ✅ this should be the last line
+} // <-- ADD this if something above was opened but not closed ✅ this should be the last line
