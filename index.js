@@ -688,6 +688,7 @@ async function handleTranscript(interaction, channel) {
   if (logChannel) await logChannel.send({ embeds: [embed], files: [new AttachmentBuilder(txtPath)] });
 }
 client.on('messageCreate', async (message) => {
+  });
   // Ignore bot messages and DMs
   if (message.author.bot || message.channel.type !== ChannelType.GuildText) return;
 
