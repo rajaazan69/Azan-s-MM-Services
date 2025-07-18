@@ -646,8 +646,7 @@ try {
     embeds: [embed]
   });
 
-  await interaction.reply({ content: `✅ Ticket created: ${ticket}`, ephemeral: true });
-
+    await interaction.reply({ content: `✅ Ticket created: ${ticket}`, ephemeral: true });
 } catch (err) {
   console.error('❌ Interaction error:', err);
 }
@@ -723,4 +722,4 @@ const fetch = (...args) =>
 
 setInterval(() => {
   fetch(BASE_URL).catch(() => {});
-}, 5 * 60 * 1000); // ✅ this should be the last line
+}, 5 * 60 * 1000);// ✅ this should be the last line
