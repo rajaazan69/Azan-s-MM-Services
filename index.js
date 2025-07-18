@@ -714,6 +714,11 @@ client.on('messageCreate', async (message) => {
 
 client.on('error', console.error);
 process.on('unhandledRejection', (reason, p) => console.error('Unhandled Rejection:', reason));
+
 client.login(process.env.TOKEN);
+
 const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
-setInterval(() => { fetch(BASE_URL).catch(() => {}); }, 5 * 60 * 1000);
+
+setInterval(() => { 
+  fetch(BASE_URL).catch(() => {}); 
+}, 5 * 60 * 1000);
