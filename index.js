@@ -10,6 +10,7 @@ const fs = require('fs');
 const path = require('path');
 require('dotenv').config();
 const { MongoClient } = require('mongodb');
+const stickyMap = new Map();
 
 const mongoUri = process.env.MONGO_URI;
 const mongoClient = new MongoClient(mongoUri);
@@ -160,9 +161,23 @@ new SlashCommandBuilder()
   .setName('unlock')
   .setDescription('Unlock the current channel')
   .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels),
+    
+  new SlashCommandBuilder()
+    .setName('setsticky')
+    .setDescription('Set a sticky message for a specific channel')
+    .addChannelOption(option =>
+      option.setName('channel')
+        .setDescription('Select the channel to set the sticky message in')
+        .setRequired(true))
+    .addStringOption(option =>
+      option.setName('message')
+        .setDescription('The sticky message content')
+        .setRequired(true))
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages)
+    .toJSON()
+);
     ].map(cmd => cmd.toJSON());
   
-
     await rest.put(Routes.applicationCommands(client.user.id), { body: commands });
     console.log('✅ Slash commands registered');
   } else {
@@ -208,6 +223,7 @@ if (interaction.isChatInputCommand()) {
     await interaction.reply({ content: '✅ Setup complete.', ephemeral: true }).catch(() => {});
   }
 }
+
       if (commandName === 'tagcreate') {
   await interaction.deferReply({ ephemeral: true }).catch(() => {});
   const name = options.getString('name');
@@ -672,6 +688,51 @@ async function handleTranscript(interaction, channel) {
   const logChannel = client.channels.cache.get(TRANSCRIPT_CHANNEL);
   if (logChannel) await logChannel.send({ embeds: [embed], files: [new AttachmentBuilder(txtPath)] });
 }
+client.on('interactionCreate', async (interaction) => {
+  if (!interaction.isChatInputCommand()) return;
+
+  if (interaction.commandName === 'setsticky') {
+    const channel = interaction.options.getChannel('channel');
+    const message = interaction.options.getString('message');
+
+    // Send the sticky message now
+    const sentMessage = await channel.send({ content: message });
+
+    // Save it in stickyMap
+    stickyMap.set(channel.id, {
+      message,
+      messageId: sentMessage.id
+    });
+
+    await interaction.reply({ content: `✅ Sticky message set in ${channel}`, ephemeral: true });
+  }
+});
+client.on('messageCreate', async (message) => {
+  if (message.author.bot || message.channel.type !== ChannelType.GuildText) return;
+
+  const sticky = stickyMap.get(message.channel.id);
+  if (!sticky) return;
+
+  try {
+    const oldMsg = await message.channel.messages.fetch(sticky.messageId).catch(() => {});
+    if (oldMsg) await oldMsg.delete().catch(() => {});
+
+    const newMsg = await message.channel.send({ content: sticky.message });
+
+    stickyMap.set(message.channel.id, {
+      message: sticky.message,
+      messageId: newMsg.id
+    });
+  } catch (err) {
+    console.error('Sticky message error:', err);
+  }
+});
+app.get('/', (req, res) => res.sendStatus(200));
+app.listen(3000, () => console.log('🌐 Express server is running'));
+
+setInterval(() => {
+  fetch(BASE_URL).catch(() => {});
+}, 5 * 60 * 1000); // Ping every 5 minutes
 
 client.on('error', console.error);
 process.on('unhandledRejection', (reason, p) => console.error('Unhandled Rejection:', reason));
