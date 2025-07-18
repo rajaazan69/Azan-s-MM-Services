@@ -606,49 +606,64 @@ const permissionOverwrites = [
   { id: MIDDLEMAN_ROLE, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] }
 ];
 
+// ... all your imports and initializations
+
 client.on('interactionCreate', async (interaction) => {
-  if (!interaction.isModalSubmit()) return;
-  if (interaction.customId !== 'middleman-modal') return;
-
-  const q1 = interaction.fields.getTextInputValue('tradeDetails');
-  const q2 = interaction.fields.getTextInputValue('user1Gives');
-  const q3 = interaction.fields.getTextInputValue('user2Gives');
-  const q4 = interaction.fields.getTextInputValue('user2Id')?.trim();
-
-  const isValidId = q4 && /^\d{17,19}$/.test(q4);
-  const targetMention = isValidId ? `<@${q4}>` : '`Unknown User`';
-
-  const permissionOverwrites = [
-    {
-      id: interaction.guild.id,
-      deny: [PermissionsBitField.Flags.ViewChannel]
-    },
-    {
-      id: interaction.user.id,
-      allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages]
-    },
-    {
-      id: OWNER_ID,
-      allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages]
-    }
-  ];
-
   try {
-    if (isValidId) {
-      const member = interaction.guild.members.cache.get(q4);
-      if (member) {
-        permissionOverwrites.push({
-          id: q4,
-          allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages]
-        });
-      }
+    if (!interaction.isChatInputCommand()) return;
+
+    if (interaction.commandName === 'middleman') {
+      const modal = new ModalBuilder()
+        .setCustomId('middlemanRequest')
+        .setTitle('Request Middleman');
+
+      const q1 = new TextInputBuilder()
+        .setCustomId('q1')
+        .setLabel('Trade Details')
+        .setStyle(TextInputStyle.Paragraph)
+        .setRequired(true);
+
+      const q2 = new TextInputBuilder()
+        .setCustomId('q2')
+        .setLabel('You are giving?')
+        .setStyle(TextInputStyle.Short)
+        .setRequired(true);
+
+      const q3 = new TextInputBuilder()
+        .setCustomId('q3')
+        .setLabel('They are giving?')
+        .setStyle(TextInputStyle.Short)
+        .setRequired(true);
+
+      const row1 = new ActionRowBuilder().addComponents(q1);
+      const row2 = new ActionRowBuilder().addComponents(q2);
+      const row3 = new ActionRowBuilder().addComponents(q3);
+
+      modal.addComponents(row1, row2, row3);
+      await interaction.showModal(modal);
     }
+  } catch (err) {
+    console.error('❌ Interaction command error:', err);
+  }
+});
+
+client.on('interactionCreate', async (interaction) => {
+  try {
+    if (!interaction.isModalSubmit()) return;
+    if (interaction.customId !== 'middlemanRequest') return;
+
+    const q1 = interaction.fields.getTextInputValue('q1');
+    const q2 = interaction.fields.getTextInputValue('q2');
+    const q3 = interaction.fields.getTextInputValue('q3');
+
+    const modalContent = await interaction.message?.components?.[0]?.components?.[0]?.value;
+    const targetMention = interaction.fields.getTextInputValue('user2') || '`Unknown User`';
 
     const ticket = await interaction.guild.channels.create({
       name: `ticket-${interaction.user.username}`,
       type: ChannelType.GuildText,
       parent: TICKET_CATEGORY,
-      permissionOverwrites
+      permissionOverwrites,
     });
 
     const embed = new EmbedBuilder()
@@ -669,16 +684,38 @@ client.on('interactionCreate', async (interaction) => {
 
     await ticket.send({
       content: `<@${interaction.user.id}> <@${OWNER_ID}>`,
-      embeds: [embed]
+      embeds: [embed],
     });
 
-        await interaction.reply({ content: `✅ Ticket created: ${ticket}`, ephemeral: true });
+    await interaction.reply({ content: `✅ Ticket created: ${ticket}`, ephemeral: true });
+  } catch (err) {
+    console.error('❌ Modal interaction error:', err);
+  }
+});
 
-} catch (err) {
-  console.error('❌ Interaction error:', err);
-}
+// ✅ Sticky message handler
+client.on('messageCreate', async (message) => {
+  if (message.author.bot || message.channel.type !== ChannelType.GuildText) return;
 
-}); // close client.on('interactionCreate')
+  const sticky = stickyMap.get(message.channel.id);
+  if (!sticky) return;
+
+  try {
+    const oldMsg = await message.channel.messages.fetch(sticky.messageId).catch(() => {});
+    if (oldMsg) await oldMsg.delete().catch(() => {});
+
+    const newMsg = await message.channel.send({ content: sticky.message });
+
+    stickyMap.set(message.channel.id, {
+      message: sticky.message,
+      messageId: newMsg.id,
+    });
+  } catch (err) {
+    console.error('Sticky message error:', err);
+  }
+});
+
+// ✅ Transcript function (unchanged unless you need edits)
 async function handleTranscript(interaction, channel) {
   const messages = await channel.messages.fetch({ limit: 100 });
   const sorted = messages.sort((a, b) => a.createdTimestamp - b.createdTimestamp);
@@ -706,37 +743,18 @@ async function handleTranscript(interaction, channel) {
       {
         name: 'Participants',
         value: [...participants.entries()].map(([id, count]) => `<@${id}> — \`${count}\` messages`).join('\n').slice(0, 1024) || 'None',
-        inline: false
+        inline: false,
       }
     )
     .setColor('#4fc3f7')
     .setTimestamp();
+
   await interaction.editReply({ embeds: [embed], files: [new AttachmentBuilder(txtPath)] }).catch(() => {});
   const logChannel = client.channels.cache.get(TRANSCRIPT_CHANNEL);
   if (logChannel) await logChannel.send({ embeds: [embed], files: [new AttachmentBuilder(txtPath)] });
 }
-client.on('messageCreate', async (message) => {
-  if (message.author.bot || message.channel.type !== ChannelType.GuildText) return;
 
-  const sticky = stickyMap.get(message.channel.id);
-  if (!sticky) return;
-
-  try {
-    const oldMsg = await message.channel.messages.fetch(sticky.messageId).catch(() => {});
-    if (oldMsg) await oldMsg.delete().catch(() => {});
-
-    const newMsg = await message.channel.send({ content: sticky.message });
-
-    stickyMap.set(message.channel.id, {
-      message: sticky.message,
-      messageId: newMsg.id
-    });
-  } catch (err) {
-    console.error('Sticky message error:', err);
-  }
-});
-
-// Add these lines at the end — in THIS ORDER
+// ✅ Logging & keep-alive
 client.on('error', console.error);
 
 process.on('unhandledRejection', (reason, p) => {
@@ -745,12 +763,7 @@ process.on('unhandledRejection', (reason, p) => {
 
 client.login(process.env.TOKEN);
 
-// keep-alive ping
-const fetch = (...args) =>
-  import('node-fetch').then(({ default: fetch }) => fetch(...args));
-
+const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
 setInterval(() => {
   fetch(BASE_URL).catch(() => {});
 }, 5 * 60 * 1000); // ✅ keep this
-
-// No extra }); if nothing is open!
