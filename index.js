@@ -654,37 +654,71 @@ async function handleTranscript(interaction, channel) {
   const messages = await channel.messages.fetch({ limit: 100 });
   const sorted = messages.sort((a, b) => a.createdTimestamp - b.createdTimestamp);
   const participants = new Map();
+
   const lines = sorted.map(m => {
     participants.set(m.author.id, (participants.get(m.author.id) || 0) + 1);
     const tag = `${m.author.username}#${m.author.discriminator}`;
     return `<p><strong>${tag}</strong> <em>${new Date(m.createdTimestamp).toLocaleString()}</em>: ${m.cleanContent}</p>`;
   });
-  const stats = [...participants.entries()].map(([id, count]) => `<li><strong><a href="https://discord.com/users/${id}">${id}</a></strong>: ${count} messages</li>`).join('');
+
+  const stats = [...participants.entries()].map(
+    ([id, count]) => `<li><strong><a href="https://discord.com/users/${id}">${id}</a></strong>: ${count} messages</li>`
+  ).join('');
+
   const html = `<html><head><title>Transcript for ${channel.name}</title></head><body><h2>${channel.name}</h2><h3>Participants</h3><ul>${stats}</ul><hr>${lines.join('')}<hr></body></html>`;
   const filename = `${channel.id}.html`;
   const filepath = path.join(__dirname, 'transcripts');
+
   if (!fs.existsSync(filepath)) fs.mkdirSync(filepath);
   fs.writeFileSync(path.join(filepath, filename), html);
+
   const htmlLink = `${BASE_URL}/transcripts/${filename}`;
-  const txtLines = sorted.map(m => `[${new Date(m.createdTimestamp).toISOString()}] ${m.author.tag}: ${m.cleanContent || '[Embed/Attachment]'}`).join('\n');
+
+  const txtLines = sorted.map(m =>
+    `[${new Date(m.createdTimestamp).toISOString()}] ${m.author.tag}: ${m.cleanContent || '[Embed/Attachment]'}`
+  ).join('\n');
   const txtPath = path.join(filepath, `transcript-${channel.id}.txt`);
   fs.writeFileSync(txtPath, txtLines);
+
   const embed = new EmbedBuilder()
     .setTitle('📄 Transcript Ready')
-    .setDescription(`[Click to view HTML Transcript](${htmlLink})`)
+    .setDescription('Your ticket transcript is now ready.')
     .addFields(
       { name: 'Ticket Name', value: channel.name, inline: true },
+      { name: 'Ticket ID', value: channel.id.toString(), inline: true },
       {
         name: 'Participants',
-        value: [...participants.entries()].map(([id, count]) => `<@${id}> — \`${count}\` messages`).join('\n').slice(0, 1024) || 'None',
+        value: [...participants.entries()]
+          .map(([id, count]) => `<@${id}> — \`${count}\` messages`)
+          .join('\n')
+          .slice(0, 1024) || 'None',
         inline: false
       }
     )
-    .setColor('#4fc3f7')
+    .setColor('#000000')
     .setTimestamp();
-  await interaction.editReply({ embeds: [embed], files: [new AttachmentBuilder(txtPath)] }).catch(() => {});
+
+  const buttonRow = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setLabel('View HTML Transcript')
+      .setStyle(ButtonStyle.Link)
+      .setURL(htmlLink)
+  );
+
+  await interaction.editReply({
+    embeds: [embed],
+    files: [new AttachmentBuilder(txtPath)],
+    components: [buttonRow]
+  }).catch(() => {});
+
   const logChannel = client.channels.cache.get(TRANSCRIPT_CHANNEL);
-  if (logChannel) await logChannel.send({ embeds: [embed], files: [new AttachmentBuilder(txtPath)] });
+  if (logChannel) {
+    await logChannel.send({
+      embeds: [embed],
+      files: [new AttachmentBuilder(txtPath)],
+      components: [buttonRow]
+    });
+  }
 }
 client.on('interactionCreate', async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
