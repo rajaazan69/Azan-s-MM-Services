@@ -1,3 +1,4 @@
+
 const {
   Client, GatewayIntentBits, Partials, ChannelType, PermissionsBitField, PermissionFlagsBits,
   ActionRowBuilder, ModalBuilder, TextInputBuilder, TextInputStyle,
@@ -9,7 +10,6 @@ const fs = require('fs');
 const path = require('path');
 require('dotenv').config();
 const { MongoClient } = require('mongodb');
-const stickyMap = new Map(); // Stores sticky message per channel
 
 const mongoUri = process.env.MONGO_URI;
 const mongoClient = new MongoClient(mongoUri);
@@ -207,24 +207,6 @@ if (interaction.isChatInputCommand()) {
     await target.send({ embeds: [panelEmbed], components: [btn] });
     await interaction.reply({ content: '✅ Setup complete.', ephemeral: true }).catch(() => {});
   }
-  if (commandName === 'sticky') {
-  const channel = options.getChannel('channel');
-  const message = options.getString('message');
-
-  if (!channel || channel.type !== ChannelType.GuildText) {
-    return interaction.reply({ content: '❌ Please select a valid text channel.', ephemeral: true });
-  }
-
-  // Send the sticky message
-  const sentMessage = await channel.send({ content: message });
-
-  // Store sticky info
-  stickyMap.set(channel.id, {
-    message: message,
-    messageId: sentMessage.id
-  });
-
-  return interaction.reply({ content: `✅ Sticky message set in <#${channel.id}>!`, ephemeral: true });
 }
       if (commandName === 'tagcreate') {
   await interaction.deferReply({ ephemeral: true }).catch(() => {});
@@ -606,116 +588,54 @@ const permissionOverwrites = [
   { id: MIDDLEMAN_ROLE, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] }
 ];
 
-// ... all your imports and initializations
+// Add the target user to permission overwrites if ID is valid and member exists
+if (isValidId) {
+  const member = interaction.guild.members.cache.get(q4);
+  if (member) {
+    permissionOverwrites.push({
+      id: q4,
+      allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages]
+    });
+  }
+}
 
-client.on('interactionCreate', async (interaction) => {
-  try {
-    if (!interaction.isChatInputCommand()) return;
+const ticket = await interaction.guild.channels.create({
+  name: `ticket-${interaction.user.username}`,
+  type: ChannelType.GuildText,
+  parent: TICKET_CATEGORY,
+  permissionOverwrites
+});
+      const embed = new EmbedBuilder()
+  .setTitle('Middleman Request')
+  .setColor('#2B2D31')
+  .setDescription(
+    `**User 1:** <@${interaction.user.id}>\n` +
+    `**User 2:** ${targetMention}\n\n` +
+    `**Trade Details**\n` +
+    `> ${q1}\n\n` +
+    `**User 1 is giving:**\n` +
+    `> ${q2}\n\n` +
+    `**User 2 is giving:**\n` +
+    `> ${q3}`
+  )
+  .setFooter({ text: `Ticket by ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
+  .setTimestamp();
 
-    if (interaction.commandName === 'middleman') {
-      const modal = new ModalBuilder()
-        .setCustomId('middlemanRequest')
-        .setTitle('Request Middleman');
+        await ticket.send({
+  content: `<@${interaction.user.id}> <@${OWNER_ID}>`,
+  embeds: [embed]
+});
+          
 
-      const q1 = new TextInputBuilder()
-        .setCustomId('q1')
-        .setLabel('Trade Details')
-        .setStyle(TextInputStyle.Paragraph)
-        .setRequired(true);
-
-      const q2 = new TextInputBuilder()
-        .setCustomId('q2')
-        .setLabel('You are giving?')
-        .setStyle(TextInputStyle.Short)
-        .setRequired(true);
-
-      const q3 = new TextInputBuilder()
-        .setCustomId('q3')
-        .setLabel('They are giving?')
-        .setStyle(TextInputStyle.Short)
-        .setRequired(true);
-
-      const row1 = new ActionRowBuilder().addComponents(q1);
-      const row2 = new ActionRowBuilder().addComponents(q2);
-      const row3 = new ActionRowBuilder().addComponents(q3);
-
-      modal.addComponents(row1, row2, row3);
-      await interaction.showModal(modal);
+        await interaction.reply({ content: `✅ Ticket created: ${ticket}`, ephemeral: true });
+      
     }
+
   } catch (err) {
-    console.error('❌ Interaction command error:', err);
+    console.error('❌ Interaction error:', err);
   }
 });
 
-client.on('interactionCreate', async (interaction) => {
-  try {
-    if (!interaction.isModalSubmit()) return;
-    if (interaction.customId !== 'middlemanRequest') return;
-
-    const q1 = interaction.fields.getTextInputValue('q1');
-    const q2 = interaction.fields.getTextInputValue('q2');
-    const q3 = interaction.fields.getTextInputValue('q3');
-
-    const modalContent = await interaction.message?.components?.[0]?.components?.[0]?.value;
-    const targetMention = interaction.fields.getTextInputValue('user2') || '`Unknown User`';
-
-    const ticket = await interaction.guild.channels.create({
-      name: `ticket-${interaction.user.username}`,
-      type: ChannelType.GuildText,
-      parent: TICKET_CATEGORY,
-      permissionOverwrites,
-    });
-
-    const embed = new EmbedBuilder()
-      .setTitle('Middleman Request')
-      .setColor('#2B2D31')
-      .setDescription(
-        `**User 1:** <@${interaction.user.id}>\n` +
-        `**User 2:** ${targetMention}\n\n` +
-        `**Trade Details**\n` +
-        `> ${q1}\n\n` +
-        `**User 1 is giving:**\n` +
-        `> ${q2}\n\n` +
-        `**User 2 is giving:**\n` +
-        `> ${q3}`
-      )
-      .setFooter({ text: `Ticket by ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
-      .setTimestamp();
-
-    await ticket.send({
-      content: `<@${interaction.user.id}> <@${OWNER_ID}>`,
-      embeds: [embed],
-    });
-
-    await interaction.reply({ content: `✅ Ticket created: ${ticket}`, ephemeral: true });
-  } catch (err) {
-    console.error('❌ Modal interaction error:', err);
-  }
-});
-
-// ✅ Sticky message handler
-client.on('messageCreate', async (message) => {
-  if (message.author.bot || message.channel.type !== ChannelType.GuildText) return;
-
-  const sticky = stickyMap.get(message.channel.id);
-  if (!sticky) return;
-
-  try {
-    const oldMsg = await message.channel.messages.fetch(sticky.messageId).catch(() => {});
-    if (oldMsg) await oldMsg.delete().catch(() => {});
-
-    const newMsg = await message.channel.send({ content: sticky.message });
-
-    stickyMap.set(message.channel.id, {
-      message: sticky.message,
-      messageId: newMsg.id,
-    });
-  } catch (err) {
-    console.error('Sticky message error:', err);
-  }
-});
-
-// ✅ Transcript function (unchanged unless you need edits)
 async function handleTranscript(interaction, channel) {
   const messages = await channel.messages.fetch({ limit: 100 });
   const sorted = messages.sort((a, b) => a.createdTimestamp - b.createdTimestamp);
@@ -743,27 +663,16 @@ async function handleTranscript(interaction, channel) {
       {
         name: 'Participants',
         value: [...participants.entries()].map(([id, count]) => `<@${id}> — \`${count}\` messages`).join('\n').slice(0, 1024) || 'None',
-        inline: false,
+        inline: false
       }
     )
     .setColor('#4fc3f7')
     .setTimestamp();
-
   await interaction.editReply({ embeds: [embed], files: [new AttachmentBuilder(txtPath)] }).catch(() => {});
   const logChannel = client.channels.cache.get(TRANSCRIPT_CHANNEL);
   if (logChannel) await logChannel.send({ embeds: [embed], files: [new AttachmentBuilder(txtPath)] });
 }
 
-// ✅ Logging & keep-alive
 client.on('error', console.error);
-
-process.on('unhandledRejection', (reason, p) => {
-  console.error('Unhandled Rejection:', reason);
-});
-
+process.on('unhandledRejection', (reason, p) => console.error('Unhandled Rejection:', reason));
 client.login(process.env.TOKEN);
-
-const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
-setInterval(() => {
-  fetch(BASE_URL).catch(() => {});
-}, 5 * 60 * 1000); // ✅ keep this
