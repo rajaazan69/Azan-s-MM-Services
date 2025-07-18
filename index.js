@@ -465,87 +465,175 @@ if (interaction.isChatInputCommand()) {
   }
 }
 if (commandName === 'ban') {
-  const member = options.getMember('user');
-  const reason = options.getString('reason') || 'No reason provided';
+  const target = options.getMember('user');
+  const reason = options.getString('reason') || 'No reason provided.';
 
-  if (!interaction.member.permissions.has(PermissionFlagsBits.BanMembers))
-    return interaction.reply({ content: '❌ You do not have permission to use this command.', ephemeral: true });
+  if (!target) {
+    return interaction.reply({ content: '❌ Member not found.', ephemeral: true });
+  }
 
-  if (!member || !member.bannable)
-    return interaction.reply({ content: '❌ Cannot ban this user.', ephemeral: true });
+  try {
+    await target.ban({ reason });
 
-  await member.ban({ reason });
-  await interaction.reply({ content: `✅ Banned ${member.user.tag} | Reason: ${reason}` });
+    const embed = new EmbedBuilder()
+      .setTitle('User Banned')
+      .setColor('#000000')
+      .addFields(
+        { name: '**User**', value: `${target.user.tag} (<@${target.id}>)`, inline: true },
+        { name: '**Reason**', value: reason }
+      )
+      .setFooter({ text: `Moderator: ${interaction.user.tag}` })
+      .setTimestamp();
+
+    await interaction.reply({ embeds: [embed] });
+  } catch (err) {
+    console.error('❌ Ban error:', err);
+    await interaction.reply({ content: '❌ Failed to ban the user.', ephemeral: true });
+  }
 }
 if (commandName === 'kick') {
-  const member = options.getMember('user');
-  const reason = options.getString('reason') || 'No reason provided';
+  const target = options.getMember('user');
+  const reason = options.getString('reason') || 'No reason provided.';
 
-  if (!interaction.member.permissions.has(PermissionFlagsBits.KickMembers))
-    return interaction.reply({ content: '❌ You do not have permission to use this command.', ephemeral: true });
+  if (!target) {
+    return interaction.reply({ content: '❌ Member not found.', ephemeral: true });
+  }
 
-  if (!member || !member.kickable)
-    return interaction.reply({ content: '❌ Cannot kick this user.', ephemeral: true });
+  try {
+    await target.kick(reason);
 
-  await member.kick(reason);
-  await interaction.reply({ content: `✅ Kicked ${member.user.tag} | Reason: ${reason}` });
+    const embed = new EmbedBuilder()
+      .setTitle('User Kicked')
+      .setColor('#000000')
+      .addFields(
+        { name: '**User**', value: `${target.user.tag} (<@${target.id}>)`, inline: true },
+        { name: '**Reason**', value: reason }
+      )
+      .setFooter({ text: `Moderator: ${interaction.user.tag}` })
+      .setTimestamp();
+
+    await interaction.reply({ embeds: [embed] });
+  } catch (err) {
+    console.error('❌ Kick error:', err);
+    await interaction.reply({ content: '❌ Failed to kick the user.', ephemeral: true });
+  }
 }
 if (commandName === 'lock') {
-  if (!interaction.member.permissions.has(PermissionFlagsBits.ManageChannels))
-    return interaction.reply({ content: '❌ You do not have permission to lock channels.', ephemeral: true });
+  try {
+    await channel.permissionOverwrites.edit(guild.roles.everyone, {
+      SendMessages: false
+    });
 
-  await interaction.channel.permissionOverwrites.edit(interaction.guild.roles.everyone, {
-    SendMessages: false
-  });
+    const embed = new EmbedBuilder()
+      .setTitle('Channel Locked')
+      .setColor('#000000')
+      .setDescription(`**Channel:** ${channel.name}\n**Locked by:** ${interaction.user.tag}`)
+      .setTimestamp();
+
+    await interaction.reply({ embeds: [embed] });
+  } catch (err) {
+    console.error('❌ Lock error:', err);
+    await interaction.reply({ content: '❌ Failed to lock the channel.', ephemeral: true });
+  }
+}
 
   await interaction.reply({ content: '🔒 Channel locked.' });
 }
-if (commandName === 'mute') {
-  const member = options.getMember('user');
-  const duration = options.getInteger('duration');
-  const reason = options.getString('reason') || 'No reason provided';
+if (commandName === 'timeout') {
+  const target = options.getMember('user');
+  const duration = options.getString('duration');
+  const reason = options.getString('reason') || 'No reason provided.';
 
-  if (!interaction.member.permissions.has(PermissionFlagsBits.ModerateMembers))
-    return interaction.reply({ content: '❌ You do not have permission to use this command.', ephemeral: true });
+  if (!target) {
+    return interaction.reply({ content: '❌ Member not found.', ephemeral: true });
+  }
+
+  const ms = require('ms');
+  const msDuration = ms(duration);
+  if (!msDuration || msDuration > 2.419e9) {
+    return interaction.reply({ content: '❌ Invalid or too long timeout duration.', ephemeral: true });
+  }
 
   try {
-    await member.timeout(duration * 60 * 1000, reason);
-    await interaction.reply({ content: `✅ Timed out ${member.user.tag} for ${duration} minutes.` });
-  } catch {
+    await target.timeout(msDuration, reason);
+
+    const embed = new EmbedBuilder()
+      .setTitle('Timeout Issued')
+      .setColor('#000000')
+      .addFields(
+        { name: '**User**', value: `${target.user.tag} (<@${target.id}>)`, inline: true },
+        { name: '**Duration**', value: duration, inline: true },
+        { name: '**Reason**', value: reason }
+      )
+      .setFooter({ text: `Moderator: ${interaction.user.tag}` })
+      .setTimestamp();
+
+    await interaction.reply({ embeds: [embed] });
+  } catch (err) {
+    console.error('❌ Timeout error:', err);
     await interaction.reply({ content: '❌ Failed to timeout the user.', ephemeral: true });
   }
 }
 if (commandName === 'unban') {
   const userId = options.getString('userid');
-
-  if (!interaction.member.permissions.has(PermissionFlagsBits.BanMembers))
-    return interaction.reply({ content: '❌ You do not have permission to use this command.', ephemeral: true });
+  const reason = options.getString('reason') || 'No reason provided.';
 
   try {
-    await interaction.guild.members.unban(userId);
-    await interaction.reply({ content: `✅ Unbanned user with ID: ${userId}` });
+    await guild.bans.remove(userId, reason);
+
+    const embed = new EmbedBuilder()
+      .setTitle('User Unbanned')
+      .setColor('#000000')
+      .addFields(
+        { name: '**User ID**', value: userId, inline: true },
+        { name: '**Reason**', value: reason }
+      )
+      .setFooter({ text: `Moderator: ${interaction.user.tag}` })
+      .setTimestamp();
+
+    await interaction.reply({ embeds: [embed] });
   } catch (err) {
-    await interaction.reply({ content: '❌ Failed to unban user. Make sure the ID is valid.', ephemeral: true });
+    console.error('❌ Unban error:', err);
+    await interaction.reply({ content: '❌ Failed to unban the user.', ephemeral: true });
   }
 }
 if (commandName === 'unlock') {
-  if (!interaction.member.permissions.has(PermissionFlagsBits.ManageChannels))
-    return interaction.reply({ content: '❌ You do not have permission to unlock channels.', ephemeral: true });
+  try {
+    await channel.permissionOverwrites.edit(guild.roles.everyone, {
+      SendMessages: true
+    });
 
-  await interaction.channel.permissionOverwrites.edit(interaction.guild.roles.everyone, {
-    SendMessages: true
-  });
+    const embed = new EmbedBuilder()
+      .setTitle('Channel Unlocked')
+      .setColor('#000000')
+      .setDescription(`**Channel:** ${channel.name}\n**Unlocked by:** ${interaction.user.tag}`)
+      .setTimestamp();
 
-  await interaction.reply({ content: '🔓 Channel unlocked.' });
+    await interaction.reply({ embeds: [embed] });
+  } catch (err) {
+    console.error('❌ Unlock error:', err);
+    await interaction.reply({ content: '❌ Failed to unlock the channel.', ephemeral: true });
+  }
 }
 if (commandName === 'warn') {
-  const member = options.getMember('user');
-  const reason = options.getString('reason') || 'No reason provided';
+  const target = options.getMember('user');
+  const reason = options.getString('reason') || 'No reason provided.';
 
-  if (!interaction.member.permissions.has(PermissionFlagsBits.KickMembers))
-    return interaction.reply({ content: '❌ You do not have permission to warn.', ephemeral: true });
+  if (!target) {
+    return interaction.reply({ content: '❌ Member not found.', ephemeral: true });
+  }
 
-  await interaction.reply({ content: `⚠️ Warned ${member.user.tag} | Reason: ${reason}` });
+  const embed = new EmbedBuilder()
+    .setTitle('User Warned')
+    .setColor('#000000')
+    .addFields(
+      { name: '**User**', value: `${target.user.tag} (<@${target.id}>)`, inline: true },
+      { name: '**Reason**', value: reason }
+    )
+    .setFooter({ text: `Moderator: ${interaction.user.tag}` })
+    .setTimestamp();
+
+  await interaction.reply({ embeds: [embed] });
 }
 
     // ✅ BUTTON: Open Modal
