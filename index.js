@@ -651,6 +651,7 @@ try {
 } catch (err) {
   console.error('❌ Interaction error:', err);
 }
+});
 async function handleTranscript(interaction, channel) {
   const messages = await channel.messages.fetch({ limit: 100 });
   const sorted = messages.sort((a, b) => a.createdTimestamp - b.createdTimestamp);
@@ -688,7 +689,6 @@ async function handleTranscript(interaction, channel) {
   if (logChannel) await logChannel.send({ embeds: [embed], files: [new AttachmentBuilder(txtPath)] });
 }
 client.on('messageCreate', async (message) => {
-  });
   // Ignore bot messages and DMs
   if (message.author.bot || message.channel.type !== ChannelType.GuildText) return;
 
