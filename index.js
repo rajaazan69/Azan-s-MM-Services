@@ -380,7 +380,6 @@ if (interaction.isChatInputCommand()) {
         await interaction.deferReply({ ephemeral: true }).catch(() => {});
         await handleTranscript(interaction, channel);
       }
-    }
     if (commandName === 'i') {
   const username = options.getString('username');
   await interaction.deferReply();
