@@ -9,6 +9,7 @@ const fs = require('fs');
 const path = require('path');
 require('dotenv').config();
 const { MongoClient } = require('mongodb');
+const stickyMap = new Map(); // Stores sticky message per channel
 
 const mongoUri = process.env.MONGO_URI;
 const mongoClient = new MongoClient(mongoUri);
@@ -206,6 +207,24 @@ if (interaction.isChatInputCommand()) {
     await target.send({ embeds: [panelEmbed], components: [btn] });
     await interaction.reply({ content: '✅ Setup complete.', ephemeral: true }).catch(() => {});
   }
+  if (commandName === 'sticky') {
+  const channel = options.getChannel('channel');
+  const message = options.getString('message');
+
+  if (!channel || channel.type !== ChannelType.GuildText) {
+    return interaction.reply({ content: '❌ Please select a valid text channel.', ephemeral: true });
+  }
+
+  // Send the sticky message
+  const sentMessage = await channel.send({ content: message });
+
+  // Store sticky info
+  stickyMap.set(channel.id, {
+    message: message,
+    messageId: sentMessage.id
+  });
+
+  return interaction.reply({ content: `✅ Sticky message set in <#${channel.id}>!`, ephemeral: true });
 }
       if (commandName === 'tagcreate') {
   await interaction.deferReply({ ephemeral: true }).catch(() => {});
@@ -671,7 +690,33 @@ async function handleTranscript(interaction, channel) {
   const logChannel = client.channels.cache.get(TRANSCRIPT_CHANNEL);
   if (logChannel) await logChannel.send({ embeds: [embed], files: [new AttachmentBuilder(txtPath)] });
 }
+client.on('messageCreate', async (message) => {
+  // Ignore bot messages and DMs
+  if (message.author.bot || message.channel.type !== ChannelType.GuildText) return;
+
+  const sticky = stickyMap.get(message.channel.id);
+  if (!sticky) return;
+
+  try {
+    // Delete the old sticky message (if it still exists)
+    const oldMsg = await message.channel.messages.fetch(sticky.messageId).catch(() => {});
+    if (oldMsg) await oldMsg.delete().catch(() => {});
+
+    // Re-send the sticky message
+    const newMsg = await message.channel.send({ content: sticky.message });
+
+    // Update the stored message ID
+    stickyMap.set(message.channel.id, {
+      message: sticky.message,
+      messageId: newMsg.id
+    });
+  } catch (err) {
+    console.error('Sticky message error:', err);
+  }
+});
 
 client.on('error', console.error);
 process.on('unhandledRejection', (reason, p) => console.error('Unhandled Rejection:', reason));
 client.login(process.env.TOKEN);
+const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
+setInterval(() => { fetch(BASE_URL).catch(() => {}); }, 5 * 60 * 1000);
