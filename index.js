@@ -672,12 +672,12 @@ client.on('interactionCreate', async (interaction) => {
       embeds: [embed]
     });
 
-    await interaction.reply({ content: `✅ Ticket created: ${ticket}`, ephemeral: true });
-
+        await interaction.reply({ content: `✅ Ticket created: ${ticket}`, ephemeral: true });
+  } // close interaction.isChatInputCommand
   } catch (err) {
     console.error('❌ Interaction error:', err);
   }
-});
+}); // close client.on('interactionCreate')
 async function handleTranscript(interaction, channel) {
   const messages = await channel.messages.fetch({ limit: 100 });
   const sorted = messages.sort((a, b) => a.createdTimestamp - b.createdTimestamp);
