@@ -129,10 +129,10 @@ new SlashCommandBuilder()
     option.setName('user')
       .setDescription('User to timeout')
       .setRequired(true))
-  .addIntegerOption(option =>
-    option.setName('duration')
-      .setDescription('Duration in minutes')
-      .setRequired(true))
+  .addStringOption(option =>
+  option.setName('duration')
+    .setDescription('e.g. 10m, 1h, 2d')
+    .setRequired(true))
   .addStringOption(option =>
     option.setName('reason')
       .setDescription('Reason for timeout')
@@ -537,7 +537,7 @@ if (commandName === 'lock') {
   }
 }
 if (commandName === 'timeout') {
-  await interaction.deferReply({ ephemeral: true }).catch(() => {});
+  await interaction.deferReply().catch(() => {});
 
   const user = options.getUser('user');
   const member = guild.members.cache.get(user.id);
@@ -613,7 +613,7 @@ if (commandName === 'unlock') {
   }
 }
 if (commandName === 'warn') {
-  await interaction.deferReply({ ephemeral: true }).catch(() => {});
+  await interaction.deferReply().catch(() => {});
 
   const user = options.getUser('user');
   const reason = options.getString('reason') || 'No reason provided.';
