@@ -688,21 +688,17 @@ async function handleTranscript(interaction, channel) {
   if (logChannel) await logChannel.send({ embeds: [embed], files: [new AttachmentBuilder(txtPath)] });
 }
 client.on('messageCreate', async (message) => {
-  // Ignore bot messages and DMs
   if (message.author.bot || message.channel.type !== ChannelType.GuildText) return;
 
   const sticky = stickyMap.get(message.channel.id);
   if (!sticky) return;
 
   try {
-    // Delete the old sticky message (if it still exists)
     const oldMsg = await message.channel.messages.fetch(sticky.messageId).catch(() => {});
     if (oldMsg) await oldMsg.delete().catch(() => {});
 
-    // Re-send the sticky message
     const newMsg = await message.channel.send({ content: sticky.message });
 
-    // Update the stored message ID
     stickyMap.set(message.channel.id, {
       message: sticky.message,
       messageId: newMsg.id
@@ -712,13 +708,19 @@ client.on('messageCreate', async (message) => {
   }
 });
 
+// Add these lines at the end — in THIS ORDER
 client.on('error', console.error);
-process.on('unhandledRejection', (reason, p) => console.error('Unhandled Rejection:', reason));
+
+process.on('unhandledRejection', (reason, p) => {
+  console.error('Unhandled Rejection:', reason);
+});
 
 client.login(process.env.TOKEN);
 
-const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
+// keep-alive ping
+const fetch = (...args) =>
+  import('node-fetch').then(({ default: fetch }) => fetch(...args));
 
-setInterval(() => { 
-  fetch(BASE_URL).catch(() => {}); 
-}, 5 * 60 * 1000);
+setInterval(() => {
+  fetch(BASE_URL).catch(() => {});
+}, 5 * 60 * 1000); // ✅ this should be the last line
