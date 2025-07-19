@@ -697,18 +697,17 @@ if (commandName === 'untimeout') {
 
     // ✅ BUTTON: Transcript Fix
     if (interaction.isButton() && interaction.customId === 'generate_transcript') {
-  await interaction.deferReply({ ephemeral: true }); // 👈 FIXED
+  const parentId = interaction.channel.parentId || interaction.channel.parent?.id;
+  if (parentId !== TICKET_CATEGORY) {
+    return interaction.reply({
+      content: '❌ You can only use this inside ticket channels.',
+      ephemeral: true
+    });
+  }
 
-  // Now safely call your handler
+  await interaction.deferReply({ ephemeral: true }).catch(() => {});
   await handleTranscript(interaction, interaction.channel);
 }
-      const parentId = interaction.channel.parentId || interaction.channel.parent?.id;
-      if (parentId !== TICKET_CATEGORY) {
-        return interaction.reply({ content: '❌ You can only use this inside ticket channels.', ephemeral: true });
-      }
-      await interaction.deferReply({ ephemeral: true }).catch(() => {});
-      await handleTranscript(interaction, interaction.channel);
-    }
 
     // ✅ BUTTON: Delete
     if (interaction.isButton() && interaction.customId === 'delete') {
