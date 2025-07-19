@@ -6,6 +6,8 @@ const {
   SlashCommandBuilder, REST, Routes
 } = require('discord.js');
 const express = require('express');
+const app = express();
+app.use('/transcripts', express.static(path.join(__dirname, 'transcripts')));
 const fs = require('fs');
 const path = require('path');
 require('dotenv').config();
@@ -15,10 +17,12 @@ const stickyMap = new Map();
 const mongoUri = process.env.MONGO_URI;
 const mongoClient = new MongoClient(mongoUri);
 let tagsCollection;
+let transcriptsCollection; // Add this next to tagsCollection
 
 mongoClient.connect().then(() => {
   const db = mongoClient.db('ticketbot');
   tagsCollection = db.collection('tags');
+  transcriptsCollection = db.collection('transcripts'); // ✅ added
   console.log('✅ Connected to MongoDB Atlas');
 }).catch(err => {
   console.error('❌ MongoDB connection error:', err);
@@ -799,6 +803,18 @@ if (!fs.existsSync(filepath)) fs.mkdirSync(filepath);
 
 const htmlPath = path.join(filepath, transcriptAttachment.name);
 fs.writeFileSync(htmlPath, transcriptAttachment.attachment);
+if (transcriptsCollection) {
+  await transcriptsCollection.insertOne({
+    channelId: channel.id,
+    channelName: channel.name,
+    participants: [...participants.entries()].map(([id, count]) => ({
+      userId: id,
+      count
+    })),
+    content: html,
+    createdAt: new Date()
+  });
+}
 
 const htmlLink = `${BASE_URL}/transcripts/${transcriptAttachment.name}`;
 
