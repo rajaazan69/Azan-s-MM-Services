@@ -16,7 +16,8 @@
     "fs": "^0.0.1-security",
     "mongodb": "^6.7.0",
     "node-fetch": "^2.6.9",
-    "path": "^0.12.7"
+    "path": "^0.12.7",
+    "discord-html-transcripts": "^3.3.1"
   },
   "type": "commonjs"
 }
