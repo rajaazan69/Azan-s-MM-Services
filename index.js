@@ -6,8 +6,8 @@ const {
   SlashCommandBuilder, REST, Routes
 } = require('discord.js');
 const express = require('express');
-const app = express();
 const path = require('path');
+const app = express();
 app.use('/transcripts', express.static(path.join(__dirname, 'transcripts')));
 const fs = require('fs');
 require('dotenv').config();
