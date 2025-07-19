@@ -696,33 +696,14 @@ if (commandName === 'untimeout') {
     }
 
     // ✅ BUTTON: Transcript Fix
-if (interaction.isButton() && interaction.customId === 'generate_transcript') {
-  const parentId = interaction.channel.parentId || interaction.channel.parent?.id;
-  if (parentId !== TICKET_CATEGORY) {
-    return interaction.reply({
-      content: '❌ You can only use this inside ticket channels.',
-      ephemeral: true
-    });
-  }
-
-  try {
-    await interaction.deferReply({ ephemeral: true }); // 🔒 Always defer first
-    await handleTranscript(interaction, interaction.channel);
-  } catch (err) {
-    console.error('❌ Transcript Button Error:', err);
-    if (!interaction.replied && !interaction.deferred) {
-      await interaction.reply({
-        content: '❌ Failed to generate the transcript.',
-        ephemeral: true
-      }).catch(() => {});
-    } else {
-      await interaction.editReply({
-        content: '❌ Failed to generate the transcript.',
-        ephemeral: true
-      }).catch(() => {});
+if (interaction.isButton() && interaction.customId === 'transcript') {
+      const parentId = interaction.channel.parentId || interaction.channel.parent?.id;
+      if (parentId !== TICKET_CATEGORY) {
+        return interaction.reply({ content: '❌ You can only use this inside ticket channels.', ephemeral: true });
+      }
+      await interaction.deferReply({ ephemeral: true }).catch(() => {});
+      await handleTranscript(interaction, interaction.channel);
     }
-  }
-}
 
     // ✅ BUTTON: Delete
     if (interaction.isButton() && interaction.customId === 'delete') {
