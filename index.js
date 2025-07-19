@@ -696,7 +696,6 @@ if (commandName === 'untimeout') {
     }
 
     // ✅ BUTTON: Transcript Fix
-    // ✅ BUTTON: Transcript Fix
 if (interaction.isButton() && interaction.customId === 'generate_transcript') {
   const parentId = interaction.channel.parentId || interaction.channel.parent?.id;
   if (parentId !== TICKET_CATEGORY) {
@@ -706,7 +705,18 @@ if (interaction.isButton() && interaction.customId === 'generate_transcript') {
     });
   }
 
-  await handleTranscript(interaction, interaction.channel);
+  try {
+    // 👇 Don't defer — just run the handler directly
+    await handleTranscript(interaction, interaction.channel);
+  } catch (err) {
+    console.error('❌ Transcript Button Error:', err);
+    if (!interaction.replied && !interaction.deferred) {
+      await interaction.reply({
+        content: '❌ Failed to generate the transcript.',
+        ephemeral: true
+      }).catch(() => {});
+    }
+  }
 }
 
     // ✅ BUTTON: Delete
