@@ -7,9 +7,9 @@ const {
 } = require('discord.js');
 const express = require('express');
 const app = express();
+const path = require('path');
 app.use('/transcripts', express.static(path.join(__dirname, 'transcripts')));
 const fs = require('fs');
-const path = require('path');
 require('dotenv').config();
 const { MongoClient } = require('mongodb');
 const stickyMap = new Map();
