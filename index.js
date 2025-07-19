@@ -706,12 +706,17 @@ if (interaction.isButton() && interaction.customId === 'generate_transcript') {
   }
 
   try {
-    // 👇 Don't defer — just run the handler directly
+    await interaction.deferReply({ ephemeral: true }); // 🔒 Always defer first
     await handleTranscript(interaction, interaction.channel);
   } catch (err) {
     console.error('❌ Transcript Button Error:', err);
     if (!interaction.replied && !interaction.deferred) {
       await interaction.reply({
+        content: '❌ Failed to generate the transcript.',
+        ephemeral: true
+      }).catch(() => {});
+    } else {
+      await interaction.editReply({
         content: '❌ Failed to generate the transcript.',
         ephemeral: true
       }).catch(() => {});
@@ -931,6 +936,35 @@ client.on('messageCreate', async (message) => {
     });
   } catch (err) {
     console.error('Sticky message error:', err);
+  }
+});
+client.on('interactionCreate', async (interaction) => {
+  const parentId = interaction.channel?.parentId || interaction.channel?.parent?.id;
+
+  // 📄 Transcript slash command
+  if (interaction.isChatInputCommand() && interaction.commandName === 'transcript') {
+    if (parentId !== TICKET_CATEGORY) {
+      return interaction.reply({
+        content: '❌ You can only use this inside ticket channels.',
+        ephemeral: true
+      });
+    }
+
+    await interaction.deferReply({ ephemeral: true }).catch(() => {});
+    return handleTranscript(interaction, interaction.channel);
+  }
+
+  // 📄 Transcript button
+  if (interaction.isButton() && interaction.customId === 'generate_transcript') {
+    if (parentId !== TICKET_CATEGORY) {
+      return interaction.reply({
+        content: '❌ You can only use this inside ticket channels.',
+        ephemeral: true
+      });
+    }
+
+    await interaction.deferReply({ ephemeral: true }).catch(() => {});
+    return handleTranscript(interaction, interaction.channel);
   }
 });
 app.get('/', (req, res) => res.sendStatus(200));
