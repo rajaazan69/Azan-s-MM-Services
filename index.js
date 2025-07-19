@@ -785,24 +785,23 @@ async function handleTranscript(interaction, channel) {
   const sorted = messages.sort((a, b) => a.createdTimestamp - b.createdTimestamp);
   const participants = new Map();
 
-  const lines = sorted.map(m => {
+ const { createTranscript } = require('discord-html-transcripts');
     participants.set(m.author.id, (participants.get(m.author.id) || 0) + 1);
-    const tag = `${m.author.username}#${m.author.discriminator}`;
-    return `<p><strong>${tag}</strong> <em>${new Date(m.createdTimestamp).toLocaleString()}</em>: ${m.cleanContent}</p>`;
-  });
+    const transcriptAttachment = await createTranscript(channel, {
+  limit: -1,
+  returnType: 'attachment',
+  fileName: `${channel.id}.html`,
+  poweredBy: false,
+  saveImages: true
+});
 
-  const stats = [...participants.entries()].map(
-    ([id, count]) => `<li><strong><a href="https://discord.com/users/${id}">${id}</a></strong>: ${count} messages</li>`
-  ).join('');
+const filepath = path.join(__dirname, 'transcripts');
+if (!fs.existsSync(filepath)) fs.mkdirSync(filepath);
 
-  const html = `<html><head><title>Transcript for ${channel.name}</title></head><body><h2>${channel.name}</h2><h3>Participants</h3><ul>${stats}</ul><hr>${lines.join('')}<hr></body></html>`;
-  const filename = `${channel.id}.html`;
-  const filepath = path.join(__dirname, 'transcripts');
+const htmlPath = path.join(filepath, transcriptAttachment.name);
+fs.writeFileSync(htmlPath, transcriptAttachment.attachment);
 
-  if (!fs.existsSync(filepath)) fs.mkdirSync(filepath);
-  fs.writeFileSync(path.join(filepath, filename), html);
-
-  const htmlLink = `${BASE_URL}/transcripts/${filename}`;
+const htmlLink = `${BASE_URL}/transcripts/${transcriptAttachment.name}`;
 
   const txtLines = sorted.map(m =>
     `[${new Date(m.createdTimestamp).toISOString()}] ${m.author.tag}: ${m.cleanContent || '[Embed/Attachment]'}`
