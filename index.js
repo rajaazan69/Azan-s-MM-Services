@@ -696,7 +696,8 @@ if (commandName === 'untimeout') {
     }
 
     // ✅ BUTTON: Transcript Fix
-    if (interaction.isButton() && interaction.customId === 'generate_transcript') {
+    // ✅ BUTTON: Transcript Fix
+if (interaction.isButton() && interaction.customId === 'generate_transcript') {
   const parentId = interaction.channel.parentId || interaction.channel.parent?.id;
   if (parentId !== TICKET_CATEGORY) {
     return interaction.reply({
@@ -705,7 +706,6 @@ if (commandName === 'untimeout') {
     });
   }
 
-  await interaction.deferReply({ ephemeral: true }).catch(() => {});
   await handleTranscript(interaction, interaction.channel);
 }
 
