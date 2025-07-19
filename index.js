@@ -6,8 +6,8 @@ const {
   SlashCommandBuilder, REST, Routes
 } = require('discord.js');
 const express = require('express');
-const path = require('path');
 const app = express();
+const path = require('path');
 app.use('/transcripts', express.static(path.join(__dirname, 'transcripts')));
 const fs = require('fs');
 require('dotenv').config();
@@ -696,7 +696,12 @@ if (commandName === 'untimeout') {
     }
 
     // ✅ BUTTON: Transcript Fix
-    if (interaction.isButton() && interaction.customId === 'transcript') {
+    if (interaction.isButton() && interaction.customId === 'generate_transcript') {
+  await interaction.deferReply({ ephemeral: true }); // 👈 FIXED
+
+  // Now safely call your handler
+  await handleTranscript(interaction, interaction.channel);
+}
       const parentId = interaction.channel.parentId || interaction.channel.parent?.id;
       if (parentId !== TICKET_CATEGORY) {
         return interaction.reply({ content: '❌ You can only use this inside ticket channels.', ephemeral: true });
