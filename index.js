@@ -788,84 +788,100 @@ const ticket = await interaction.guild.channels.create({
 });
 
 async function handleTranscript(interaction, channel) {
-  const messages = await channel.messages.fetch({ limit: 100 });
-  const sorted = messages.sort((a, b) => a.createdTimestamp - b.createdTimestamp);
-  const participants = new Map();
+  try {
+    const messages = await channel.messages.fetch({ limit: 100 });
+    const sorted = messages.sort((a, b) => a.createdTimestamp - b.createdTimestamp);
+    const participants = new Map();
 
- const { createTranscript } = require('discord-html-transcripts');
-    participants.set(m.author.id, (participants.get(m.author.id) || 0) + 1);
-    const transcriptAttachment = await createTranscript(channel, {
-  limit: -1,
-  returnType: 'attachment',
-  fileName: `${channel.id}.html`,
-  poweredBy: false,
-  saveImages: true
-});
-
-const filepath = path.join(__dirname, 'transcripts');
-if (!fs.existsSync(filepath)) fs.mkdirSync(filepath);
-
-const htmlPath = path.join(filepath, transcriptAttachment.name);
-fs.writeFileSync(htmlPath, transcriptAttachment.attachment);
-if (transcriptsCollection) {
-  await transcriptsCollection.insertOne({
-    channelId: channel.id,
-    channelName: channel.name,
-    participants: [...participants.entries()].map(([id, count]) => ({
-      userId: id,
-      count
-    })),
-    content: html,
-    createdAt: new Date()
-  });
-}
-
-const htmlLink = `${BASE_URL}/transcripts/${transcriptAttachment.name}`;
-
-  const txtLines = sorted.map(m =>
-    `[${new Date(m.createdTimestamp).toISOString()}] ${m.author.tag}: ${m.cleanContent || '[Embed/Attachment]'}`
-  ).join('\n');
-  const txtPath = path.join(filepath, `transcript-${channel.id}.txt`);
-  fs.writeFileSync(txtPath, txtLines);
-
-  const embed = new EmbedBuilder()
-    .setTitle('📄 Transcript Ready')
-    .setDescription('Your ticket transcript is now ready.')
-    .addFields(
-      { name: 'Ticket Name', value: channel.name, inline: true },
-      { name: 'Ticket ID', value: channel.id.toString(), inline: true },
-      {
-        name: 'Participants',
-        value: [...participants.entries()]
-          .map(([id, count]) => `<@${id}> — \`${count}\` messages`)
-          .join('\n')
-          .slice(0, 1024) || 'None',
-        inline: false
+    for (const m of sorted.values()) {
+      if (!m.author?.bot) {
+        participants.set(m.author.id, (participants.get(m.author.id) || 0) + 1);
       }
-    )
-    .setColor('#000000')
-    .setTimestamp();
+    }
 
-  const buttonRow = new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setLabel('View HTML Transcript')
-      .setStyle(ButtonStyle.Link)
-      .setURL(htmlLink)
-  );
+    const { createTranscript } = require('discord-html-transcripts');
+    const transcriptAttachment = await createTranscript(channel, {
+      limit: -1,
+      returnType: 'attachment',
+      fileName: `${channel.id}.html`,
+      poweredBy: false,
+      saveImages: true
+    });
 
-  await interaction.editReply({
-    embeds: [embed],
-    files: [new AttachmentBuilder(txtPath)],
-    components: [buttonRow]
-  }).catch(() => {});
+    const filepath = path.join(__dirname, 'transcripts');
+    if (!fs.existsSync(filepath)) fs.mkdirSync(filepath);
 
-  const logChannel = client.channels.cache.get(TRANSCRIPT_CHANNEL);
-  if (logChannel) {
-    await logChannel.send({
+    const htmlPath = path.join(filepath, transcriptAttachment.name);
+    fs.writeFileSync(htmlPath, transcriptAttachment.attachment);
+
+    if (transcriptsCollection) {
+      await transcriptsCollection.insertOne({
+        channelId: channel.id,
+        channelName: channel.name,
+        participants: [...participants.entries()].map(([id, count]) => ({
+          userId: id,
+          count
+        })),
+        content: transcriptAttachment.attachment.toString('utf-8'),
+        createdAt: new Date()
+      });
+    }
+
+    const htmlLink = `${BASE_URL}/transcripts/${transcriptAttachment.name}`;
+
+    const txtLines = sorted.map(m =>
+      `[${new Date(m.createdTimestamp).toISOString()}] ${m.author.tag}: ${m.cleanContent || '[Embed/Attachment]'}`
+    ).join('\n');
+    const txtPath = path.join(filepath, `transcript-${channel.id}.txt`);
+    fs.writeFileSync(txtPath, txtLines);
+
+    const embed = new EmbedBuilder()
+      .setTitle('📄 Transcript Ready')
+      .setDescription('Your ticket transcript is now ready.')
+      .addFields(
+        { name: 'Ticket Name', value: channel.name, inline: true },
+        { name: 'Ticket ID', value: channel.id.toString(), inline: true },
+        {
+          name: 'Participants',
+          value: [...participants.entries()]
+            .map(([id, count]) => `<@${id}> — \`${count}\` messages`)
+            .join('\n')
+            .slice(0, 1024) || 'None',
+          inline: false
+        }
+      )
+      .setColor('#000000')
+      .setTimestamp();
+
+    const buttonRow = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setLabel('View HTML Transcript')
+        .setStyle(ButtonStyle.Link)
+        .setURL(htmlLink)
+    );
+
+    await interaction.editReply({
       embeds: [embed],
       files: [new AttachmentBuilder(txtPath)],
       components: [buttonRow]
-    });
+    }).catch(() => {});
+
+    const logChannel = client.channels.cache.get(TRANSCRIPT_CHANNEL);
+    if (logChannel) {
+      await logChannel.send({
+        embeds: [embed],
+        files: [new AttachmentBuilder(txtPath)],
+        components: [buttonRow]
+      });
+    }
+
+  } catch (err) {
+    console.error('❌ Transcript generation failed:', err);
+    if (!interaction.replied && !interaction.deferred) {
+      await interaction.reply({ content: '❌ Failed to generate transcript.', ephemeral: true });
+    } else {
+      await interaction.editReply({ content: '❌ Failed to generate transcript.' }).catch(() => {});
+    }
   }
 }
 client.on('interactionCreate', async (interaction) => {
