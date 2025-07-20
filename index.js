@@ -910,7 +910,7 @@ if (isValidId) {
     });
   }
 }
-
+try {
 const ticket = await interaction.guild.channels.create({
   name: `ticket-${interaction.user.username}`,
   type: ChannelType.GuildText,
