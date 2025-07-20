@@ -941,7 +941,6 @@ const ticket = await interaction.guild.channels.create({
 
         await interaction.reply({ content: `✅ Ticket created: ${ticket}`, ephemeral: true });
       
-    }
 
   } catch (err) {
     console.error('❌ Interaction error:', err);
