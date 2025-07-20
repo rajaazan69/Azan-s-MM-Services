@@ -707,11 +707,10 @@ if (commandName === 'servers') {
           new ButtonBuilder().setCustomId('join_public').setLabel('🔻 Use Public Server').setStyle(ButtonStyle.Primary),
           new ButtonBuilder().setCustomId('join_private').setLabel('🔒 Use Private Server').setStyle(ButtonStyle.Primary)
         );
-        await interaction.reply({ embeds: [embed], components: [row], ephemeral: true });
+        await interaction.reply({ embeds: [embed], components: [row] }); // no ephemeral
 
         const collector = interaction.channel.createMessageComponentCollector({ componentType: ComponentType.Button, time: 60000 });
         collector.on('collect', async i => {
-          if (i.user.id !== interaction.user.id) return i.reply({ content: 'This interaction isn’t for you.', ephemeral: true });
           await i.deferUpdate();
           const txt = i.customId === 'join_public'
             ? `**You have chosen to trade in the Public Server.**\n🔗 ${sel.public}`
@@ -993,16 +992,19 @@ client.on('interactionCreate', async (interaction) => {
 const gameData = {
   gag: {
     name: 'GAG',
+    universeId: '109983668079237',
     privateLink: 'https://www.roblox.com/share?code=2daaf72e32f63840b588d65a5cff53a7&type=Server',
     thumbnail: 'https://tr.rbxcdn.com/f6eaab6d7593c785ca131b6a7f9b878d/768/432/Image/Png'
   },
   mm2: {
     name: 'MM2',
+    universeId: '66654135',
     privateLink: 'https://www.roblox.com/share?code=c1ac8abd3c27354e9db3979aad38b842&type=Server',
     thumbnail: 'https://tr.rbxcdn.com/8cdba6c420274154038c91f396c6e07d/768/432/Image/Png'
   },
   sab: {
     name: 'SAB (Steal a Brainrot)',
+    universeId: '109983668079237',
     privateLink: 'https://www.roblox.com/share?code=d99e8e73482e8342a3aa30fb59973322&type=Server',
     thumbnail: 'https://tr.rbxcdn.com/878e9d1e80c2a6cc12e0597f2d1c04f6/768/432/Image/Png'
   }
