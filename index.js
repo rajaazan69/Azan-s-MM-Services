@@ -704,8 +704,8 @@ if (commandName === 'servers') {
           .setDescription(`**Please Choose Which Server You Would Be The Most Comfortable For The Trade In**\n\n**Confirm The Middleman Which Server To Join**`)
           .setFooter({ text: 'Middleman Bot • Roblox Server System' });
         const row = new ActionRowBuilder().addComponents(
-          new ButtonBuilder().setCustomId('join_public').setLabel('🔻 Use Public Server').setStyle(ButtonStyle.Primary),
-          new ButtonBuilder().setCustomId('join_private').setLabel('🔒 Use Private Server').setStyle(ButtonStyle.Primary)
+          new ButtonBuilder().setCustomId('join_public').setLabel('Use Public Server').setStyle(ButtonStyle.Primary),
+          new ButtonBuilder().setCustomId('join_private').setLabel('Use Private Server').setStyle(ButtonStyle.Primary)
         );
         await interaction.reply({ embeds: [embed], components: [row] }); // no ephemeral
 
