@@ -945,15 +945,6 @@ const permissionOverwrites = [
 ];
 
 // Add the target user to permission overwrites if ID is valid and member exists
-if (isValidId) {
-  const member = await interaction.guild.members.fetch(q4).catch(() => null);
-  if (member) {
-    permissionOverwrites.push({
-      id: q4,
-      allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages]
-    });
-  }
-}
 client.on('interactionCreate', async interaction => {
   if (interaction.isModalSubmit() && interaction.customId === 'ticketModal') {
     const q1 = interaction.fields.getTextInputValue('q1');
