@@ -711,14 +711,13 @@ if (commandName === 'servers') {
 
         const collector = interaction.channel.createMessageComponentCollector({ componentType: ComponentType.Button, time: 60000 });
         collector.on('collect', async i => {
-          await i.deferUpdate();
-          const txt = i.customId === 'join_public'
-            ? `**You have chosen to trade in the Public Server.**\n🔗 ${sel.public}`
-            : `**You have chosen to trade in the Private Server.**\n🔗 ${sel.private}`;
-          await interaction.editReply({ content: txt, embeds: [], components: [] });
-          collector.stop();
-        });
-        return;
+  await i.update({
+    content: `**${i.user.username} has chosen to trade in the ${i.customId === 'join_public' ? 'Public' : 'Private'} Server.**\n🔗 ${i.customId === 'join_public' ? sel.public : sel.private}`,
+    embeds: [],
+    components: []
+  });
+  collector.stop();
+});
       }
     
 
