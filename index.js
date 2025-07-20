@@ -177,19 +177,34 @@ new SlashCommandBuilder()
       .setDescription('The sticky message content')
       .setRequired(true))
   .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages),
+  const commands = [
   new SlashCommandBuilder()
-  .setName('untimeout')
-  .setDescription('Remove timeout from a user')
-  .addUserOption(option =>
-    option.setName('user')
-      .setDescription('User to remove timeout from')
-      .setRequired(true))
-  .addStringOption(option =>
-    option.setName('reason')
-      .setDescription('Reason for removing timeout')
-      .setRequired(false))
-  .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers)
-    ].map(cmd => cmd.toJSON());
+    .setName('untimeout')
+    .setDescription('Remove timeout from a user')
+    .addUserOption(option =>
+      option.setName('user')
+        .setDescription('User to remove timeout from')
+        .setRequired(true))
+    .addStringOption(option =>
+      option.setName('reason')
+        .setDescription('Reason for removing timeout')
+        .setRequired(false))
+    .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers),
+
+  new SlashCommandBuilder()
+    .setName('servers')
+    .setDescription('Get Roblox server join options')
+    .addStringOption(option =>
+      option.setName('game')
+        .setDescription('Select the game')
+        .setRequired(true)
+        .addChoices(
+          { name: 'GAG', value: 'gag' },
+          { name: 'MM2', value: 'mm2' },
+          { name: 'SAB', value: 'sab' }
+        )
+    )
+].map(cmd => cmd.toJSON());
   
     await rest.put(Routes.applicationCommands(client.user.id), { body: commands });
     console.log('✅ Slash commands registered');
@@ -680,6 +695,38 @@ if (commandName === 'untimeout') {
     await interaction.editReply({ content: '❌ Failed to remove timeout from the user.' });
   }
 }
+  if (commandName === 'servers') {
+        const game = options.getString('game');
+        const games = {
+          gag: { name: 'Grow a Garden', public: 'https://www.roblox.com/games/126884695634066/Grow-a-Garden?sortFilter=3', private: 'https://www.roblox.com/share?code=2daaf72e32f63840b588d65a5cff53a7&type=Server' },
+          mm2: { name: 'Murder Mystery 2', public: 'https://www.roblox.com/games/66654135/Murder-Mystery-2?sortFilter=3', private: 'https://www.roblox.com/share?code=c1ac8abd3c27354e9db3979aad38b842&type=Server' },
+          sab: { name: 'Steal a Brainrot', public: 'https://www.roblox.com/games/109983668079237/Steal-a-Brainrot?sortFilter=3', private: 'https://www.roblox.com/share?code=d99e8e73482e8342a3aa30fb59973322&type=Server' }
+        };
+        const sel = games[game];
+        const embed = new EmbedBuilder()
+          .setColor('#000000')
+          .setTitle(`**${sel.name} Server Join Options**`)
+          .setDescription(`**Please Choose Which Server You Would Be The Most Comfortable For The Trade In**\n\n**Confirm The Middleman Which Server To Join**`)
+          .setFooter({ text: 'Middleman Bot • Roblox Server System' });
+        const row = new ActionRowBuilder().addComponents(
+          new ButtonBuilder().setCustomId('join_public').setLabel('🔻 Use Public Server').setStyle(ButtonStyle.Primary),
+          new ButtonBuilder().setCustomId('join_private').setLabel('🔒 Use Private Server').setStyle(ButtonStyle.Primary)
+        );
+        await interaction.reply({ embeds: [embed], components: [row], ephemeral: true });
+
+        const collector = interaction.channel.createMessageComponentCollector({ componentType: ComponentType.Button, time: 60000 });
+        collector.on('collect', async i => {
+          if (i.user.id !== interaction.user.id) return i.reply({ content: 'This interaction isn’t for you.', ephemeral: true });
+          await i.deferUpdate();
+          const txt = i.customId === 'join_public'
+            ? `**You have chosen to trade in the Public Server.**\n🔗 ${sel.public}`
+            : `**You have chosen to trade in the Private Server.**\n🔗 ${sel.private}`;
+          await interaction.editReply({ content: txt, embeds: [], components: [] });
+          collector.stop();
+        });
+        return;
+      }
+    }
 
     // ✅ BUTTON: Open Modal
     if (interaction.isButton() && interaction.customId === 'openTicket') {
@@ -690,10 +737,39 @@ if (commandName === 'untimeout') {
           new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('q1').setLabel("What's the trade?").setStyle(TextInputStyle.Short).setRequired(true)),
           new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('q2').setLabel("What's your side?").setStyle(TextInputStyle.Paragraph).setRequired(true)),
           new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('q3').setLabel("What's their side?").setStyle(TextInputStyle.Paragraph).setRequired(true)),
-          new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('q4').setLabel("Their Discord ID?").setStyle(TextInputStyle.Short).setRequired(true))
-        );
-      await interaction.showModal(modal).catch(console.error);
-    }
+    const q4 = interaction.fields.getTextInputValue('q4');
+const userId = q4.replace(/\D/g, ''); // strip everything except digits
+
+let member;
+try {
+  member = await interaction.guild.members.fetch(userId);
+} catch {
+  member = null;
+}
+
+if (member) {
+  permissionOverwrites.push({
+    id: userId,
+    allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages],
+  });
+} else {
+  // Optionally still add the ID so the user can join if they join later
+  permissionOverwrites.push({
+    id: userId,
+    allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages],
+  });
+
+  // Send an embed to let the requester know
+  await interaction.reply({
+    embeds: [
+      new EmbedBuilder()
+        .setColor(0x000000)
+        .setTitle('**Middleman Request**')
+        .setDescription(`**Provided ID:** \`${q4}\`\n**Status:** Unknown user (not found in this server)`)
+    ],
+    ephemeral: true
+  });
+}
 
     // ✅ BUTTON: Transcript Fix
 if (interaction.isButton() && interaction.customId === 'transcript') {
@@ -737,7 +813,7 @@ const permissionOverwrites = [
 
 // Add the target user to permission overwrites if ID is valid and member exists
 if (isValidId) {
-  const member = interaction.guild.members.cache.get(q4);
+  const member = await interaction.guild.members.fetch(q4).catch(() => null);
   if (member) {
     permissionOverwrites.push({
       id: q4,
