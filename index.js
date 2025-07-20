@@ -710,12 +710,17 @@ if (commandName === 'servers') {
         await interaction.reply({ embeds: [embed], components: [row] }); // no ephemeral
 
         const collector = interaction.channel.createMessageComponentCollector({ componentType: ComponentType.Button, time: 60000 });
-        collector.on('collect', async i => {
+
+collector.on('collect', async i => {
+  const choice = i.customId === 'join_public' ? 'Public' : 'Private';
+  const link = i.customId === 'join_public' ? sel.public : sel.private;
+
   await i.update({
-    content: `**${i.user.username} has chosen to trade in the ${i.customId === 'join_public' ? 'Public' : 'Private'} Server.**\n🔗 ${i.customId === 'join_public' ? sel.public : sel.private}`,
+    content: `**${i.user.username} has chosen to trade in the ${choice} Server.**\n🔗 ${link}`,
     embeds: [],
     components: []
   });
+
   collector.stop();
 });
       }
@@ -991,19 +996,19 @@ client.on('interactionCreate', async (interaction) => {
 const gameData = {
   gag: {
     name: 'GAG',
-    universeId: '109983668079237',
+    publicLink: 'https://www.roblox.com/games/126884695634066/Grow-a-Garden?sortFilter=3',
     privateLink: 'https://www.roblox.com/share?code=2daaf72e32f63840b588d65a5cff53a7&type=Server',
     thumbnail: 'https://tr.rbxcdn.com/f6eaab6d7593c785ca131b6a7f9b878d/768/432/Image/Png'
   },
   mm2: {
     name: 'MM2',
-    universeId: '66654135',
+    publicLink: 'https://www.roblox.com/games/66654135/Murder-Mystery-2?sortFilter=3',
     privateLink: 'https://www.roblox.com/share?code=c1ac8abd3c27354e9db3979aad38b842&type=Server',
     thumbnail: 'https://tr.rbxcdn.com/8cdba6c420274154038c91f396c6e07d/768/432/Image/Png'
   },
   sab: {
     name: 'SAB (Steal a Brainrot)',
-    universeId: '109983668079237',
+    publicLink: 'https://www.roblox.com/games/109983668079237/Steal-a-Brainrot?sortFilter=3',
     privateLink: 'https://www.roblox.com/share?code=d99e8e73482e8342a3aa30fb59973322&type=Server',
     thumbnail: 'https://tr.rbxcdn.com/878e9d1e80c2a6cc12e0597f2d1c04f6/768/432/Image/Png'
   }
@@ -1046,27 +1051,23 @@ client.on('interactionCreate', async (interaction) => {
   }
 
   if (interaction.isButton()) {
-    const [type, game] = interaction.customId.split('_');
-    const selectedGame = gameData[game];
+  const [type, game] = interaction.customId.split('_');
+  const selectedGame = gameData[game];
+  if (!selectedGame) return;
 
-    if (!selectedGame) return;
+  const isPublic = type === 'public';
+  const embed = new EmbedBuilder()
+    .setTitle('Server Chosen')
+    .setColor('#000000')
+    .setDescription(`**You have chosen to trade in the ${isPublic ? 'Public' : 'Private'} Server.**`)
+    .addFields({
+      name: '🔗 Click to Join:',
+      value: `[${isPublic ? 'Public' : 'Private'} Server Link](${isPublic ? selectedGame.publicLink : selectedGame.privateLink})`
+    })
+    .setTimestamp();
 
-    const isPublic = type === 'public';
-    const publicLink = `https://www.roblox.com/games/${getGameUniverseId(game)}`;
-
-    const embed = new EmbedBuilder()
-      .setTitle('Server Chosen')
-      .setColor('#000000')
-      .setDescription(`**You have chosen to trade in the ${isPublic ? 'Public' : 'Private'} Server.**`)
-      .addFields({
-        name: '🔗 Click to Join:',
-        value: isPublic ? `[Public Server Link](${publicLink})` : `[Private Server Link](${selectedGame.privateLink})`
-      })
-      .setTimestamp();
-
-    await interaction.reply({ embeds: [embed] });
-  }
-});
+  await interaction.reply({ embeds: [embed] });
+}
 app.get('/', (req, res) => res.sendStatus(200));
 app.listen(3000, () => console.log('🌐 Express server is running'));
 
