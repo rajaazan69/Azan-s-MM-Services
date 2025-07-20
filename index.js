@@ -82,6 +82,7 @@ client.once('ready', async () => {
       new SlashCommandBuilder().setName('tag').setDescription('Send a saved tag').addStringOption(o => o.setName('name').setDescription('Tag name').setRequired(true)),
       new SlashCommandBuilder().setName('tagdelete').setDescription('Delete a tag').addStringOption(o => o.setName('name').setDescription('Tag name').setRequired(true)),
       new SlashCommandBuilder().setName('taglist').setDescription('List all tags'),
+    
     new SlashCommandBuilder()
   .setName('i')
   .setDescription('Get Roblox user info')
@@ -177,7 +178,7 @@ new SlashCommandBuilder()
       .setDescription('The sticky message content')
       .setRequired(true))
   .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages),
- const commands = [
+
   new SlashCommandBuilder()
     .setName('untimeout')
     .setDescription('Remove timeout from a user')
