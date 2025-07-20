@@ -778,7 +778,8 @@ if (commandName === 'untimeout') {
 }
 
     // ✅ BUTTON: Open Modal
-    if (interaction.isButton() && interaction.customId === 'openTicket') {
+    // 🎫 Show Modal When Button Is Clicked
+if (interaction.isButton() && interaction.customId === 'openTicket') {
   const modal = new ModalBuilder()
     .setCustomId('ticketModal')
     .setTitle('Middleman Request')
@@ -807,7 +808,7 @@ if (commandName === 'untimeout') {
       new ActionRowBuilder().addComponents(
         new TextInputBuilder()
           .setCustomId('q4')
-          .setLabel("Paste their Roblox profile link")
+          .setLabel("Their Discord ID?")
           .setStyle(TextInputStyle.Short)
           .setRequired(true)
       )
@@ -816,50 +817,93 @@ if (commandName === 'untimeout') {
   await interaction.showModal(modal);
 }
 
+// 🎫 Handle Modal Submission
 if (interaction.isModalSubmit() && interaction.customId === 'ticketModal') {
-  const q4 = interaction.fields.getTextInputValue('q4');
-  const userId = q4.replace(/\D/g, ''); // strip everything except digits
-
-  let member;
   try {
-    member = await interaction.guild.members.fetch(userId);
-  } catch {
-    member = null;
-  }
+    const q1 = interaction.fields.getTextInputValue('q1');
+    const q2 = interaction.fields.getTextInputValue('q2');
+    const q3 = interaction.fields.getTextInputValue('q3');
+    const q4 = interaction.fields.getTextInputValue('q4');
+    const userId = q4.replace(/\D/g, ''); // clean input
 
-  const permissionOverwrites = [];
+    const permissionOverwrites = [
+      {
+        id: interaction.guild.id,
+        deny: [PermissionsBitField.Flags.ViewChannel],
+      },
+      {
+        id: interaction.user.id,
+        allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages],
+      }
+    ];
 
-  if (member) {
+    let member;
+    try {
+      member = await interaction.guild.members.fetch(userId);
+    } catch {
+      member = null;
+    }
+
+    const targetMention = `<@${userId}>`;
+
     permissionOverwrites.push({
       id: userId,
-      allow: [
-        PermissionsBitField.Flags.ViewChannel,
-        PermissionsBitField.Flags.SendMessages
-      ],
+      allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages],
     });
-  } else {
-    permissionOverwrites.push({
-      id: userId,
-      allow: [
-        PermissionsBitField.Flags.ViewChannel,
-        PermissionsBitField.Flags.SendMessages
-      ],
+
+    if (!member) {
+      await interaction.reply({
+        embeds: [
+          new EmbedBuilder()
+            .setColor(0x000000)
+            .setTitle('**Middleman Request**')
+            .setDescription(`**Provided ID:** \`${q4}\`\n**Status:** Unknown user (not found in this server)`)
+        ],
+        ephemeral: true
+      });
+    }
+
+    const ticket = await interaction.guild.channels.create({
+      name: `ticket-${interaction.user.username}`,
+      type: ChannelType.GuildText,
+      parent: TICKET_CATEGORY,
+      permissionOverwrites
+    });
+
+    const embed = new EmbedBuilder()
+      .setTitle('Middleman Request')
+      .setColor('#2B2D31')
+      .setDescription(
+        `**User 1:** <@${interaction.user.id}>\n` +
+        `**User 2:** ${targetMention}\n\n` +
+        `**Trade Details**\n` +
+        `> ${q1}\n\n` +
+        `**User 1 is giving:**\n` +
+        `> ${q2}\n\n` +
+        `**User 2 is giving:**\n` +
+        `> ${q3}`
+      )
+      .setFooter({ text: `Ticket by ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
+      .setTimestamp();
+
+    await ticket.send({
+      content: `<@${interaction.user.id}> <@${OWNER_ID}>`,
+      embeds: [embed]
     });
 
     await interaction.reply({
-      embeds: [
-        new EmbedBuilder()
-          .setColor(0x000000)
-          .setTitle('**Middleman Request**')
-          .setDescription(`**Provided ID:** \`${q4}\`\n**Status:** Unknown user (not found in this server)`)
-      ],
+      content: `✅ Ticket created: ${ticket}`,
+      ephemeral: true
+    });
+
+  } catch (err) {
+    console.error('❌ Interaction error:', err);
+    await interaction.reply({
+      content: '❌ An error occurred while creating the ticket.',
       ephemeral: true
     });
   }
-
-  // ⚠️ If you're going to use permissionOverwrites later to create the channel,
-  // make sure you do that below here.
-
+}
     // ✅ BUTTON: Transcript Fix
 if (interaction.isButton() && interaction.customId === 'transcript') {
       const parentId = interaction.channel.parentId || interaction.channel.parent?.id;
