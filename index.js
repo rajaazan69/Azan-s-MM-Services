@@ -1,4 +1,3 @@
-
 const {
   Client, GatewayIntentBits, Partials, ChannelType, PermissionsBitField, PermissionFlagsBits,
   ActionRowBuilder, ModalBuilder, TextInputBuilder, TextInputStyle,
@@ -82,7 +81,6 @@ client.once('ready', async () => {
       new SlashCommandBuilder().setName('tag').setDescription('Send a saved tag').addStringOption(o => o.setName('name').setDescription('Tag name').setRequired(true)),
       new SlashCommandBuilder().setName('tagdelete').setDescription('Delete a tag').addStringOption(o => o.setName('name').setDescription('Tag name').setRequired(true)),
       new SlashCommandBuilder().setName('taglist').setDescription('List all tags'),
-    
     new SlashCommandBuilder()
   .setName('i')
   .setDescription('Get Roblox user info')
@@ -178,20 +176,20 @@ new SlashCommandBuilder()
       .setDescription('The sticky message content')
       .setRequired(true))
   .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages),
-
   new SlashCommandBuilder()
-    .setName('untimeout')
-    .setDescription('Remove timeout from a user')
-    .addUserOption(option =>
-      option.setName('user')
-        .setDescription('User to remove timeout from')
-        .setRequired(true))
-    .addStringOption(option =>
-      option.setName('reason')
-        .setDescription('Reason for removing timeout')
-        .setRequired(false))
-    .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers),
-
+  .setName('untimeout')
+  .setDescription('Remove timeout from a user')
+  .addUserOption(option =>
+    option.setName('user')
+      .setDescription('User to remove timeout from')
+      .setRequired(true))
+  .addStringOption(option =>
+    option.setName('reason')
+      .setDescription('Reason for removing timeout')
+      .setRequired(false))
+  .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers)
+    ].map(cmd => cmd.toJSON());
+    new SlashCommandBuilder()
   new SlashCommandBuilder()
     .setName('servers')
     .setDescription('Get Roblox server join options')
@@ -205,7 +203,6 @@ new SlashCommandBuilder()
           { name: 'SAB', value: 'sab' }
         ))
 ].map(command => command.toJSON());
-  
     await rest.put(Routes.applicationCommands(client.user.id), { body: commands });
     console.log('✅ Slash commands registered');
   } else {
@@ -695,215 +692,53 @@ if (commandName === 'untimeout') {
     await interaction.editReply({ content: '❌ Failed to remove timeout from the user.' });
   }
 }
-  if (commandName === 'servers') {
-  const parentId = interaction.channel?.parentId || interaction.channel?.parent?.id;
-  const TICKET_CATEGORY = 'YOUR_TICKET_CATEGORY_ID'; // Replace with your actual category ID
+if (commandName === 'servers') {
+        const game = options.getString('game');
+        const games = {
+          gag: { name: 'Grow a Garden', public: 'https://www.roblox.com/games/126884695634066/Grow-a-Garden?sortFilter=3', private: 'https://www.roblox.com/share?code=2daaf72e32f63840b588d65a5cff53a7&type=Server' },
+          mm2: { name: 'Murder Mystery 2', public: 'https://www.roblox.com/games/66654135/Murder-Mystery-2?sortFilter=3', private: 'https://www.roblox.com/share?code=c1ac8abd3c27354e9db3979aad38b842&type=Server' },
+          sab: { name: 'Steal a Brainrot', public: 'https://www.roblox.com/games/109983668079237/Steal-a-Brainrot?sortFilter=3', private: 'https://www.roblox.com/share?code=d99e8e73482e8342a3aa30fb59973322&type=Server' }
+        };
+        const sel = games[game];
+        const embed = new EmbedBuilder()
+          .setColor('#000000')
+          .setTitle(`**${sel.name} Server Join Options**`)
+          .setDescription(`**Please Choose Which Server You Would Be The Most Comfortable For The Trade In**\n\n**Confirm The Middleman Which Server To Join**`)
+          .setFooter({ text: 'Middleman Bot • Roblox Server System' });
+        const row = new ActionRowBuilder().addComponents(
+          new ButtonBuilder().setCustomId('join_public').setLabel('🔻 Use Public Server').setStyle(ButtonStyle.Primary),
+          new ButtonBuilder().setCustomId('join_private').setLabel('🔒 Use Private Server').setStyle(ButtonStyle.Primary)
+        );
+        await interaction.reply({ embeds: [embed], components: [row], ephemeral: true });
 
-  if (parentId !== TICKET_CATEGORY) {
-    return interaction.reply({
-      content: '❌ This command can only be used inside ticket channels.',
-      ephemeral: true
-    });
-  }
-
-  const game = options.getString('game');
-  const games = {
-    gag: {
-      name: 'Grow a Garden',
-      public: 'https://www.roblox.com/games/126884695634066/Grow-a-Garden?sortFilter=3',
-      private: 'https://www.roblox.com/share?code=2daaf72e32f63840b588d65a5cff53a7&type=Server',
-      thumbnail: 'https://tr.rbxcdn.com/f4547e601d33e998c13fc2d352c1a47a/768/432/Image/Png'
-    },
-    mm2: {
-      name: 'Murder Mystery 2',
-      public: 'https://www.roblox.com/games/66654135/Murder-Mystery-2?sortFilter=3',
-      private: 'https://www.roblox.com/share?code=c1ac8abd3c27354e9db3979aad38b842&type=Server',
-      thumbnail: 'https://tr.rbxcdn.com/88d35fc10d18e34ef69bda0c9a3b6bd0/768/432/Image/Png'
-    },
-    sab: {
-      name: 'Steal a Brainrot',
-      public: 'https://www.roblox.com/games/109983668079237/Steal-a-Brainrot?sortFilter=3',
-      private: 'https://www.roblox.com/share?code=d99e8e73482e8342a3aa30fb59973322&type=Server',
-      thumbnail: 'https://tr.rbxcdn.com/f2451b29c7d24e68a1459302291771b5/768/432/Image/Png'
-    }
-  };
-
-  const sel = games[game];
-
-  const embed = new EmbedBuilder()
-    .setColor('#000000')
-    .setTitle(`**${sel.name} Server Join Options**`)
-    .setDescription(`**Please Choose Which Server You Would Be The Most Comfortable For The Trade In**\n\n**Confirm The Middleman Which Server To Join**`)
-    .setThumbnail(sel.thumbnail)
-    .setFooter({ text: 'Middleman Bot • Roblox Server System' });
-
-  const row = new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId('join_public')
-      .setLabel('Join Public Server')
-      .setStyle(ButtonStyle.Primary),
-    new ButtonBuilder()
-      .setCustomId('join_private')
-      .setLabel('Join Private Server')
-      .setStyle(ButtonStyle.Secondary)
-  );
-
-  await interaction.reply({ embeds: [embed], components: [row] });
-
-  const collector = interaction.channel.createMessageComponentCollector({
-    componentType: ComponentType.Button,
-    time: 60000
-  });
-
-  collector.on('collect', async i => {
-    if (i.user.id !== interaction.user.id) {
-      return i.reply({ content: '❌ This interaction isn’t for you.', ephemeral: true });
-    }
-
-    await i.deferUpdate();
-
-    const chosen = i.customId === 'join_public' ? 'Public' : 'Private';
-    const link = i.customId === 'join_public' ? sel.public : sel.private;
-
-    const resultEmbed = new EmbedBuilder()
-      .setColor('#000000')
-      .setTitle(`**${sel.name} Server Chosen**`)
-      .setDescription(`**You have chosen to trade in the ${chosen} Server.**\n\n[Click here to join the server](${link})`)
-      .setThumbnail(sel.thumbnail)
-      .setFooter({ text: 'Middleman Bot • Roblox Server System' });
-
-    await interaction.editReply({ embeds: [resultEmbed], components: [] });
-    collector.stop();
-  });
-}
+        const collector = interaction.channel.createMessageComponentCollector({ componentType: ComponentType.Button, time: 60000 });
+        collector.on('collect', async i => {
+          if (i.user.id !== interaction.user.id) return i.reply({ content: 'This interaction isn’t for you.', ephemeral: true });
+          await i.deferUpdate();
+          const txt = i.customId === 'join_public'
+            ? `**You have chosen to trade in the Public Server.**\n🔗 ${sel.public}`
+            : `**You have chosen to trade in the Private Server.**\n🔗 ${sel.private}`;
+          await interaction.editReply({ content: txt, embeds: [], components: [] });
+          collector.stop();
+        });
+        return;
+      }
+    
 
     // ✅ BUTTON: Open Modal
-    // 🎫 Show Modal When Button Is Clicked
-if (interaction.isButton() && interaction.customId === 'openTicket') {
-  const modal = new ModalBuilder()
-    .setCustomId('ticketModal')
-    .setTitle('Middleman Request')
-    .addComponents(
-      new ActionRowBuilder().addComponents(
-        new TextInputBuilder()
-          .setCustomId('q1')
-          .setLabel("What's the trade?")
-          .setStyle(TextInputStyle.Short)
-          .setRequired(true)
-      ),
-      new ActionRowBuilder().addComponents(
-        new TextInputBuilder()
-          .setCustomId('q2')
-          .setLabel("What's your side?")
-          .setStyle(TextInputStyle.Paragraph)
-          .setRequired(true)
-      ),
-      new ActionRowBuilder().addComponents(
-        new TextInputBuilder()
-          .setCustomId('q3')
-          .setLabel("What's their side?")
-          .setStyle(TextInputStyle.Paragraph)
-          .setRequired(true)
-      ),
-      new ActionRowBuilder().addComponents(
-        new TextInputBuilder()
-          .setCustomId('q4')
-          .setLabel("Their Discord ID?")
-          .setStyle(TextInputStyle.Short)
-          .setRequired(true)
-      )
-    );
-
-  await interaction.showModal(modal);
-}
-
-// 🎫 Handle Modal Submission
-if (interaction.isModalSubmit() && interaction.customId === 'ticketModal') {
-  try {
-    const q1 = interaction.fields.getTextInputValue('q1');
-    const q2 = interaction.fields.getTextInputValue('q2');
-    const q3 = interaction.fields.getTextInputValue('q3');
-    const q4 = interaction.fields.getTextInputValue('q4');
-    const userId = q4.replace(/\D/g, ''); // clean input
-
-    const permissionOverwrites = [
-      {
-        id: interaction.guild.id,
-        deny: [PermissionsBitField.Flags.ViewChannel],
-      },
-      {
-        id: interaction.user.id,
-        allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages],
-      }
-    ];
-
-    let member;
-    try {
-      member = await interaction.guild.members.fetch(userId);
-    } catch {
-      member = null;
+    if (interaction.isButton() && interaction.customId === 'openTicket') {
+      const modal = new ModalBuilder()
+        .setCustomId('ticketModal')
+        .setTitle('Middleman Request')
+        .addComponents(
+          new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('q1').setLabel("What's the trade?").setStyle(TextInputStyle.Short).setRequired(true)),
+          new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('q2').setLabel("What's your side?").setStyle(TextInputStyle.Paragraph).setRequired(true)),
+          new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('q3').setLabel("What's their side?").setStyle(TextInputStyle.Paragraph).setRequired(true)),
+          new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('q4').setLabel("Their Discord ID?").setStyle(TextInputStyle.Short).setRequired(true))
+        );
+      await interaction.showModal(modal).catch(console.error);
     }
 
-    const targetMention = `<@${userId}>`;
-
-    permissionOverwrites.push({
-      id: userId,
-      allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages],
-    });
-
-    if (!member) {
-      await interaction.reply({
-        embeds: [
-          new EmbedBuilder()
-            .setColor(0x000000)
-            .setTitle('**Middleman Request**')
-            .setDescription(`**Provided ID:** \`${q4}\`\n**Status:** Unknown user (not found in this server)`)
-        ],
-        ephemeral: true
-      });
-    }
-
-    const ticket = await interaction.guild.channels.create({
-      name: `ticket-${interaction.user.username}`,
-      type: ChannelType.GuildText,
-      parent: TICKET_CATEGORY,
-      permissionOverwrites
-    });
-
-    const embed = new EmbedBuilder()
-      .setTitle('Middleman Request')
-      .setColor('#2B2D31')
-      .setDescription(
-        `**User 1:** <@${interaction.user.id}>\n` +
-        `**User 2:** ${targetMention}\n\n` +
-        `**Trade Details**\n` +
-        `> ${q1}\n\n` +
-        `**User 1 is giving:**\n` +
-        `> ${q2}\n\n` +
-        `**User 2 is giving:**\n` +
-        `> ${q3}`
-      )
-      .setFooter({ text: `Ticket by ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
-      .setTimestamp();
-
-    await ticket.send({
-      content: `<@${interaction.user.id}> <@${OWNER_ID}>`,
-      embeds: [embed]
-    });
-
-    await interaction.reply({
-      content: `✅ Ticket created: ${ticket}`,
-      ephemeral: true
-    });
-
-  } catch (err) {
-    console.error('❌ Interaction error:', err);
-    await interaction.reply({
-      content: '❌ An error occurred while creating the ticket.',
-      ephemeral: true
-    });
-  }
-}
     // ✅ BUTTON: Transcript Fix
 if (interaction.isButton() && interaction.customId === 'transcript') {
       const parentId = interaction.channel.parentId || interaction.channel.parent?.id;
@@ -945,91 +780,50 @@ const permissionOverwrites = [
 ];
 
 // Add the target user to permission overwrites if ID is valid and member exists
-client.on('interactionCreate', async interaction => {
-  if (interaction.isModalSubmit() && interaction.customId === 'ticketModal') {
-    const q1 = interaction.fields.getTextInputValue('q1');
-    const q2 = interaction.fields.getTextInputValue('q2');
-    const q3 = interaction.fields.getTextInputValue('q3');
-    const q4 = interaction.fields.getTextInputValue('q4');
+if (isValidId) {
+  const member = interaction.guild.members.cache.get(q4);
+  if (member) {
+    permissionOverwrites.push({
+      id: q4,
+      allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages]
+    });
+  }
+}
 
-    const userId = q4.replace(/\D/g, ''); // only digits
-
-    const permissionOverwrites = [
-      {
-        id: interaction.guild.id,
-        deny: [PermissionsBitField.Flags.ViewChannel],
-      },
-      {
-        id: interaction.user.id,
-        allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages],
-      }
-    ];
-
-    let targetMention = `\`${q4}\``;
-    let member;
-    try {
-      member = await interaction.guild.members.fetch(userId);
-    } catch {
-      member = null;
-    }
-
-    if (member) {
-      permissionOverwrites.push({
-        id: userId,
-        allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages],
-      });
-      targetMention = `<@${userId}>`;
-    } else {
-      permissionOverwrites.push({
-        id: userId,
-        allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages],
-      });
-
-      await interaction.reply({
-        embeds: [
-          new EmbedBuilder()
-            .setColor(0x000000)
-            .setTitle('**Middleman Request**')
-            .setDescription(`**Provided ID:** \`${q4}\`\n**Status:** Unknown user (not found in this server)`)
-        ],
-        ephemeral: true
-      });
-    }
-
-    try {
-      const ticket = await interaction.guild.channels.create({
-        name: `ticket-${interaction.user.username}`,
-        type: ChannelType.GuildText,
-        parent: TICKET_CATEGORY,
-        permissionOverwrites
-      });
-
+const ticket = await interaction.guild.channels.create({
+  name: `ticket-${interaction.user.username}`,
+  type: ChannelType.GuildText,
+  parent: TICKET_CATEGORY,
+  permissionOverwrites
+});
       const embed = new EmbedBuilder()
-        .setTitle('Middleman Request')
-        .setColor('#2B2D31')
-        .setDescription(
-          `**User 1:** <@${interaction.user.id}>\n` +
-          `**User 2:** ${targetMention}\n\n` +
-          `**Trade Details**\n` +
-          `> ${q1}\n\n` +
-          `**User 1 is giving:**\n` +
-          `> ${q2}\n\n` +
-          `**User 2 is giving:**\n` +
-          `> ${q3}`
-        )
-        .setFooter({ text: `Ticket by ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
-        .setTimestamp();
+  .setTitle('Middleman Request')
+  .setColor('#2B2D31')
+  .setDescription(
+    `**User 1:** <@${interaction.user.id}>\n` +
+    `**User 2:** ${targetMention}\n\n` +
+    `**Trade Details**\n` +
+    `> ${q1}\n\n` +
+    `**User 1 is giving:**\n` +
+    `> ${q2}\n\n` +
+    `**User 2 is giving:**\n` +
+    `> ${q3}`
+  )
+  .setFooter({ text: `Ticket by ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
+  .setTimestamp();
 
-      await ticket.send({
-        content: `<@${interaction.user.id}> <@${OWNER_ID}>`,
-        embeds: [embed]
-      });
+        await ticket.send({
+  content: `<@${interaction.user.id}> <@${OWNER_ID}>`,
+  embeds: [embed]
+});
+          
 
-      await interaction.followUp({ content: `✅ Ticket created: ${ticket}`, ephemeral: true });
-
-    } catch (err) {
-      console.error('❌ Interaction error:', err);
+        await interaction.reply({ content: `✅ Ticket created: ${ticket}`, ephemeral: true });
+      
     }
+
+  } catch (err) {
+    console.error('❌ Interaction error:', err);
   }
 });
 
@@ -1196,6 +990,82 @@ client.on('interactionCreate', async (interaction) => {
 
     await interaction.deferReply({ ephemeral: true }).catch(() => {});
     return handleTranscript(interaction, interaction.channel);
+  }
+});
+const gameData = {
+  gag: {
+    name: 'GAG',
+    privateLink: 'https://www.roblox.com/share?code=2daaf72e32f63840b588d65a5cff53a7&type=Server',
+    thumbnail: 'https://tr.rbxcdn.com/f6eaab6d7593c785ca131b6a7f9b878d/768/432/Image/Png'
+  },
+  mm2: {
+    name: 'MM2',
+    privateLink: 'https://www.roblox.com/share?code=c1ac8abd3c27354e9db3979aad38b842&type=Server',
+    thumbnail: 'https://tr.rbxcdn.com/8cdba6c420274154038c91f396c6e07d/768/432/Image/Png'
+  },
+  sab: {
+    name: 'SAB (Steal a Brainrot)',
+    privateLink: 'https://www.roblox.com/share?code=d99e8e73482e8342a3aa30fb59973322&type=Server',
+    thumbnail: 'https://tr.rbxcdn.com/878e9d1e80c2a6cc12e0597f2d1c04f6/768/432/Image/Png'
+  }
+};
+
+client.on('interactionCreate', async (interaction) => {
+  if (interaction.isChatInputCommand() && interaction.commandName === 'servers') {
+    const game = interaction.options.getString('game');
+    const channel = interaction.channel;
+
+    const parentId = channel?.parentId || channel?.parent?.id;
+    if (parentId !== TICKET_CATEGORY) {
+      return interaction.reply({
+        content: '❌ This command can only be used inside ticket channels.',
+        ephemeral: true
+      });
+    }
+
+    const selectedGame = gameData[game];
+
+    const embed = new EmbedBuilder()
+      .setTitle(`Server Options for ${selectedGame.name}`)
+      .setDescription('**Please Choose Which Server You Would Be The Most Comfortable For The Trade In. Confirm The Middleman Which Server To Join**')
+      .setThumbnail(selectedGame.thumbnail)
+      .setColor('#000000')
+      .setTimestamp();
+
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId(`public_${game}`)
+        .setLabel('Join Public Server')
+        .setStyle(ButtonStyle.Primary),
+      new ButtonBuilder()
+        .setCustomId(`private_${game}`)
+        .setLabel('Join Private Server')
+        .setStyle(ButtonStyle.Secondary)
+    );
+
+    await interaction.reply({ embeds: [embed], components: [row] });
+  }
+
+  if (interaction.isButton()) {
+    const [type, game] = interaction.customId.split('_');
+    const selectedGame = gameData[game];
+
+    if (!selectedGame) return;
+
+    const isPublic = type === 'public';
+    const publicLink = `https://www.roblox.com/games/${getGameUniverseId(game)}`;
+
+    const embed = new EmbedBuilder()
+      .setTitle('Server Chosen')
+      .setColor('#000000')
+      .setDescription(`**You have chosen to trade in the ${isPublic ? 'Public' : 'Private'} Server.**`)
+      .addFields({
+        name: '🔗 Click to Join:',
+        value: isPublic ? `[Public Server Link](${publicLink})` : `[Private Server Link](${selectedGame.privateLink})`
+      })
+      .setTimestamp();
+
+    await interaction.reply({ embeds: [embed] });
   }
 });
 app.get('/', (req, res) => res.sendStatus(200));
