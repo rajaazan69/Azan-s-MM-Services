@@ -177,7 +177,7 @@ new SlashCommandBuilder()
       .setDescription('The sticky message content')
       .setRequired(true))
   .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages),
-  const commands = [
+ const commands = [
   new SlashCommandBuilder()
     .setName('untimeout')
     .setDescription('Remove timeout from a user')
@@ -202,9 +202,8 @@ new SlashCommandBuilder()
           { name: 'GAG', value: 'gag' },
           { name: 'MM2', value: 'mm2' },
           { name: 'SAB', value: 'sab' }
-        )
-    )
-].map(cmd => cmd.toJSON());
+        ))
+].map(command => command.toJSON());
   
     await rest.put(Routes.applicationCommands(client.user.id), { body: commands });
     console.log('✅ Slash commands registered');
@@ -696,37 +695,86 @@ if (commandName === 'untimeout') {
   }
 }
   if (commandName === 'servers') {
-        const game = options.getString('game');
-        const games = {
-          gag: { name: 'Grow a Garden', public: 'https://www.roblox.com/games/126884695634066/Grow-a-Garden?sortFilter=3', private: 'https://www.roblox.com/share?code=2daaf72e32f63840b588d65a5cff53a7&type=Server' },
-          mm2: { name: 'Murder Mystery 2', public: 'https://www.roblox.com/games/66654135/Murder-Mystery-2?sortFilter=3', private: 'https://www.roblox.com/share?code=c1ac8abd3c27354e9db3979aad38b842&type=Server' },
-          sab: { name: 'Steal a Brainrot', public: 'https://www.roblox.com/games/109983668079237/Steal-a-Brainrot?sortFilter=3', private: 'https://www.roblox.com/share?code=d99e8e73482e8342a3aa30fb59973322&type=Server' }
-        };
-        const sel = games[game];
-        const embed = new EmbedBuilder()
-          .setColor('#000000')
-          .setTitle(`**${sel.name} Server Join Options**`)
-          .setDescription(`**Please Choose Which Server You Would Be The Most Comfortable For The Trade In**\n\n**Confirm The Middleman Which Server To Join**`)
-          .setFooter({ text: 'Middleman Bot • Roblox Server System' });
-        const row = new ActionRowBuilder().addComponents(
-          new ButtonBuilder().setCustomId('join_public').setLabel('🔻 Use Public Server').setStyle(ButtonStyle.Primary),
-          new ButtonBuilder().setCustomId('join_private').setLabel('🔒 Use Private Server').setStyle(ButtonStyle.Primary)
-        );
-        await interaction.reply({ embeds: [embed], components: [row], ephemeral: true });
+  const parentId = interaction.channel?.parentId || interaction.channel?.parent?.id;
+  const TICKET_CATEGORY = 'YOUR_TICKET_CATEGORY_ID'; // Replace with your actual category ID
 
-        const collector = interaction.channel.createMessageComponentCollector({ componentType: ComponentType.Button, time: 60000 });
-        collector.on('collect', async i => {
-          if (i.user.id !== interaction.user.id) return i.reply({ content: 'This interaction isn’t for you.', ephemeral: true });
-          await i.deferUpdate();
-          const txt = i.customId === 'join_public'
-            ? `**You have chosen to trade in the Public Server.**\n🔗 ${sel.public}`
-            : `**You have chosen to trade in the Private Server.**\n🔗 ${sel.private}`;
-          await interaction.editReply({ content: txt, embeds: [], components: [] });
-          collector.stop();
-        });
-        return;
-      }
+  if (parentId !== TICKET_CATEGORY) {
+    return interaction.reply({
+      content: '❌ This command can only be used inside ticket channels.',
+      ephemeral: true
+    });
+  }
+
+  const game = options.getString('game');
+  const games = {
+    gag: {
+      name: 'Grow a Garden',
+      public: 'https://www.roblox.com/games/126884695634066/Grow-a-Garden?sortFilter=3',
+      private: 'https://www.roblox.com/share?code=2daaf72e32f63840b588d65a5cff53a7&type=Server',
+      thumbnail: 'https://tr.rbxcdn.com/f4547e601d33e998c13fc2d352c1a47a/768/432/Image/Png'
+    },
+    mm2: {
+      name: 'Murder Mystery 2',
+      public: 'https://www.roblox.com/games/66654135/Murder-Mystery-2?sortFilter=3',
+      private: 'https://www.roblox.com/share?code=c1ac8abd3c27354e9db3979aad38b842&type=Server',
+      thumbnail: 'https://tr.rbxcdn.com/88d35fc10d18e34ef69bda0c9a3b6bd0/768/432/Image/Png'
+    },
+    sab: {
+      name: 'Steal a Brainrot',
+      public: 'https://www.roblox.com/games/109983668079237/Steal-a-Brainrot?sortFilter=3',
+      private: 'https://www.roblox.com/share?code=d99e8e73482e8342a3aa30fb59973322&type=Server',
+      thumbnail: 'https://tr.rbxcdn.com/f2451b29c7d24e68a1459302291771b5/768/432/Image/Png'
     }
+  };
+
+  const sel = games[game];
+
+  const embed = new EmbedBuilder()
+    .setColor('#000000')
+    .setTitle(`**${sel.name} Server Join Options**`)
+    .setDescription(`**Please Choose Which Server You Would Be The Most Comfortable For The Trade In**\n\n**Confirm The Middleman Which Server To Join**`)
+    .setThumbnail(sel.thumbnail)
+    .setFooter({ text: 'Middleman Bot • Roblox Server System' });
+
+  const row = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId('join_public')
+      .setLabel('Join Public Server')
+      .setStyle(ButtonStyle.Primary),
+    new ButtonBuilder()
+      .setCustomId('join_private')
+      .setLabel('Join Private Server')
+      .setStyle(ButtonStyle.Secondary)
+  );
+
+  await interaction.reply({ embeds: [embed], components: [row] });
+
+  const collector = interaction.channel.createMessageComponentCollector({
+    componentType: ComponentType.Button,
+    time: 60000
+  });
+
+  collector.on('collect', async i => {
+    if (i.user.id !== interaction.user.id) {
+      return i.reply({ content: '❌ This interaction isn’t for you.', ephemeral: true });
+    }
+
+    await i.deferUpdate();
+
+    const chosen = i.customId === 'join_public' ? 'Public' : 'Private';
+    const link = i.customId === 'join_public' ? sel.public : sel.private;
+
+    const resultEmbed = new EmbedBuilder()
+      .setColor('#000000')
+      .setTitle(`**${sel.name} Server Chosen**`)
+      .setDescription(`**You have chosen to trade in the ${chosen} Server.**\n\n[Click here to join the server](${link})`)
+      .setThumbnail(sel.thumbnail)
+      .setFooter({ text: 'Middleman Bot • Roblox Server System' });
+
+    await interaction.editReply({ embeds: [resultEmbed], components: [] });
+    collector.stop();
+  });
+}
 
     // ✅ BUTTON: Open Modal
     if (interaction.isButton() && interaction.customId === 'openTicket') {
