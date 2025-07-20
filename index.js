@@ -189,7 +189,6 @@ new SlashCommandBuilder()
       .setRequired(false))
   .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers),
     new SlashCommandBuilder()
-  new SlashCommandBuilder()
     .setName('servers')
     .setDescription('Get Roblox server join options')
     .addStringOption(option =>
