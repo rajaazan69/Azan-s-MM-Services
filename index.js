@@ -187,8 +187,7 @@ new SlashCommandBuilder()
     option.setName('reason')
       .setDescription('Reason for removing timeout')
       .setRequired(false))
-  .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers)
-    ].map(cmd => cmd.toJSON());
+  .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers),
     new SlashCommandBuilder()
   new SlashCommandBuilder()
     .setName('servers')
