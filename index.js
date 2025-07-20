@@ -779,46 +779,86 @@ if (commandName === 'untimeout') {
 
     // ✅ BUTTON: Open Modal
     if (interaction.isButton() && interaction.customId === 'openTicket') {
-      const modal = new ModalBuilder()
-        .setCustomId('ticketModal')
-        .setTitle('Middleman Request')
-        .addComponents(
-          new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('q1').setLabel("What's the trade?").setStyle(TextInputStyle.Short).setRequired(true)),
-          new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('q2').setLabel("What's your side?").setStyle(TextInputStyle.Paragraph).setRequired(true)),
-          new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('q3').setLabel("What's their side?").setStyle(TextInputStyle.Paragraph).setRequired(true)),
-    const q4 = interaction.fields.getTextInputValue('q4');
-const userId = q4.replace(/\D/g, ''); // strip everything except digits
+  const modal = new ModalBuilder()
+    .setCustomId('ticketModal')
+    .setTitle('Middleman Request')
+    .addComponents(
+      new ActionRowBuilder().addComponents(
+        new TextInputBuilder()
+          .setCustomId('q1')
+          .setLabel("What's the trade?")
+          .setStyle(TextInputStyle.Short)
+          .setRequired(true)
+      ),
+      new ActionRowBuilder().addComponents(
+        new TextInputBuilder()
+          .setCustomId('q2')
+          .setLabel("What's your side?")
+          .setStyle(TextInputStyle.Paragraph)
+          .setRequired(true)
+      ),
+      new ActionRowBuilder().addComponents(
+        new TextInputBuilder()
+          .setCustomId('q3')
+          .setLabel("What's their side?")
+          .setStyle(TextInputStyle.Paragraph)
+          .setRequired(true)
+      ),
+      new ActionRowBuilder().addComponents(
+        new TextInputBuilder()
+          .setCustomId('q4')
+          .setLabel("Paste their Roblox profile link")
+          .setStyle(TextInputStyle.Short)
+          .setRequired(true)
+      )
+    );
 
-let member;
-try {
-  member = await interaction.guild.members.fetch(userId);
-} catch {
-  member = null;
+  await interaction.showModal(modal);
 }
 
-if (member) {
-  permissionOverwrites.push({
-    id: userId,
-    allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages],
-  });
-} else {
-  // Optionally still add the ID so the user can join if they join later
-  permissionOverwrites.push({
-    id: userId,
-    allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages],
-  });
+if (interaction.isModalSubmit() && interaction.customId === 'ticketModal') {
+  const q4 = interaction.fields.getTextInputValue('q4');
+  const userId = q4.replace(/\D/g, ''); // strip everything except digits
 
-  // Send an embed to let the requester know
-  await interaction.reply({
-    embeds: [
-      new EmbedBuilder()
-        .setColor(0x000000)
-        .setTitle('**Middleman Request**')
-        .setDescription(`**Provided ID:** \`${q4}\`\n**Status:** Unknown user (not found in this server)`)
-    ],
-    ephemeral: true
-  });
-}
+  let member;
+  try {
+    member = await interaction.guild.members.fetch(userId);
+  } catch {
+    member = null;
+  }
+
+  const permissionOverwrites = [];
+
+  if (member) {
+    permissionOverwrites.push({
+      id: userId,
+      allow: [
+        PermissionsBitField.Flags.ViewChannel,
+        PermissionsBitField.Flags.SendMessages
+      ],
+    });
+  } else {
+    permissionOverwrites.push({
+      id: userId,
+      allow: [
+        PermissionsBitField.Flags.ViewChannel,
+        PermissionsBitField.Flags.SendMessages
+      ],
+    });
+
+    await interaction.reply({
+      embeds: [
+        new EmbedBuilder()
+          .setColor(0x000000)
+          .setTitle('**Middleman Request**')
+          .setDescription(`**Provided ID:** \`${q4}\`\n**Status:** Unknown user (not found in this server)`)
+      ],
+      ephemeral: true
+    });
+  }
+
+  // ⚠️ If you're going to use permissionOverwrites later to create the channel,
+  // make sure you do that below here.
 
     // ✅ BUTTON: Transcript Fix
 if (interaction.isButton() && interaction.customId === 'transcript') {
