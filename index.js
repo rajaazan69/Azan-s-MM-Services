@@ -1068,6 +1068,7 @@ client.on('interactionCreate', async (interaction) => {
 
   await interaction.reply({ embeds: [embed] });
 }
+});
 app.get('/', (req, res) => res.sendStatus(200));
 app.listen(3000, () => console.log('🌐 Express server is running'));
 
