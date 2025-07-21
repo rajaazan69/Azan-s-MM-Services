@@ -770,7 +770,7 @@ if (existing) {
       const q3 = interaction.fields.getTextInputValue('q3');
       const q4 = interaction.fields.getTextInputValue('q4');
 const isValidId = /^\d{17,19}$/.test(q4);
-const targetMention = isValidId ? `<@${q4}>` : 'Unknown User';
+let targetMention = isValidId ? `<@${q4}>` : 'Unknown User';
 
 // Prepare permission overwrites array
 const permissionOverwrites = [
@@ -781,8 +781,6 @@ const permissionOverwrites = [
 ];
 
 // Add the target user to permission overwrites if ID is valid and member exists
-targetMention = 'Unknown User'; // Default
-
 if (isValidId) {
   try {
     const member = await interaction.guild.members.fetch(q4);
