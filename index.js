@@ -781,7 +781,7 @@ const permissionOverwrites = [
 ];
 
 // Add the target user to permission overwrites if ID is valid and member exists
-let targetMention = 'Unknown User'; // Default
+targetMention = 'Unknown User'; // Default
 
 if (isValidId) {
   try {
