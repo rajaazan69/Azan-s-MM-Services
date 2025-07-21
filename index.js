@@ -1074,7 +1074,7 @@ client.on('interactionCreate', async (interaction) => {
 }
 
 await interaction.editReply({ embeds: [embed] });
-    }
+    
   } catch (err) {
     console.error('❌ Interaction error:', err);
     if (!interaction.replied && !interaction.deferred) {
