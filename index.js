@@ -998,19 +998,19 @@ const gameData = {
     name: 'GAG',
     publicLink: 'https://www.roblox.com/games/126884695634066/Grow-a-Garden?sortFilter=3',
     privateLink: 'https://www.roblox.com/share?code=2daaf72e32f63840b588d65a5cff53a7&type=Server',
-    thumbnail: 'https://tr.rbxcdn.com/f6eaab6d7593c785ca131b6a7f9b878d/768/432/Image/Png'
+    thumbnail: 'https://cdn.discordapp.com/attachments/1373070247795495116/1396644967665111142/IMG_6743.jpg'
   },
   mm2: {
     name: 'MM2',
     publicLink: 'https://www.roblox.com/games/66654135/Murder-Mystery-2?sortFilter=3',
     privateLink: 'https://www.roblox.com/share?code=c1ac8abd3c27354e9db3979aad38b842&type=Server',
-    thumbnail: 'https://tr.rbxcdn.com/8cdba6c420274154038c91f396c6e07d/768/432/Image/Png'
+    thumbnail: 'https://cdn.discordapp.com/attachments/1373070247795495116/1396644976829661194/IMG_6744.jpg'
   },
   sab: {
     name: 'SAB (Steal a Brainrot)',
     publicLink: 'https://www.roblox.com/games/109983668079237/Steal-a-Brainrot?sortFilter=3',
     privateLink: 'https://www.roblox.com/share?code=d99e8e73482e8342a3aa30fb59973322&type=Server',
-    thumbnail: 'https://tr.rbxcdn.com/878e9d1e80c2a6cc12e0597f2d1c04f6/768/432/Image/Png'
+    thumbnail: 'https://cdn.discordapp.com/attachments/1373070247795495116/1396644973134348288/IMG_6745.jpg'
   }
 };
 
