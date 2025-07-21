@@ -12,6 +12,7 @@ const fs = require('fs');
 require('dotenv').config();
 const { MongoClient } = require('mongodb');
 const stickyMap = new Map();
+const pendingTickets = new Set();
 
 const mongoUri = process.env.MONGO_URI;
 const mongoClient = new MongoClient(mongoUri);
