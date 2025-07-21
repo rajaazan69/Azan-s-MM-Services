@@ -825,7 +825,7 @@ const ticket = await interaction.guild.channels.create({
   .setTimestamp();
 
         await ticket.send({
-  content: `<@${interaction.user.id}> <@${OWNER_ID}>`,
+  content: `<@${interaction.user.id}> <@${OWNER_ID}> ${isValidId ? targetMention : ''}`,
   embeds: [embed]
 });
           
