@@ -729,77 +729,84 @@ if (interaction.isButton() && interaction.customId === 'transcript') {
 
 
     if (interaction.isModalSubmit() && interaction.customId === 'ticketModal') {
-      // Prevent multiple tickets per user
-const existing = interaction.guild.channels.cache.find(c =>
-  c.parentId === TICKET_CATEGORY &&
-  c.permissionOverwrites.cache.has(interaction.user.id)
-);
+  try {
+    // ✅ START of try block
 
-if (existing) {
-  return interaction.reply({ content: `❌ You already have an open ticket: ${existing}`, ephemeral: true });
-}
-      const q1 = interaction.fields.getTextInputValue('q1');
-      const q2 = interaction.fields.getTextInputValue('q2');
-      const q3 = interaction.fields.getTextInputValue('q3');
-      const q4 = interaction.fields.getTextInputValue('q4');
-const isValidId = /^\d{17,19}$/.test(q4);
-const targetMention = isValidId ? `<@${q4}>` : 'Unknown User';
+    // Prevent multiple tickets per user
+    const existing = interaction.guild.channels.cache.find(c =>
+      c.parentId === TICKET_CATEGORY &&
+      c.permissionOverwrites.cache.has(interaction.user.id)
+    );
 
-// Prepare permission overwrites array
-const permissionOverwrites = [
-  { id: interaction.guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
-  { id: interaction.user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
-  { id: OWNER_ID, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
-  { id: MIDDLEMAN_ROLE, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] }
-];
-
-// Add the target user to permission overwrites if ID is valid and member exists
-if (isValidId) {
-  const member = interaction.guild.members.cache.get(q4);
-  if (member) {
-    permissionOverwrites.push({
-      id: q4,
-      allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages]
-    });
-  }
-}
-
-const ticket = await interaction.guild.channels.create({
-  name: `ticket-${interaction.user.username}`,
-  type: ChannelType.GuildText,
-  parent: TICKET_CATEGORY,
-  permissionOverwrites
-});
-      const embed = new EmbedBuilder()
-  .setTitle('Middleman Request')
-  .setColor('#2B2D31')
-  .setDescription(
-    `**User 1:** <@${interaction.user.id}>\n` +
-    `**User 2:** ${targetMention}\n\n` +
-    `**Trade Details**\n` +
-    `> ${q1}\n\n` +
-    `**User 1 is giving:**\n` +
-    `> ${q2}\n\n` +
-    `**User 2 is giving:**\n` +
-    `> ${q3}`
-  )
-  .setFooter({ text: `Ticket by ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
-  .setTimestamp();
-
-        await ticket.send({
-  content: `<@${interaction.user.id}> <@${OWNER_ID}>`,
-  embeds: [embed]
-});
-          
-
-        await interaction.reply({ content: `✅ Ticket created: ${ticket}`, ephemeral: true });
-      
+    if (existing) {
+      return interaction.reply({ content: `❌ You already have an open ticket: ${existing}`, ephemeral: true });
     }
 
+    const q1 = interaction.fields.getTextInputValue('q1');
+    const q2 = interaction.fields.getTextInputValue('q2');
+    const q3 = interaction.fields.getTextInputValue('q3');
+    const q4 = interaction.fields.getTextInputValue('q4');
+    const isValidId = /^\d{17,19}$/.test(q4);
+    const targetMention = isValidId ? `<@${q4}>` : 'Unknown User';
+
+    const permissionOverwrites = [
+      { id: interaction.guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
+      { id: interaction.user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
+      { id: OWNER_ID, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
+      { id: MIDDLEMAN_ROLE, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] }
+    ];
+
+    if (isValidId) {
+      let member;
+      try {
+        member = await interaction.guild.members.fetch(q4);
+      } catch (e) {
+        member = null;
+      }
+
+      if (member) {
+        permissionOverwrites.push({
+          id: q4,
+          allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages]
+        });
+      }
+    }
+
+    const ticket = await interaction.guild.channels.create({
+      name: `ticket-${interaction.user.username}`,
+      type: ChannelType.GuildText,
+      parent: TICKET_CATEGORY,
+      permissionOverwrites
+    });
+
+    const embed = new EmbedBuilder()
+      .setTitle('Middleman Request')
+      .setColor('#2B2D31')
+      .setDescription(
+        `**User 1:** <@${interaction.user.id}>\n` +
+        `**User 2:** ${targetMention}\n\n` +
+        `**Trade Details**\n` +
+        `> ${q1}\n\n` +
+        `**User 1 is giving:**\n` +
+        `> ${q2}\n\n` +
+        `**User 2 is giving:**\n` +
+        `> ${q3}`
+      )
+      .setFooter({ text: `Ticket by ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
+      .setTimestamp();
+
+    await ticket.send({
+      content: `<@${interaction.user.id}> <@${OWNER_ID}>`,
+      embeds: [embed]
+    });
+
+    await interaction.reply({ content: `✅ Ticket created: ${ticket}`, ephemeral: true });
+
+    // ✅ END of try block
   } catch (err) {
     console.error('❌ Interaction error:', err);
   }
-});
+}
 
 
 async function handleTranscript(interaction, channel) {
