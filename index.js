@@ -1059,9 +1059,9 @@ client.on('interactionCreate', async (interaction) => {
   const embed = new EmbedBuilder()
     .setTitle('Server Chosen')
     .setColor('#000000')
-    .setDescription(`**You have chosen to trade in the ${isPublic ? 'Public' : 'Private'} Server.**`)
+   .setDescription(`**<@${interaction.user.id}> has chosen to trade in the ${isPublic ? 'Public' : 'Private'} Server.**`)
     .addFields({
-      name: '🔗 Click to Join:',
+      name: '**Click to Join:**',
       value: `[${isPublic ? 'Public' : 'Private'} Server Link](${isPublic ? selectedGame.publicLink : selectedGame.privateLink})`
     })
     .setTimestamp();
