@@ -721,22 +721,59 @@ if (interaction.isButton() && interaction.customId === 'transcript') {
     }
 
     if (interaction.isModalSubmit() && interaction.customId === 'ticketModal') {
-      // Prevent multiple tickets per user
+      if (pendingTickets.has(interaction.user.id)) {
+  return interaction.reply({ content: '⏳ Your ticket is being created. Please wait...', ephemeral: true });
+}
+
+pendingTickets.add(interaction.user.id);
+
+// Check if ticket already exists
 const existing = interaction.guild.channels.cache.find(c =>
   c.parentId === TICKET_CATEGORY &&
   c.permissionOverwrites.cache.has(interaction.user.id)
 );
 
 if (existing) {
+  pendingTickets.delete(interaction.user.id);
   return interaction.reply({ content: `❌ You already have an open ticket: ${existing}`, ephemeral: true });
 }
-      const q1 = interaction.fields.getTextInputValue('q1');
-      const q2 = interaction.fields.getTextInputValue('q2');
-      const q3 = interaction.fields.getTextInputValue('q3');
-      const q4 = interaction.fields.getTextInputValue('q4');
+
+// ⏬ Proceed to create the channel here
+const q1 = interaction.fields.getTextInputValue('q1');
+const q2 = interaction.fields.getTextInputValue('q2');
+const q3 = interaction.fields.getTextInputValue('q3');
+const q4 = interaction.fields.getTextInputValue('q4');
 const isValidId = /^\d{17,19}$/.test(q4);
 let targetMention = isValidId ? `<@${q4}>` : 'Unknown User';
 
+const channel = await interaction.guild.channels.create({
+  name: `ticket-${interaction.user.username}`,
+  type: ChannelType.GuildText,
+  parent: TICKET_CATEGORY,
+  permissionOverwrites: [
+    {
+      id: interaction.guild.id,
+      deny: [PermissionFlagsBits.ViewChannel]
+    },
+    {
+      id: interaction.user.id,
+      allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages]
+    },
+    {
+      id: BOT_ID,
+      allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages]
+    }
+  ]
+});
+
+// Clean up the lock once done
+pendingTickets.delete(interaction.user.id);
+
+// Final reply
+await interaction.reply({
+  content: `🎫 Ticket created: ${channel}`,
+  ephemeral: true
+});
 // Prepare permission overwrites array
 const permissionOverwrites = [
   { id: interaction.guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
