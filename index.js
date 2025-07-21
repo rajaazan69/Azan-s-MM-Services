@@ -1011,7 +1011,7 @@ client.on('interactionCreate', async (interaction) => {
     const embed = new EmbedBuilder()
       .setTitle(`Server Options for ${selectedGame.name}`)
       .setDescription('**Please Choose Which Server You Would Be The Most Comfortable For The Trade In. Confirm The Middleman Which Server To Join**')
-      .setThumbnail(selectedGame.thumbnail)
+      .setImage(selectedGame.thumbnail)
       .setColor('#000000')
       .setTimestamp();
 
@@ -1044,7 +1044,7 @@ client.on('interactionCreate', async (interaction) => {
         name: '🔗 Click to Join:',
         value: `[${isPublic ? 'Public' : 'Private'} Server Link](${isPublic ? selectedGame.publicLink : selectedGame.privateLink})`
       })
-      .setThumbnail(selectedGame.thumbnail)
+      ..setImage(selectedGame.thumbnail)
       .setTimestamp();
 
     // Safely reply if not already replied
