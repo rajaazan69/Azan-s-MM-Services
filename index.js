@@ -742,9 +742,17 @@ if (existing) {
 const q1 = interaction.fields.getTextInputValue('q1');
 const q2 = interaction.fields.getTextInputValue('q2');
 const q3 = interaction.fields.getTextInputValue('q3');
-const q4 = interaction.fields.getTextInputValue('q4');
-const isValidId = /^\d{17,19}$/.test(q4);
-let targetMention = isValidId ? `<@${q4}>` : 'Unknown User';
+const q4 = interaction.fields.getTextInputValue('q4')?.trim();
+let targetMention = 'Unknown User';
+
+if (q4 && /^\d{17,19}$/.test(q4)) {
+  try {
+    const user = await interaction.client.users.fetch(q4);
+    if (user) targetMention = `<@${user.id}>`;
+  } catch (err) {
+    console.warn(`Invalid user ID in q4: ${q4}`, err.message);
+  }
+}
 
 const channel = await interaction.guild.channels.create({
   name: `ticket-${interaction.user.username}`,
