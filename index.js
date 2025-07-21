@@ -726,10 +726,10 @@ if (interaction.isButton() && interaction.customId === 'transcript') {
   return interaction.reply({ content: '⏳ Your ticket is being created. Please wait...', ephemeral: true });
 }
 
-pendingTickets.add(interaction.user.id);
 
 
-// Prevent multiple tickets per user
+    if (interaction.isModalSubmit() && interaction.customId === 'ticketModal') {
+      // Prevent multiple tickets per user
 const existing = interaction.guild.channels.cache.find(c =>
   c.parentId === TICKET_CATEGORY &&
   c.permissionOverwrites.cache.has(interaction.user.id)
@@ -743,30 +743,24 @@ if (existing) {
       const q3 = interaction.fields.getTextInputValue('q3');
       const q4 = interaction.fields.getTextInputValue('q4');
 const isValidId = /^\d{17,19}$/.test(q4);
-let targetMention = isValidId ? `<@${q4}>` : 'Unknown User';
+const targetMention = isValidId ? `<@${q4}>` : 'Unknown User';
 
-// Clean up the lock once done
-pendingTickets.delete(interaction.user.id);
+// Prepare permission overwrites array
+const permissionOverwrites = [
+  { id: interaction.guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
+  { id: interaction.user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
+  { id: OWNER_ID, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
+  { id: MIDDLEMAN_ROLE, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] }
+];
 
 // Add the target user to permission overwrites if ID is valid and member exists
 if (isValidId) {
-  try {
-    const member = await interaction.guild.members.fetch(q4);
-    if (member) {
-      // Add to channel permissions
-      permissionOverwrites.push({
-        id: q4,
-        allow: [
-          PermissionsBitField.Flags.ViewChannel,
-          PermissionsBitField.Flags.SendMessages
-        ]
-      });
-
-      // Proper mention for embed
-      targetMention = `<@${q4}>`;
-    }
-  } catch (err) {
-    console.warn(`⚠️ Could not fetch member: ${q4}`);
+  const member = interaction.guild.members.cache.get(q4);
+  if (member) {
+    permissionOverwrites.push({
+      id: q4,
+      allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages]
+    });
   }
 }
 
@@ -793,7 +787,7 @@ const ticket = await interaction.guild.channels.create({
   .setTimestamp();
 
         await ticket.send({
-  content: `<@${interaction.user.id}> <@${OWNER_ID}> ${isValidId ? targetMention : ''}`,
+  content: `<@${interaction.user.id}> <@${OWNER_ID}>`,
   embeds: [embed]
 });
           
@@ -806,6 +800,7 @@ const ticket = await interaction.guild.channels.create({
     console.error('❌ Interaction error:', err);
   }
 });
+
 
 async function handleTranscript(interaction, channel) {
   try {
