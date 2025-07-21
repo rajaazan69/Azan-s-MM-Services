@@ -1014,7 +1014,6 @@ client.on('interactionCreate', async (interaction) => {
         ephemeral: true
       });
     }
-    await new Promise(resolve => setTimeout(resolve, 1000));
 
     const selectedGame = gameData[game];
 
