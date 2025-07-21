@@ -690,41 +690,6 @@ if (commandName === 'untimeout') {
     await interaction.editReply({ content: '❌ Failed to remove timeout from the user.' });
   }
 }
-if (commandName === 'servers') {
-        const game = options.getString('game');
-        const games = {
-          gag: { name: 'Grow a Garden', public: 'https://www.roblox.com/games/126884695634066/Grow-a-Garden?sortFilter=3', private: 'https://www.roblox.com/share?code=2daaf72e32f63840b588d65a5cff53a7&type=Server' },
-          mm2: { name: 'Murder Mystery 2', public: 'https://www.roblox.com/games/66654135/Murder-Mystery-2?sortFilter=3', private: 'https://www.roblox.com/share?code=c1ac8abd3c27354e9db3979aad38b842&type=Server' },
-          sab: { name: 'Steal a Brainrot', public: 'https://www.roblox.com/games/109983668079237/Steal-a-Brainrot?sortFilter=3', private: 'https://www.roblox.com/share?code=d99e8e73482e8342a3aa30fb59973322&type=Server' }
-        };
-        const sel = games[game];
-        const embed = new EmbedBuilder()
-          .setColor('#000000')
-          .setTitle(`**${sel.name} Server Join Options**`)
-          .setDescription(`**Please Choose Which Server You Would Be The Most Comfortable For The Trade In**\n\n**Confirm The Middleman Which Server To Join**`)
-          .setFooter({ text: 'Middleman Bot • Roblox Server System' });
-        const row = new ActionRowBuilder().addComponents(
-          new ButtonBuilder().setCustomId('join_public').setLabel('Use Public Server').setStyle(ButtonStyle.Primary),
-          new ButtonBuilder().setCustomId('join_private').setLabel('Use Private Server').setStyle(ButtonStyle.Primary)
-        );
-        await interaction.reply({ embeds: [embed], components: [row] }); // no ephemeral
-
-        const collector = interaction.channel.createMessageComponentCollector({ componentType: ComponentType.Button, time: 60000 });
-
-collector.on('collect', async i => {
-  const choice = i.customId === 'join_public' ? 'Public' : 'Private';
-  const link = i.customId === 'join_public' ? sel.public : sel.private;
-
-  await i.update({
-    content: `**${i.user.username} has chosen to trade in the ${choice} Server.**\n🔗 ${link}`,
-    embeds: [],
-    components: []
-  });
-
-  collector.stop();
-});
-      }
-    
 
     // ✅ BUTTON: Open Modal
     if (interaction.isButton() && interaction.customId === 'openTicket') {
