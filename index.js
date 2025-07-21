@@ -1069,10 +1069,11 @@ client.on('interactionCreate', async (interaction) => {
       .setTimestamp();
 
     // Safely reply if not already replied
-    if (interaction.deferred || interaction.replied) {
-      await interaction.followUp({ embeds: [embed], ephemeral: false });
-    } else {
-      await interaction.reply({ embeds: [embed], ephemeral: false });
+    if (!interaction.deferred && !interaction.replied) {
+  await interaction.deferReply({ ephemeral: false });
+}
+
+await interaction.editReply({ embeds: [embed] });
     }
   } catch (err) {
     console.error('❌ Interaction error:', err);
