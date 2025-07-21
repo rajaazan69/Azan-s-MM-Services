@@ -1051,22 +1051,38 @@ client.on('interactionCreate', async (interaction) => {
   }
 
   if (interaction.isButton()) {
-  const [type, game] = interaction.customId.split('_');
-  const selectedGame = gameData[game];
-  if (!selectedGame) return;
+  try {
+    const [type, game] = interaction.customId.split('_');
+    const selectedGame = gameData[game];
+    if (!selectedGame) return;
 
-  const isPublic = type === 'public';
-  const embed = new EmbedBuilder()
-    .setTitle('Server Chosen')
-    .setColor('#000000')
-   .setDescription(`**<@${interaction.user.id}> has chosen to trade in the ${isPublic ? 'Public' : 'Private'} Server.**`)
-    .addFields({
-      name: '**Click to Join:**',
-      value: `[${isPublic ? 'Public' : 'Private'} Server Link](${isPublic ? selectedGame.publicLink : selectedGame.privateLink})`
-    })
-    .setTimestamp();
+    const isPublic = type === 'public';
+    const embed = new EmbedBuilder()
+      .setTitle('Server Chosen')
+      .setColor('#000000')
+      .setDescription(`**${interaction.user} has chosen to trade in the ${isPublic ? 'Public' : 'Private'} Server.**`)
+      .addFields({
+        name: '🔗 Click to Join:',
+        value: `[${isPublic ? 'Public' : 'Private'} Server Link](${isPublic ? selectedGame.publicLink : selectedGame.privateLink})`
+      })
+      .setThumbnail(selectedGame.thumbnail)
+      .setTimestamp();
 
-  await interaction.reply({ embeds: [embed] });
+    // Safely reply if not already replied
+    if (interaction.deferred || interaction.replied) {
+      await interaction.followUp({ embeds: [embed], ephemeral: false });
+    } else {
+      await interaction.reply({ embeds: [embed], ephemeral: false });
+    }
+  } catch (err) {
+    console.error('❌ Interaction error:', err);
+    if (!interaction.replied && !interaction.deferred) {
+      await interaction.reply({
+        content: '⚠️ Something went wrong while processing your request.',
+        ephemeral: true
+      });
+    }
+  }
 }
 });
 app.get('/', (req, res) => res.sendStatus(200));
