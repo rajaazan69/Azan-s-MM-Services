@@ -1044,7 +1044,7 @@ client.on('interactionCreate', async (interaction) => {
         name: '🔗 Click to Join:',
         value: `[${isPublic ? 'Public' : 'Private'} Server Link](${isPublic ? selectedGame.publicLink : selectedGame.privateLink})`
       })
-      ..setImage(selectedGame.thumbnail)
+      .setImage(selectedGame.thumbnail)
       .setTimestamp();
 
     // Safely reply if not already replied
