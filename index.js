@@ -769,7 +769,7 @@ const channel = await interaction.guild.channels.create({
       allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages]
     },
     {
-      id: BOT_ID,
+      id:'1392944799983730849',
       allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages]
     }
   ]
