@@ -781,13 +781,26 @@ const permissionOverwrites = [
 ];
 
 // Add the target user to permission overwrites if ID is valid and member exists
+let targetMention = 'Unknown User'; // Default
+
 if (isValidId) {
-  const member = interaction.guild.members.cache.get(q4);
-  if (member) {
-    permissionOverwrites.push({
-      id: q4,
-      allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages]
-    });
+  try {
+    const member = await interaction.guild.members.fetch(q4);
+    if (member) {
+      // Add to channel permissions
+      permissionOverwrites.push({
+        id: q4,
+        allow: [
+          PermissionsBitField.Flags.ViewChannel,
+          PermissionsBitField.Flags.SendMessages
+        ]
+      });
+
+      // Proper mention for embed
+      targetMention = `<@${q4}>`;
+    }
+  } catch (err) {
+    console.warn(`⚠️ Could not fetch member: ${q4}`);
   }
 }
 
