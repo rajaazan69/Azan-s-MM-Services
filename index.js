@@ -728,68 +728,25 @@ if (interaction.isButton() && interaction.customId === 'transcript') {
 
 pendingTickets.add(interaction.user.id);
 
-// Check if ticket already exists
+
+// Prevent multiple tickets per user
 const existing = interaction.guild.channels.cache.find(c =>
   c.parentId === TICKET_CATEGORY &&
   c.permissionOverwrites.cache.has(interaction.user.id)
 );
 
 if (existing) {
-  pendingTickets.delete(interaction.user.id);
   return interaction.reply({ content: `❌ You already have an open ticket: ${existing}`, ephemeral: true });
 }
-
-// ⏬ Proceed to create the channel here
-const q1 = interaction.fields.getTextInputValue('q1');
-const q2 = interaction.fields.getTextInputValue('q2');
-const q3 = interaction.fields.getTextInputValue('q3');
-const q4 = interaction.fields.getTextInputValue('q4')?.trim();
-let targetMention = 'Unknown User';
-
-if (q4 && /^\d{17,19}$/.test(q4)) {
-  try {
-    const user = await interaction.client.users.fetch(q4);
-    if (user) targetMention = `<@${user.id}>`;
-  } catch (err) {
-    console.warn(`Invalid user ID in q4: ${q4}`, err.message);
-  }
-}
-
-const channel = await interaction.guild.channels.create({
-  name: `ticket-${interaction.user.username}`,
-  type: ChannelType.GuildText,
-  parent: TICKET_CATEGORY,
-  permissionOverwrites: [
-    {
-      id: interaction.guild.id,
-      deny: [PermissionFlagsBits.ViewChannel]
-    },
-    {
-      id: interaction.user.id,
-      allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages]
-    },
-    {
-      id:'1392944799983730849',
-      allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages]
-    }
-  ]
-});
+      const q1 = interaction.fields.getTextInputValue('q1');
+      const q2 = interaction.fields.getTextInputValue('q2');
+      const q3 = interaction.fields.getTextInputValue('q3');
+      const q4 = interaction.fields.getTextInputValue('q4');
+const isValidId = /^\d{17,19}$/.test(q4);
+let targetMention = isValidId ? `<@${q4}>` : 'Unknown User';
 
 // Clean up the lock once done
 pendingTickets.delete(interaction.user.id);
-
-// Final reply
-await interaction.reply({
-  content: `🎫 Ticket created: ${channel}`,
-  ephemeral: true
-});
-// Prepare permission overwrites array
-const permissionOverwrites = [
-  { id: interaction.guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
-  { id: interaction.user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
-  { id: OWNER_ID, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
-  { id: MIDDLEMAN_ROLE, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] }
-];
 
 // Add the target user to permission overwrites if ID is valid and member exists
 if (isValidId) {
