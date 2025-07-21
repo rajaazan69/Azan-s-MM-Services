@@ -1013,6 +1013,18 @@ const gameData = {
     thumbnail: 'https://cdn.discordapp.com/attachments/1373070247795495116/1396644973134348288/IMG_6745.jpg'
   }
 };
+// Preload Discord CDN thumbnails once at startup to avoid Discord cache delay
+const https = require('https');
+
+Object.values(gameData).forEach(game => {
+  if (game.thumbnail.startsWith('https://cdn.discordapp.com')) {
+    https.get(game.thumbnail, res => {
+      console.log(`Preloaded: ${game.name} thumbnail with status ${res.statusCode}`);
+    }).on('error', err => {
+      console.error(`Failed to preload: ${game.name}`, err.message);
+    });
+  }
+});
 
 client.on('interactionCreate', async (interaction) => {
   if (interaction.isChatInputCommand() && interaction.commandName === 'servers') {
@@ -1032,7 +1044,7 @@ client.on('interactionCreate', async (interaction) => {
     const embed = new EmbedBuilder()
       .setTitle(`Server Options for ${selectedGame.name}`)
       .setDescription('**Please Choose Which Server You Would Be The Most Comfortable For The Trade In. Confirm The Middleman Which Server To Join**')
-      .setThumbnail(selectedGame.thumbnail)
+     .setImage(selectedGame.thumbnail)
       .setColor('#000000')
       .setTimestamp();
 
@@ -1065,7 +1077,7 @@ client.on('interactionCreate', async (interaction) => {
         name: '🔗 Click to Join:',
         value: `[${isPublic ? 'Public' : 'Private'} Server Link](${isPublic ? selectedGame.publicLink : selectedGame.privateLink})`
       })
-      .setThumbnail(selectedGame.thumbnail)
+      .setImage(selectedGame.thumbnail)
       .setTimestamp();
 
     // Safely reply if not already replied
