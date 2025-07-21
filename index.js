@@ -12,7 +12,6 @@ const fs = require('fs');
 require('dotenv').config();
 const { MongoClient } = require('mongodb');
 const stickyMap = new Map();
-const pendingTickets = new Set();
 
 const mongoUri = process.env.MONGO_URI;
 const mongoClient = new MongoClient(mongoUri);
@@ -691,6 +690,7 @@ if (commandName === 'untimeout') {
     await interaction.editReply({ content: '❌ Failed to remove timeout from the user.' });
   }
 }
+    
 
     // ✅ BUTTON: Open Modal
     if (interaction.isButton() && interaction.customId === 'openTicket') {
@@ -722,92 +722,77 @@ if (interaction.isButton() && interaction.customId === 'transcript') {
     }
 
     if (interaction.isModalSubmit() && interaction.customId === 'ticketModal') {
-      if (pendingTickets.has(interaction.user.id)) {
-  return interaction.reply({ content: '⏳ Your ticket is being created. Please wait...', ephemeral: true });
+      // Prevent multiple tickets per user
+const existing = interaction.guild.channels.cache.find(c =>
+  c.parentId === TICKET_CATEGORY &&
+  c.permissionOverwrites.cache.has(interaction.user.id)
+);
+
+if (existing) {
+  return interaction.reply({ content: `❌ You already have an open ticket: ${existing}`, ephemeral: true });
 }
+      const q1 = interaction.fields.getTextInputValue('q1');
+      const q2 = interaction.fields.getTextInputValue('q2');
+      const q3 = interaction.fields.getTextInputValue('q3');
+      const q4 = interaction.fields.getTextInputValue('q4');
+const isValidId = /^\d{17,19}$/.test(q4);
+const targetMention = isValidId ? `<@${q4}>` : 'Unknown User';
 
+// Prepare permission overwrites array
+const permissionOverwrites = [
+  { id: interaction.guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
+  { id: interaction.user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
+  { id: OWNER_ID, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
+  { id: MIDDLEMAN_ROLE, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] }
+];
 
-
-    if (interaction.isModalSubmit() && interaction.customId === 'ticketModal') {
-  try {
-    // ✅ START of try block
-
-    // Prevent multiple tickets per user
-    const existing = interaction.guild.channels.cache.find(c =>
-      c.parentId === TICKET_CATEGORY &&
-      c.permissionOverwrites.cache.has(interaction.user.id)
-    );
-
-    if (existing) {
-      return interaction.reply({ content: `❌ You already have an open ticket: ${existing}`, ephemeral: true });
-    }
-
-    const q1 = interaction.fields.getTextInputValue('q1');
-    const q2 = interaction.fields.getTextInputValue('q2');
-    const q3 = interaction.fields.getTextInputValue('q3');
-    const q4 = interaction.fields.getTextInputValue('q4');
-    const isValidId = /^\d{17,19}$/.test(q4);
-    const targetMention = isValidId ? `<@${q4}>` : 'Unknown User';
-
-    const permissionOverwrites = [
-      { id: interaction.guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
-      { id: interaction.user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
-      { id: OWNER_ID, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
-      { id: MIDDLEMAN_ROLE, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] }
-    ];
-
-    if (isValidId) {
-      let member;
-      try {
-        member = await interaction.guild.members.fetch(q4);
-      } catch (e) {
-        member = null;
-      }
-
-      if (member) {
-        permissionOverwrites.push({
-          id: q4,
-          allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages]
-        });
-      }
-    }
-
-    const ticket = await interaction.guild.channels.create({
-      name: `ticket-${interaction.user.username}`,
-      type: ChannelType.GuildText,
-      parent: TICKET_CATEGORY,
-      permissionOverwrites
+// Add the target user to permission overwrites if ID is valid and member exists
+if (isValidId) {
+  const member = interaction.guild.members.cache.get(q4);
+  if (member) {
+    permissionOverwrites.push({
+      id: q4,
+      allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages]
     });
-
-    const embed = new EmbedBuilder()
-      .setTitle('Middleman Request')
-      .setColor('#2B2D31')
-      .setDescription(
-        `**User 1:** <@${interaction.user.id}>\n` +
-        `**User 2:** ${targetMention}\n\n` +
-        `**Trade Details**\n` +
-        `> ${q1}\n\n` +
-        `**User 1 is giving:**\n` +
-        `> ${q2}\n\n` +
-        `**User 2 is giving:**\n` +
-        `> ${q3}`
-      )
-      .setFooter({ text: `Ticket by ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
-      .setTimestamp();
-
-    await ticket.send({
-      content: `<@${interaction.user.id}> <@${OWNER_ID}>`,
-      embeds: [embed]
-    });
-
-    await interaction.reply({ content: `✅ Ticket created: ${ticket}`, ephemeral: true });
-
-    // ✅ END of try block
-  } catch (err) {
-    console.error('❌ Interaction error:', err);
   }
 }
 
+const ticket = await interaction.guild.channels.create({
+  name: `ticket-${interaction.user.username}`,
+  type: ChannelType.GuildText,
+  parent: TICKET_CATEGORY,
+  permissionOverwrites
+});
+      const embed = new EmbedBuilder()
+  .setTitle('Middleman Request')
+  .setColor('#2B2D31')
+  .setDescription(
+    `**User 1:** <@${interaction.user.id}>\n` +
+    `**User 2:** ${targetMention}\n\n` +
+    `**Trade Details**\n` +
+    `> ${q1}\n\n` +
+    `**User 1 is giving:**\n` +
+    `> ${q2}\n\n` +
+    `**User 2 is giving:**\n` +
+    `> ${q3}`
+  )
+  .setFooter({ text: `Ticket by ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
+  .setTimestamp();
+
+        await ticket.send({
+  content: `<@${interaction.user.id}> <@${OWNER_ID}> ${isValidId ? targetMention : ''}`,
+  embeds: [embed]
+});
+          
+
+        await interaction.reply({ content: `✅ Ticket created: ${ticket}`, ephemeral: true });
+      
+    }
+
+  } catch (err) {
+    console.error('❌ Interaction error:', err);
+  }
+});
 
 async function handleTranscript(interaction, channel) {
   try {
@@ -1007,6 +992,7 @@ Object.values(gameData).forEach(game => {
   }
 });
 
+
 client.on('interactionCreate', async (interaction) => {
   if (interaction.isChatInputCommand() && interaction.commandName === 'servers') {
     const game = interaction.options.getString('game');
@@ -1025,7 +1011,7 @@ client.on('interactionCreate', async (interaction) => {
     const embed = new EmbedBuilder()
       .setTitle(`Server Options for ${selectedGame.name}`)
       .setDescription('**Please Choose Which Server You Would Be The Most Comfortable For The Trade In. Confirm The Middleman Which Server To Join**')
-     .setImage(selectedGame.thumbnail)
+      .setThumbnail(selectedGame.thumbnail)
       .setColor('#000000')
       .setTimestamp();
 
@@ -1058,7 +1044,7 @@ client.on('interactionCreate', async (interaction) => {
         name: '🔗 Click to Join:',
         value: `[${isPublic ? 'Public' : 'Private'} Server Link](${isPublic ? selectedGame.publicLink : selectedGame.privateLink})`
       })
-      .setImage(selectedGame.thumbnail)
+      .setThumbnail(selectedGame.thumbnail)
       .setTimestamp();
 
     // Safely reply if not already replied
