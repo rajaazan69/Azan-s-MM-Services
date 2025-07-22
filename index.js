@@ -722,6 +722,7 @@ if (interaction.isButton() && interaction.customId === 'transcript') {
     }
 
     if (interaction.isModalSubmit() && interaction.customId === 'ticketModal') {
+      await interaction.deferReply({ ephemeral: true });
       // Prevent multiple tickets per user
 const existing = interaction.guild.channels.cache.find(c =>
   c.parentId === TICKET_CATEGORY &&
@@ -768,7 +769,7 @@ const user2 = isValidId ? await interaction.guild.members.fetch(q4).catch(() => 
 
 const tradeEmbed = new EmbedBuilder()
   .setColor('#000000')
-  .setDescription(`__**• TRADE •**__\n\n` + restOfYourText)
+  .setDescription(`__**• TRADE •**__\n\n`
   .addFields(
     {
       name: 'User 1',
