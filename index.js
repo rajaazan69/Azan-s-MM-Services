@@ -771,45 +771,49 @@ const user2 = isValidId ? await interaction.guild.members.fetch(q4).catch(() => 
 const fetch = require('node-fetch'); // Required for avatar fetching
 
 // Fetch avatars as buffers
-const user2Global = await client.users.fetch(q4);
+const { AttachmentBuilder, EmbedBuilder } = require('discord.js');
+const fetch = require('node-fetch');
+
+// Fetch user1 and user2 avatar buffers
 const user1AvatarBuffer = await fetch(user1.displayAvatarURL({ extension: 'png', size: 256 }))
   .then(res => res.arrayBuffer())
   .then(buf => Buffer.from(buf));
 
-const user2AvatarBuffer = await fetch(user2Global.displayAvatarURL({ extension: 'png', size: 256 }))
+const user2AvatarBuffer = await fetch(user2.displayAvatarURL({ extension: 'png', size: 256 }))
   .then(res => res.arrayBuffer())
   .then(buf => Buffer.from(buf));
 
-// Prepare attachments
-const user1Attachment = new AttachmentBuilder(user1AvatarBuffer).setName('user1.png');
-const user2Attachment = new AttachmentBuilder(user2AvatarBuffer).setName('user2.png');
+// Create avatar attachments
+const files = [
+  new AttachmentBuilder(user1AvatarBuffer).setName('user1.png'),
+  new AttachmentBuilder(user2AvatarBuffer).setName('user2.png')
+];
 
+// Build the embed
 const tradeEmbed = new EmbedBuilder()
   .setColor('#000000')
   .setTitle('• Trade •')
   .setDescription(
     `**__Trade Participants__**\n\n` +
     `> <@${user1.id}> • **${user1.username}**\n` +
-    `> *Gives:* \`${q2}\`\n\n` +
-    `> <@${q4}> • **${user2Global.username}**\n` +
-    `> *Gives:* \`${q3}\``
+    `> **Side:** \`${q2}\`  [‎](${user1.displayAvatarURL({ extension: 'png' })})\n\n` +
+    `> <@${user2.id}> • **${user2.username}**\n` +
+    `> **Side:** \`${q3}\`  [‎](${user2.displayAvatarURL({ extension: 'png' })})`
   )
-  .setImage('attachment://user1.png') // First image shown
   .setFooter({
     text: `Ticket by ${user1.username}`,
     iconURL: user1.displayAvatarURL({ dynamic: true })
   })
   .setTimestamp();
 
-// Send message with both images
+// Send the embed message
 const tradeMessage = await ticket.send({
-  content: `<@${user1.id}> <@${OWNER_ID}> <@${q4}>`,
+  content: `<@${user1.id}> <@${OWNER_ID}> <@${user2.id}>`,
   embeds: [tradeEmbed],
-  files: [user1Attachment, user2Attachment]
+  files
 });
 
 await tradeMessage.react('🔐');
-
 const collector = tradeMessage.createReactionCollector({
   filter: (reaction, user) => reaction.emoji.name === '🔐' && !user.bot,
   max: 1,
