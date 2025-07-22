@@ -803,23 +803,47 @@ const tradeEmbed = new EmbedBuilder()
   })
   .setTimestamp();
 
-        const tradeMessage = await ticket.send({
-  content: `<@${interaction.user.id}> <@${OWNER_ID}> ${isValidId ? targetMention : ''}`,
-  embeds: [
-    new EmbedBuilder()
-      .setColor('#000000')
-      .setTitle('• Trade •')
-      .setDescription(
-        `**User 1:** <@${interaction.user.id}>\n` +
-        `**User 2:** ${targetMention}\n\n` +
-        `**What <@${interaction.user.id}> is giving:**\n> ${q2}\n\n` +
-        `**What ${targetMention} is giving:**\n> ${q3}`
-      )
-      .setThumbnail(interaction.user.displayAvatarURL()) // Avatar of user1
-      .setImage(isValidId ? `https://cdn.discordapp.com/avatars/${q4}/${interaction.guild.members.cache.get(q4)?.user.avatar}.png?size=256` : null)
-      .setFooter({ text: `Ticket by ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
-      .setTimestamp()
-  ]
+        const user1Avatar = user1.displayAvatarURL({ size: 64 });
+const user2Avatar = user2 ? user2.displayAvatarURL({ size: 64 }) : null;
+
+const tradeEmbed = new EmbedBuilder()
+  .setColor('#000000')
+  .setTitle('• Trade •')
+  .setDescription(`__**Trade Participants**__`)
+  .addFields(
+    {
+      name: '\u200B',
+      value:
+        `**<@${user1.id}>**\n` +
+        `*${user1.username}*\n` +
+        `**Gives:**\n> ${q2}`,
+      inline: true
+    },
+    {
+      name: '\u200B',
+      value:
+        `${isValidId ? `**<@${q4}>**\n*${user2?.user.username || 'Unknown'}*` : '**Unknown User**'}\n` +
+        `**Gives:**\n> ${q3}`,
+      inline: true
+    }
+  )
+  .setFooter({ text: `Ticket by ${user1.tag}`, iconURL: user1.displayAvatarURL() })
+  .setTimestamp();
+
+const files = [];
+
+if (user1Avatar) {
+  files.push(new AttachmentBuilder(user1Avatar).setName('user1.png'));
+  tradeEmbed.setThumbnail('attachment://user1.png');
+}
+if (user2Avatar) {
+  files.push(new AttachmentBuilder(user2Avatar).setName('user2.png'));
+}
+
+const tradeMessage = await ticket.send({
+  content: `<@${user1.id}> <@${OWNER_ID}> ${isValidId ? `<@${q4}>` : ''}`,
+  embeds: [tradeEmbed],
+  files
 });
 
 await tradeMessage.react('🔐');
