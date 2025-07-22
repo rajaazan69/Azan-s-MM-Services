@@ -828,11 +828,11 @@ try {
     });
 
     await interaction.reply({ content: `✅ Your ticket has been created: ${ticketChannel}`, ephemeral: true });
-  } catch (err) {
+    } catch (err) {
     console.error('Ticket Error:', err);
     return interaction.reply({ content: '❌ Something went wrong while creating the ticket.', ephemeral: true });
-    }
-  {
+  }
+}
 
 async function handleTranscript(interaction, channel) {
   try {
