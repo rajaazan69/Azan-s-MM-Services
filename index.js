@@ -803,54 +803,93 @@ const tradeEmbed = new EmbedBuilder()
   })
   .setTimestamp();
 
-        const tradeMessage = await ticket.send({
-  content: `<@${interaction.user.id}> <@${OWNER_ID}> ${isValidId ? targetMention : ''}`,
-  embeds: [
-    new EmbedBuilder()
-      .setColor('#000000')
-      .setTitle('• Trade •')
-      .setDescription(
-        `**User 1:** <@${interaction.user.id}>\n` +
-        `**User 2:** ${targetMention}\n\n` +
-        `**What <@${interaction.user.id}> is giving:**\n> ${q2}\n\n` +
-        `**What ${targetMention} is giving:**\n> ${q3}`
-      )
-      .setThumbnail(interaction.user.displayAvatarURL()) // Avatar of user1
-      .setImage(isValidId ? `https://cdn.discordapp.com/avatars/${q4}/${interaction.guild.members.cache.get(q4)?.user.avatar}.png?size=256` : null)
-      .setFooter({ text: `Ticket by ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
-      .setTimestamp()
-  ]
+ const user1 = interaction.user;
+const user2 = interaction.guild.members.cache.get(q4);
+
+const tradeEmbed = new EmbedBuilder()
+  .setColor('#000000')
+  .setTitle('__**• TRADE •**__')
+  .addFields(
+    {
+      name: 'User 1',
+      value: `<@${user1.id}>`,
+      inline: true
+    },
+    {
+      name: 'User 2',
+      value: `${targetMention}`,
+      inline: true
+    },
+    {
+      name: '\u200B',
+      value: '\u200B',
+      inline: false
+    },
+    {
+      name: `What ${user1.username} is giving:`,
+      value: `> ${q2}`,
+      inline: false
+    },
+    {
+      name: `What ${user2?.user.username || 'User 2'} is giving:`,
+      value: `> ${q3}`,
+      inline: false
+    }
+  )
+  .setThumbnail(user1.displayAvatarURL({ size: 256 }))
+  .setImage(user2?.user.displayAvatarURL({ size: 512 }) || null)
+  .setFooter({ text: `Ticket by ${user1.tag}`, iconURL: user1.displayAvatarURL({ size: 256 }) })
+  .setTimestamp();
+
+const tradeMessage = await ticket.send({
+  content: `<@${user1.id}> <@${OWNER_ID}> ${isValidId ? targetMention : ''}`,
+  embeds: [tradeEmbed]
 });
 
 await tradeMessage.react('🔐');
 
-const collector = tradeMessage.createReactionCollector({
-  filter: (reaction, user) => reaction.emoji.name === '🔐' && !user.bot,
-  max: 1,
-  time: 60000
-});
+const filter = (reaction, user) =>
+  reaction.emoji.name === '🔐' &&
+  !user.bot &&
+  reaction.message.id === tradeMessage.id;
+
+const collector = tradeMessage.createReactionCollector({ filter, max: 1, time: 0 });
 
 collector.on('collect', async (reaction, user) => {
-  const guildMember = await interaction.guild.members.fetch(user.id).catch(() => null);
-  if (!guildMember) return;
+  const middleman = await interaction.guild.members.fetch(user.id);
 
-  await ticket.setName(`mm-${guildMember.user.username}`).catch(console.error);
+  // Rename the ticket channel
+  await ticket.setName(middleman.user.username);
 
-  const confirmEmbed = new EmbedBuilder()
+  // 1. Small middleman confirmation embed
+  const confirmationEmbed = new EmbedBuilder()
     .setColor('#000000')
-    .setDescription(`**${guildMember} is your middleman.**`);
+    .setDescription(`**${middleman} is your middleman.**`);
 
-  const profileEmbed = new EmbedBuilder()
+  await ticket.send({ embeds: [confirmationEmbed] });
+
+  // 2. Full profile card embed
+  const profileCard = new EmbedBuilder()
     .setColor('#000000')
-    .setTitle('Middleman Profile')
-    .setThumbnail(guildMember.displayAvatarURL())
+    .setAuthor({
+      name: middleman.user.username,
+      iconURL: middleman.user.displayAvatarURL({ size: 256 }),
+    })
+    .setThumbnail(middleman.user.displayAvatarURL({ size: 256 }))
     .addFields(
-      { name: '**Username**', value: guildMember.user.username, inline: true },
-      { name: '**ID**', value: guildMember.user.id, inline: true }
+      {
+        name: 'Username',
+        value: `\`${middleman.user.username}\``,
+        inline: true,
+      },
+      {
+        name: 'User ID',
+        value: `\`${middleman.user.id}\``,
+        inline: true,
+      }
     );
 
-  await ticket.send({ embeds: [confirmEmbed] });
-  await ticket.send({ embeds: [profileEmbed] });
+  await ticket.send({ embeds: [profileCard] });
 });
 // Store message ID in DB or memory if needed for matching later
           
