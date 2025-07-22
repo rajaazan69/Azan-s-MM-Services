@@ -832,7 +832,7 @@ try {
     console.error('Ticket Error:', err);
     return interaction.reply({ content: '❌ Something went wrong while creating the ticket.', ephemeral: true });
   }
-}
+});
 
 async function handleTranscript(interaction, channel) {
   try {
