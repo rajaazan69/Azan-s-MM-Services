@@ -767,14 +767,20 @@ const ticket = await interaction.guild.channels.create({
       const user1 = interaction.user;
 const user2 = isValidId ? await interaction.guild.members.fetch(q4).catch(() => null) : null;
 
-        const Canvas = require('@napi-rs/canvas');
+const Canvas = require('@napi-rs/canvas');
 const { loadImage } = require('canvas');
 const fetch = require('node-fetch');
 
-// Get user2 info
 // Fetch avatars as image buffers
 const user1AvatarBuffer = await fetch(user1.displayAvatarURL({ extension: 'png', size: 128 })).then(res => res.arrayBuffer());
-const user2AvatarBuffer = await fetch(user2.displayAvatarURL({ extension: 'png', size: 128 })).then(res => res.arrayBuffer());
+
+let user2AvatarBuffer;
+if (user2) {
+  user2AvatarBuffer = await fetch(user2.displayAvatarURL({ extension: 'png', size: 128 })).then(res => res.arrayBuffer());
+} else {
+  // fallback to default avatar image
+  user2AvatarBuffer = await fetch('https://cdn.discordapp.com/embed/avatars/0.png').then(res => res.arrayBuffer());
+}
 
 // Create canvas
 const canvas = Canvas.createCanvas(700, 300);
@@ -800,7 +806,7 @@ ctx.fillText(`Side: ${q2}`, 40, 140);
 
 // User2
 ctx.font = 'bold 20px sans-serif';
-ctx.fillText(`${user2.username}`, 40, 200);
+ctx.fillText(`${user2 ? user2.username : 'Unknown User'}`, 40, 200);
 ctx.font = '16px sans-serif';
 ctx.fillText(`Side: ${q3}`, 40, 230);
 
