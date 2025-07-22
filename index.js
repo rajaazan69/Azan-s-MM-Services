@@ -802,45 +802,67 @@ const tradeEmbed = new EmbedBuilder()
   })
   .setTimestamp();
 
-        const tradeMessage = await ticket.send({
-  content: `<@${interaction.user.id}> <@${OWNER_ID}> ${isValidId ? targetMention : ''}`,
-  embeds: [embed]
-});
+        try {
+  const user1 = interaction.user;
+  const user2 = await interaction.guild.members.fetch(q4).catch(() => null);
+  const user2Mention = isValidId && user2 ? `<@${q4}>` : 'Unknown User';
 
-await tradeMessage.react('🔐');
-
-// Start a reaction collector on that message
-const collector = tradeMessage.createReactionCollector({
-  filter: (reaction, user) => reaction.emoji.name === '🔐' && !user.bot,
-  max: 1,
-  time: 60_000 // 1 minute to claim
-});
-
-collector.on('collect', async (reaction, user) => {
-  const guildMember = await interaction.guild.members.fetch(user.id).catch(() => null);
-  if (!guildMember) return;
-
-  // Rename channel
-  await ticket.setName(`mm-${guildMember.user.username}`).catch(console.error);
-
-  // Middleman confirmation embed
-  const confirmEmbed = new EmbedBuilder()
+  const tradeEmbed = new EmbedBuilder()
     .setColor('#000000')
-    .setDescription(`**${guildMember} is your middleman.**`);
+    .setDescription(
+      `__**• TRADE •**__\n\n` +
+      `**User 1:** <@${user1.id}>\n` +
+      `**User 2:** ${user2Mention}\n\n` +
+      `**What ${user1.username} is giving:**\n> ${q2}\n\n` +
+      `**What ${user2?.user.username || 'User 2'} is giving:**\n> ${q3}`
+    )
+    .setFooter({ text: `Ticket by ${user1.tag}`, iconURL: user1.displayAvatarURL() })
+    .setTimestamp();
 
-  // Profile card embed
-  const profileEmbed = new EmbedBuilder()
-    .setColor('#000000')
-    .setTitle('Middleman Profile')
-    .setThumbnail(guildMember.displayAvatarURL())
-    .addFields(
-      { name: '**Username**', value: guildMember.user.username, inline: true },
-      { name: '**ID**', value: guildMember.user.id, inline: true }
-    );
+  const tradeMessage = await ticket.send({
+    content: `${user1} <@${OWNER_ID}> ${user2Mention}`,
+    embeds: [tradeEmbed]
+  });
 
-  await ticket.send({ embeds: [confirmEmbed] });
-  await ticket.send({ embeds: [profileEmbed] });
-});
+  await tradeMessage.react('🔐');
+
+  const collector = tradeMessage.createReactionCollector({
+    filter: (reaction, user) => reaction.emoji.name === '🔐' && !user.bot,
+    max: 1,
+    time: 60_000
+  });
+
+  collector.on('collect', async (reaction, user) => {
+    const guildMember = await interaction.guild.members.fetch(user.id).catch(() => null);
+    if (!guildMember) return;
+
+    await ticket.setName(`mm-${guildMember.user.username}`).catch(console.error);
+
+    const confirmEmbed = new EmbedBuilder()
+      .setColor('#000000')
+      .setDescription(`**${guildMember} is your middleman.**`);
+
+    const profileEmbed = new EmbedBuilder()
+      .setColor('#000000')
+      .setTitle('Middleman Profile')
+      .setThumbnail(guildMember.displayAvatarURL())
+      .addFields(
+        { name: '**Username**', value: guildMember.user.username, inline: true },
+        { name: '**ID**', value: guildMember.user.id, inline: true }
+      );
+
+    await ticket.send({ embeds: [confirmEmbed] });
+    await ticket.send({ embeds: [profileEmbed] });
+  });
+
+  await interaction.reply({ content: `✅ Ticket created: ${ticket}`, ephemeral: true });
+} catch (err) {
+  console.error('❌ Error during ticket setup:', err);
+  await interaction.reply({
+    content: '❌ Something went wrong while creating your ticket.',
+    ephemeral: true
+  });
+}
 
 // Store message ID in DB or memory if needed for matching later
           
