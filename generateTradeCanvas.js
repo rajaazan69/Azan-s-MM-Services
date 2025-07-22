@@ -12,7 +12,7 @@ async function generateTradeCanvas(user1, user2, side1, side2) {
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   ctx.fillStyle = '#ffffff';
-  ctx.font = '28px Inter';
+  ctx.font = 'bold 28px Inter';
   ctx.textAlign = 'center';
   ctx.fillText('• Trade •', canvas.width / 2, 45);
 
