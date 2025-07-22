@@ -730,7 +730,7 @@ const existing = interaction.guild.channels.cache.find(c =>
 );
 
 if (existing) {
-  return interaction.reply({ content: `❌ You already have an open ticket: ${existing}`, ephemeral: true });
+  return interaction.editReply({ content: `❌ You already have an open ticket: ${existing}` });
 }
       const q1 = interaction.fields.getTextInputValue('q1');
       const q2 = interaction.fields.getTextInputValue('q2');
@@ -864,7 +864,7 @@ collector.on('collect', async (reaction, user) => {
 // Store message ID in DB or memory if needed for matching later
           
 
-        await interaction.reply({ content: `✅ Ticket created: ${ticket}`, ephemeral: true });
+        await interaction.editReply({ content: `✅ Ticket created: ${ticket}` });
       
     }
 
