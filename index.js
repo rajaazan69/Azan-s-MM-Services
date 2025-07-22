@@ -772,8 +772,6 @@ const { loadImage } = require('canvas');
 const fetch = require('node-fetch');
 
 // Get user2 info
-const user2 = await client.users.fetch(q4);
-
 // Fetch avatars as image buffers
 const user1AvatarBuffer = await fetch(user1.displayAvatarURL({ extension: 'png', size: 128 })).then(res => res.arrayBuffer());
 const user2AvatarBuffer = await fetch(user2.displayAvatarURL({ extension: 'png', size: 128 })).then(res => res.arrayBuffer());
