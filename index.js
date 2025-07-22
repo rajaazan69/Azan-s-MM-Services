@@ -12,6 +12,8 @@ const fs = require('fs');
 require('dotenv').config();
 const { MongoClient } = require('mongodb');
 const stickyMap = new Map();
+const { createCanvas, loadImage } = require('canvas');
+const path = require('path');
 
 const mongoUri = process.env.MONGO_URI;
 const mongoClient = new MongoClient(mongoUri);
@@ -767,74 +769,108 @@ if (interaction.isButton() && interaction.customId === 'transcript') {
   const user1 = interaction.user;
   const user2 = isValidId ? await interaction.guild.members.fetch(q4).catch(() => null) : null;
 
-  const tradeEmbed = new EmbedBuilder()
-    .setColor('#000000')
-    .setTitle('__**• TRADE •**__')
-   .setDescription(
-  `**User 1:** <@${user1.id}>\n` +
-  `**Avatar:** [Click Here](${user1.displayAvatarURL({ size: 256 })})\n\n` +
-  `**User 2:** <@${q4}>\n` +
-  `**Avatar:** [Click Here](${user2?.user?.displayAvatarURL({ size: 256 }) || 'Avatar not found'})\n\n` +
-  `━━━━━━━━━━━━━━━━━━\n` +
-  `**What <@${user1.id}> is giving:**\n` +
-  `> ${q2}\n\n` +
-  `**What <@${q4}> is giving:**\n` +
-  `> ${q3}`
-)
-  .setThumbnail(user1.displayAvatarURL({ size: 256 }))
-  .setImage(user2?.user?.displayAvatarURL({ size: 512 }) || null)
+  const { AttachmentBuilder } = require('discord.js');
+const { createCanvas, loadImage } = require('canvas');
+
+// Fetch avatars
+const avatar1 = await loadImage(user1.displayAvatarURL({ extension: 'png', size: 256 }));
+const avatar2 = user2 ? await loadImage(user2.displayAvatarURL({ extension: 'png', size: 256 })) : null;
+
+// Create canvas
+const canvas = createCanvas(800, 450);
+const ctx = canvas.getContext('2d');
+
+// Background
+ctx.fillStyle = '#1a1a1a'; // dark background
+ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+// Avatars
+ctx.drawImage(avatar1, 100, 40, 128, 128);
+if (avatar2) ctx.drawImage(avatar2, 572, 40, 128, 128);
+
+// Names
+ctx.fillStyle = '#ffffff';
+ctx.font = 'bold 20px sans-serif';
+ctx.textAlign = 'center';
+ctx.fillText(user1.tag, 100 + 64, 180);
+ctx.fillText(user2 ? user2.user.tag : 'Unknown', 572 + 64, 180);
+
+// Divider
+ctx.fillStyle = '#888';
+ctx.fillRect(0, 210, canvas.width, 2);
+
+// Trade Items
+ctx.fillStyle = '#ffffff';
+ctx.font = '18px sans-serif';
+ctx.textAlign = 'left';
+ctx.fillText(`What ${user1.username} is giving:`, 50, 250);
+ctx.fillText(q2, 70, 280);
+
+ctx.fillText(`What ${user2 ? user2.user.username : 'Unknown'} is giving:`, 50, 330);
+ctx.fillText(q3, 70, 360);
+
+// Export image
+const buffer = canvas.toBuffer();
+const attachment = new AttachmentBuilder(buffer, { name: 'trade.png' });
+
+// Send embed with image
+const tradeEmbed = new EmbedBuilder()
+  .setColor('#000000')
+  .setTitle('__**• TRADE •**__')
+  .setImage('attachment://trade.png')
   .setFooter({ text: `Ticket by ${user1.tag}`, iconURL: user1.displayAvatarURL({ size: 256 }) })
   .setTimestamp();
 
-  const tradeMessage = await ticket.send({
-    content: `<@${user1.id}> <@${OWNER_ID}> ${isValidId ? targetMention : ''}`,
-    embeds: [tradeEmbed]
-  });
+const tradeMessage = await ticket.send({
+  content: `<@${user1.id}> <@${OWNER_ID}> ${isValidId ? targetMention : ''}`,
+  embeds: [tradeEmbed],
+  files: [attachment]
+});
 
   await tradeMessage.react('🔐');
-const botReactions = tradeMessage.reactions.cache.get('🔐');
-if (botReactions) {
-  await botReactions.users.remove(client.user.id); // Remove bot reaction to avoid false collect
-}
-// Create a reaction collector for 🔐 emoji
-const filter = (reaction, user) => {
-  return reaction.emoji.name === '🔐' && !user.bot; // Ignore bot reactions
-};
 
-const collector = tradeMessage.createReactionCollector({
-  filter,
-  max: 1,
-  time: 60000 // 60 seconds to claim
-});
+setTimeout(() => {
+  const filter = (reaction, user) =>
+    reaction.emoji.name === '🔐' && !user.bot;
 
-collector.on('collect', async (reaction, user) => {
-  if (!user) return;
+  const collector = tradeMessage.createReactionCollector({
+    filter,
+    max: 1,
+    time: 60000
+  });
 
-  // Rename ticket channel
-  await ticket.setName(user.username);
+  collector.on('collect', async (reaction, user) => {
+    if (!user) return;
 
-  // Small embed: '@user is your middleman.'
-  const confirmationEmbed = new EmbedBuilder()
-    .setColor('#000000')
-    .setDescription(`**${user} is your middleman.**`);
+    // Rename the ticket to the middleman's username
+    await ticket.setName(user.username);
 
-  await ticket.send({ content: `<@${interaction.user.id}> <@${q4}>`, embeds: [confirmationEmbed] });
+    // Confirmation embed
+    const confirmationEmbed = new EmbedBuilder()
+      .setColor('#000000')
+      .setDescription(`**${user} is your middleman.**`);
 
-  // Profile Card Embed
-  const profileCard = new EmbedBuilder()
-    .setColor('#000000')
-    .setTitle('Middleman Profile')
-    .setThumbnail(user.displayAvatarURL())
-    .addFields(
-      { name: '**Mention**', value: `${user}`, inline: true },
-      { name: '**Username**', value: `\`${user.username}\``, inline: true },
-      { name: '**Discord ID**', value: `\`${user.id}\``, inline: true }
-    )
-    .setFooter({ text: 'Middleman Claimed', iconURL: user.displayAvatarURL() })
-    .setTimestamp();
+    await ticket.send({
+      content: `<@${interaction.user.id}> <@${q4}>`,
+      embeds: [confirmationEmbed]
+    });
 
-  await ticket.send({ embeds: [profileCard] });
-});
+    // Middleman profile card
+    const profileCard = new EmbedBuilder()
+      .setColor('#000000')
+      .setTitle('Middleman Profile')
+      .setThumbnail(user.displayAvatarURL({ dynamic: true }))
+      .addFields(
+        { name: '**Mention**', value: `${user}`, inline: true },
+        { name: '**Username**', value: `\`${user.username}\``, inline: true },
+        { name: '**Discord ID**', value: `\`${user.id}\``, inline: true }
+      )
+      .setFooter({ text: 'Middleman Claimed', iconURL: user.displayAvatarURL() })
+      .setTimestamp();
+
+    await ticket.send({ embeds: [profileCard] });
+  });
+}, 500); // ← delay ensures reaction is fully registered
 
   await interaction.editReply({ content: `✅ Ticket created: ${ticket}`, ephemeral: true });
 }
