@@ -764,21 +764,17 @@ const ticket = await interaction.guild.channels.create({
   parent: TICKET_CATEGORY,
   permissionOverwrites
 });
-      const embed = new EmbedBuilder()
-  .setTitle('Middleman Request')
-  .setColor('#2B2D31')
-  .setDescription(
-    `**User 1:** <@${interaction.user.id}>\n` +
-    `**User 2:** ${targetMention}\n\n` +
-    `**Trade Details**\n` +
-    `> ${q1}\n\n` +
-    `**User 1 is giving:**\n` +
-    `> ${q2}\n\n` +
-    `**User 2 is giving:**\n` +
-    `> ${q3}`
-  )
-  .setFooter({ text: `Ticket by ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
-  .setTimestamp();
+      const user1 = interaction.user;
+const user2 = await interaction.guild.members.fetch(q4).catch(() => null);
+
+if (!user2) return interaction.reply({ content: 'Invalid user ID.', ephemeral: true });
+
+const canvasImage = await generateTradeCanvas(user1.user, user2.user, q2, q3);
+
+await ticket.send({
+  content: `<@${user1.id}> <@${OWNER_ID}> <@${user2.id}>`,
+  files: [canvasImage]
+});
 
         const tradeMessage = await ticket.send({
   content: `<@${interaction.user.id}> <@${OWNER_ID}> ${isValidId ? targetMention : ''}`,
