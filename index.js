@@ -803,7 +803,6 @@ const tradeEmbed = new EmbedBuilder()
   })
   .setTimestamp();
 
- const user1 = interaction.user;
 const user2 = interaction.guild.members.cache.get(q4);
 
 const tradeEmbed = new EmbedBuilder()
