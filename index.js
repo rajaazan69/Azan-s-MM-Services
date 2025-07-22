@@ -719,7 +719,7 @@ if (interaction.isButton() && interaction.customId === 'transcript') {
     if (interaction.isButton() && interaction.customId === 'delete') {
       await interaction.channel.delete().catch(console.error);
     }
-
+client.on('interactionCreate', async interaction => {
     if (interaction.isModalSubmit() && interaction.customId === 'ticketModal') {
       // Prevent multiple tickets per user
 const existing = interaction.guild.channels.cache.find(c =>
@@ -811,11 +811,13 @@ collector.on('collect', async (reaction, user) => {
         .setThumbnail(user.displayAvatarURL())
         .addFields(
           { name: 'Username', value: `**${user.tag}**`, inline: true },
-          { name: 'User ID', value: `**${user.id}**`, inline: true }
+          { name: 'User ID', value: `**${user.id}**`, inline: true },
         )
-    ]
-  });
-});
+        ]
+      });
+    });
+  }
+}); // ✅ This closes the whole modal listener!
 
 async function handleTranscript(interaction, channel) {
   try {
@@ -1083,10 +1085,10 @@ await interaction.editReply({ embeds: [embed] });
       await interaction.reply({
         content: '⚠️ Something went wrong while processing your request.',
         ephemeral: true
-      });
+        });
+      }
     }
   }
-}
 });
 app.get('/', (req, res) => res.sendStatus(200));
 app.listen(3000, () => console.log('🌐 Express server is running'));
