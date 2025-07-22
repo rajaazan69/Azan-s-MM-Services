@@ -767,48 +767,46 @@ const ticket = await interaction.guild.channels.create({
       const user1 = interaction.user;
 const user2 = isValidId ? await interaction.guild.members.fetch(q4).catch(() => null) : null;
 
-        const user1Avatar = user1.displayAvatarURL({ size: 64 });
-const user2Avatar = user2 ? user2.displayAvatarURL({ size: 64 }) : null;
+        const { AttachmentBuilder, EmbedBuilder } = require('discord.js');
+const fetch = require('node-fetch'); // Required for avatar fetching
+
+// Fetch avatars as buffers
+const user1AvatarBuffer = await fetch(user1.displayAvatarURL({ extension: 'png', size: 256 }))
+  .then(res => res.arrayBuffer())
+  .then(buf => Buffer.from(buf));
+
+const user2AvatarBuffer = await fetch(user2Global.displayAvatarURL({ extension: 'png', size: 256 }))
+  .then(res => res.arrayBuffer())
+  .then(buf => Buffer.from(buf));
+
+// Prepare attachments
+const user1Attachment = new AttachmentBuilder(user1AvatarBuffer).setName('user1.png');
+const user2Attachment = new AttachmentBuilder(user2AvatarBuffer).setName('user2.png');
 
 const tradeEmbed = new EmbedBuilder()
   .setColor('#000000')
   .setTitle('• Trade •')
-  .setDescription(`__**Trade Participants**__`)
-  .addFields(
-    {
-      name: '\u200B',
-      value:
-        `**<@${user1.id}>**\n` +
-        `*${user1.username}*\n` +
-        `**Gives:**\n> ${q2}`,
-      inline: true
-    },
-    {
-      name: '\u200B',
-      value:
-        `${isValidId ? `**<@${q4}>**\n*${user2?.user.username || 'Unknown'}*` : '**Unknown User**'}\n` +
-        `**Gives:**\n> ${q3}`,
-      inline: true
-    }
+  .setDescription(
+    `**__Trade Participants__**\n\n` +
+    `> <@${user1.id}> • **${user1.username}**\n` +
+    `> *Gives:* \`${q2}\`\n\n` +
+    `> <@${q4}> • **${user2Global.username}**\n` +
+    `> *Gives:* \`${q3}\``
   )
-  .setFooter({ text: `Ticket by ${user1.tag}`, iconURL: user1.displayAvatarURL() })
+  .setImage('attachment://user1.png') // First image shown
+  .setFooter({
+    text: `Ticket by ${user1.username}`,
+    iconURL: user1.displayAvatarURL({ dynamic: true })
+  })
   .setTimestamp();
 
-const files = [];
-
-if (user1Avatar) {
-  files.push(new AttachmentBuilder(user1Avatar).setName('user1.png'));
-  tradeEmbed.setThumbnail('attachment://user1.png');
-}
-if (user2Avatar) {
-  files.push(new AttachmentBuilder(user2Avatar).setName('user2.png'));
-}
-
+// Send message with both images
 const tradeMessage = await ticket.send({
-  content: `<@${user1.id}> <@${OWNER_ID}> ${isValidId ? `<@${q4}>` : ''}`,
+  content: `<@${user1.id}> <@${OWNER_ID}> <@${q4}>`,
   embeds: [tradeEmbed],
-  files
+  files: [user1Attachment, user2Attachment]
 });
+
 await tradeMessage.react('🔐');
 
 const collector = tradeMessage.createReactionCollector({
