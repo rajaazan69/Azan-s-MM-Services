@@ -938,15 +938,13 @@ async function handleTranscript(interaction, channel) {
       });
     }
 
-  } catch (err) {
-    console.error('❌ Transcript generation failed:', err);
-    if (!interaction.replied && !interaction.deferred) {
-      await interaction.reply({ content: '❌ Failed to generate transcript.', ephemeral: true });
-    } else {
-      await interaction.editReply({ content: '❌ Failed to generate transcript.' }).catch(() => {});
+  });
+    } catch (error) {
+      console.error('Ticket Creation Error:', error);
+      await interaction.reply({ content: '❌ Something went wrong while creating the ticket.', ephemeral: true });
     }
   }
-}
+});
 client.on('interactionCreate', async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
 
