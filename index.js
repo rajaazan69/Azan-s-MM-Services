@@ -736,7 +736,7 @@ if (interaction.isButton() && interaction.customId === 'transcript') {
     if (interaction.isButton() && interaction.customId === 'delete') {
       await interaction.channel.delete().catch(console.error);
     }
-
+client.on('interactionCreate', async interaction => {
     if (interaction.isModalSubmit() && interaction.customId === 'ticketModal') {
       // Prevent multiple tickets per user
 try {
