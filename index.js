@@ -1081,7 +1081,9 @@ await interaction.editReply({ embeds: [embed] });
     }
   }
 }
-});
+}); // closes client.on('interactionCreate')
+}); // ✅ <-- YOU WERE MISSING THIS ONE
+
 app.get('/', (req, res) => res.sendStatus(200));
 app.listen(3000, () => console.log('🌐 Express server is running'));
 
@@ -1091,4 +1093,5 @@ setInterval(() => {
 
 client.on('error', console.error);
 process.on('unhandledRejection', (reason, p) => console.error('Unhandled Rejection:', reason));
+
 client.login(process.env.TOKEN);
