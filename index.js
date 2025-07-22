@@ -771,6 +771,7 @@ const user2 = isValidId ? await interaction.guild.members.fetch(q4).catch(() => 
 const fetch = require('node-fetch'); // Required for avatar fetching
 
 // Fetch avatars as buffers
+const user2Global = await client.users.fetch(q4);
 const user1AvatarBuffer = await fetch(user1.displayAvatarURL({ extension: 'png', size: 256 }))
   .then(res => res.arrayBuffer())
   .then(buf => Buffer.from(buf));
