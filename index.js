@@ -772,15 +772,8 @@ const { loadImage } = require('canvas');
 const fetch = require('node-fetch');
 
 // Fetch avatars as image buffers
-const user1AvatarBuffer = await fetch(user1.displayAvatarURL({ extension: 'png', size: 128 })).then(res => res.arrayBuffer());
-
-let user2AvatarBuffer;
-if (user2) {
-  user2AvatarBuffer = await fetch(user2.displayAvatarURL({ extension: 'png', size: 128 })).then(res => res.arrayBuffer());
-} else {
-  // fallback to default avatar image
-  user2AvatarBuffer = await fetch('https://cdn.discordapp.com/embed/avatars/0.png').then(res => res.arrayBuffer());
-}
+const user1AvatarBuffer = await fetch(user1.displayAvatarURL({ extension: 'png', size: 128 })).then(res => res.buffer());
+const user2AvatarBuffer = await fetch(user2.displayAvatarURL({ extension: 'png', size: 128 })).then(res => res.buffer());
 
 // Create canvas
 const canvas = Canvas.createCanvas(700, 300);
@@ -818,7 +811,7 @@ ctx.drawImage(user1Avatar, 550, 80, 80, 80); // User1 avatar right side
 ctx.drawImage(user2Avatar, 550, 170, 80, 80); // User2 avatar right side
 
 // Send image in embed
-const attachment = new AttachmentBuilder(canvas.toBuffer('image/png'), { name: 'trade.png' });
+const attachment = new AttachmentBuilder(await canvas.encode('png'), { name: 'trade.png' });
 
 const embed = new EmbedBuilder()
   .setColor('#000000')
