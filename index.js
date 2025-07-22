@@ -723,6 +723,7 @@ if (interaction.isButton() && interaction.customId === 'transcript') {
     }
 
     if (interaction.isModalSubmit() && interaction.customId === 'ticketModal') {
+      await interaction.deferReply({ ephemeral: false });
       // Prevent multiple tickets per user
 const existing = interaction.guild.channels.cache.find(c =>
   c.parentId === TICKET_CATEGORY &&
@@ -765,17 +766,16 @@ const ticket = await interaction.guild.channels.create({
   permissionOverwrites
 });
       const user1 = interaction.user;
-const user2 = await interaction.guild.members.fetch(q4).catch(() => null);
+const user2 = await client.users.fetch(q4).catch(() => null);
 
-if (!user2) return interaction.reply({ content: 'Invalid user ID.', ephemeral: true });
+if (!user2) return interaction.editReply({ content: 'Invalid user ID.' });
 
-const canvasImage = await generateTradeCanvas(user1.user, user2.user, q2, q3);
+const canvasImage = await generateTradeCanvas(user1, user2, q2, q3);
 
 await ticket.send({
   content: `<@${user1.id}> <@${OWNER_ID}> <@${user2.id}>`,
-  files: [canvasImage]
+  files: [new AttachmentBuilder(canvasImage.toBuffer(), { name: 'trade.png' })]
 });
-
         const tradeMessage = await ticket.send({
   content: `<@${interaction.user.id}> <@${OWNER_ID}> ${isValidId ? targetMention : ''}`,
   embeds: [embed]
