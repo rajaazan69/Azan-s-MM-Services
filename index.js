@@ -803,8 +803,6 @@ const tradeEmbed = new EmbedBuilder()
   })
   .setTimestamp();
 
-const user2 = interaction.guild.members.cache.get(q4);
-
 const tradeEmbed = new EmbedBuilder()
   .setColor('#000000')
   .setTitle('__**• TRADE •**__')
