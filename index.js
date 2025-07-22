@@ -722,109 +722,71 @@ if (interaction.isButton() && interaction.customId === 'transcript') {
     }
 
     if (interaction.isModalSubmit() && interaction.customId === 'ticketModal') {
-      await interaction.deferReply({ ephemeral: true });
-      // Prevent multiple tickets per user
-const existing = interaction.guild.channels.cache.find(c =>
-  c.parentId === TICKET_CATEGORY &&
-  c.permissionOverwrites.cache.has(interaction.user.id)
-);
+  await interaction.deferReply({ ephemeral: true });
 
-if (existing) {
-  return interaction.editReply({ content: `❌ You already have an open ticket: ${existing}` });
-}
-      const q1 = interaction.fields.getTextInputValue('q1');
-      const q2 = interaction.fields.getTextInputValue('q2');
-      const q3 = interaction.fields.getTextInputValue('q3');
-      const q4 = interaction.fields.getTextInputValue('q4');
-const isValidId = /^\d{17,19}$/.test(q4);
-const targetMention = isValidId ? `<@${q4}>` : 'Unknown User';
+  const user1 = interaction.user;
+  const q2 = interaction.fields.getTextInputValue('q2');
+  const q3 = interaction.fields.getTextInputValue('q3');
+  const q4 = interaction.fields.getTextInputValue('q4');
 
-// Prepare permission overwrites array
-const permissionOverwrites = [
-  { id: interaction.guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
-  { id: interaction.user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
-  { id: OWNER_ID, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
-  { id: MIDDLEMAN_ROLE, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] }
-];
+  const isValidId = /^\d{17,20}$/.test(q4);
+  const user2 = isValidId ? await interaction.guild.members.fetch(q4).catch(() => null) : null;
 
-// Add the target user to permission overwrites if ID is valid and member exists
-if (isValidId) {
-  const member = interaction.guild.members.cache.get(q4);
-  if (member) {
-    permissionOverwrites.push({
-      id: q4,
-      allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages]
-    });
+  if (!user2) {
+    return await interaction.followUp({ content: `❌ Invalid Discord ID provided.`, ephemeral: true });
   }
-}
 
-const ticket = await interaction.guild.channels.create({
-  name: `ticket-${interaction.user.username}`,
-  type: ChannelType.GuildText,
-  parent: TICKET_CATEGORY,
-  permissionOverwrites
-});
-      const user1 = interaction.user;
-const user2 = isValidId ? await interaction.guild.members.fetch(q4).catch(() => null) : null;
+  const Canvas = require('@napi-rs/canvas');
+  const { loadImage } = require('canvas');
+  const fetch = require('node-fetch');
 
-const Canvas = require('@napi-rs/canvas');
-const { loadImage } = require('canvas');
-const fetch = require('node-fetch');
+  const canvas = Canvas.createCanvas(700, 250);
+  const ctx = canvas.getContext('2d');
 
-// Fetch avatars as image buffers
-const user1AvatarBuffer = await fetch(user1.displayAvatarURL({ extension: 'png', size: 128 })).then(res => res.buffer());
-const user2AvatarBuffer = await fetch(user2.displayAvatarURL({ extension: 'png', size: 128 })).then(res => res.buffer());
+  // Background
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-// Create canvas
-const canvas = Canvas.createCanvas(700, 300);
-const ctx = canvas.getContext('2d');
+  try {
+    const avatar1 = await fetch(user1.displayAvatarURL({ extension: 'png', size: 128 })).then(r => r.buffer());
+    const avatar2 = await fetch(user2.displayAvatarURL({ extension: 'png', size: 128 })).then(r => r.buffer());
 
-// Background
-ctx.fillStyle = '#1a1a1a';
-ctx.fillRect(0, 0, canvas.width, canvas.height);
+    const img1 = await loadImage(avatar1);
+    const img2 = await loadImage(avatar2);
 
-// Title
-ctx.font = 'bold 32px sans-serif';
-ctx.fillStyle = '#ffffff';
-ctx.textAlign = 'center';
-ctx.fillText('• Trade •', canvas.width / 2, 50);
+    ctx.drawImage(img1, 50, 50, 128, 128);
+    ctx.drawImage(img2, 500, 50, 128, 128);
 
-// User1
-ctx.textAlign = 'left';
-ctx.font = 'bold 20px sans-serif';
-ctx.fillStyle = '#ffffff';
-ctx.fillText(`${user1.username}`, 40, 110);
-ctx.font = '16px sans-serif';
-ctx.fillText(`Side: ${q2}`, 40, 140);
+    ctx.fillStyle = '#000000';
+    ctx.font = 'bold 20px Sans';
+    ctx.fillText(`@${user1.username}'s side: ${q2}`, 50, 200);
+    ctx.fillText(`@${user2.user.username}'s side: ${q3}`, 50, 230);
 
-// User2
-ctx.font = 'bold 20px sans-serif';
-ctx.fillText(`${user2 ? user2.username : 'Unknown User'}`, 40, 200);
-ctx.font = '16px sans-serif';
-ctx.fillText(`Side: ${q3}`, 40, 230);
+    const pngBuffer = await canvas.encode('png');
 
-// Avatars
-const user1Avatar = await loadImage(Buffer.from(user1AvatarBuffer));
-const user2Avatar = await loadImage(Buffer.from(user2AvatarBuffer));
+    const attachment = new AttachmentBuilder(pngBuffer, { name: 'trade.png' });
 
-ctx.drawImage(user1Avatar, 550, 80, 80, 80); // User1 avatar right side
-ctx.drawImage(user2Avatar, 550, 170, 80, 80); // User2 avatar right side
+    const embed = new EmbedBuilder()
+      .setTitle('• Trade •')
+      .setColor('#000000')
+      .setDescription(`**Trade between:**\n<@${user1.id}> and <@${user2.id}>`)
+      .setImage('attachment://trade.png');
 
-// Send image in embed
-const attachment = new AttachmentBuilder(await canvas.encode('png'), { name: 'trade.png' });
+    const channel = await interaction.guild.channels.create({
+      name: `ticket-${user1.username.toLowerCase()}`,
+      type: ChannelType.GuildText,
+      permissionOverwrites: [
+        { id: interaction.guild.id, deny: [PermissionFlagsBits.ViewChannel] },
+        { id: user1.id, allow: [PermissionFlagsBits.ViewChannel] },
+        { id: user2.id, allow: [PermissionFlagsBits.ViewChannel] },
+      ]
+    });
 
-const embed = new EmbedBuilder()
-  .setColor('#000000')
-  .setTitle('• Trade •')
-  .setImage('attachment://trade.png')
-  .setFooter({ text: `Ticket by ${user1.username}`, iconURL: user1.displayAvatarURL({ dynamic: true }) })
-  .setTimestamp();
-
-const tradeMessage = await ticket.send({
-  content: `<@${user1.id}> <@${OWNER_ID}> <@${q4}>`,
-  embeds: [embed],
-  files: [attachment]
-});
+    await channel.send({
+      content: `<@${user1.id}> <@${user2.id}>`,
+      embeds: [embed],
+      files: [attachment]
+    });
 await tradeMessage.react('🔐');
 const collector = tradeMessage.createReactionCollector({
   filter: (reaction, user) => reaction.emoji.name === '🔐' && !user.bot,
