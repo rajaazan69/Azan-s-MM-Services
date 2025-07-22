@@ -767,42 +767,6 @@ const ticket = await interaction.guild.channels.create({
       const user1 = interaction.user;
 const user2 = isValidId ? await interaction.guild.members.fetch(q4).catch(() => null) : null;
 
-const tradeEmbed = new EmbedBuilder()
-  .setColor('#000000')
-  .setDescription(`__**• TRADE •**__\n\n`)
-  .addFields(
-    {
-      name: 'User 1',
-      value: `<@${user1.id}>`,
-      inline: true
-    },
-    {
-      name: 'User 2',
-      value: isValidId ? `<@${q4}>` : 'Unknown User',
-      inline: true
-    },
-    {
-      name: '\u200B',
-      value: '\u200B',
-      inline: false
-    },
-    {
-      name: 'User 1 is giving:',
-      value: `> ${q2}`,
-      inline: false
-    },
-    {
-      name: 'User 2 is giving:',
-      value: `> ${q3}`,
-      inline: false
-    }
-  )
-  .setFooter({
-    text: `Ticket by ${user1.tag}`,
-    iconURL: user1.displayAvatarURL()
-  })
-  .setTimestamp();
-
         const user1Avatar = user1.displayAvatarURL({ size: 64 });
 const user2Avatar = user2 ? user2.displayAvatarURL({ size: 64 }) : null;
 
