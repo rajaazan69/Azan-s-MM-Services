@@ -767,52 +767,67 @@ const ticket = await interaction.guild.channels.create({
       const user1 = interaction.user;
 const user2 = isValidId ? await interaction.guild.members.fetch(q4).catch(() => null) : null;
 
-        const { AttachmentBuilder, EmbedBuilder } = require('discord.js');
-const fetch = require('node-fetch'); // Required for avatar fetching
-
-// Fetch avatars as buffers
-const { AttachmentBuilder, EmbedBuilder } = require('discord.js');
+        const Canvas = require('@napi-rs/canvas');
+const { loadImage } = require('canvas');
 const fetch = require('node-fetch');
 
-// Fetch user1 and user2 avatar buffers
-const user1AvatarBuffer = await fetch(user1.displayAvatarURL({ extension: 'png', size: 256 }))
-  .then(res => res.arrayBuffer())
-  .then(buf => Buffer.from(buf));
+// Get user2 info
+const user2 = await client.users.fetch(q4);
 
-const user2AvatarBuffer = await fetch(user2.displayAvatarURL({ extension: 'png', size: 256 }))
-  .then(res => res.arrayBuffer())
-  .then(buf => Buffer.from(buf));
+// Fetch avatars as image buffers
+const user1AvatarBuffer = await fetch(user1.displayAvatarURL({ extension: 'png', size: 128 })).then(res => res.arrayBuffer());
+const user2AvatarBuffer = await fetch(user2.displayAvatarURL({ extension: 'png', size: 128 })).then(res => res.arrayBuffer());
 
-// Create avatar attachments
-const files = [
-  new AttachmentBuilder(user1AvatarBuffer).setName('user1.png'),
-  new AttachmentBuilder(user2AvatarBuffer).setName('user2.png')
-];
+// Create canvas
+const canvas = Canvas.createCanvas(700, 300);
+const ctx = canvas.getContext('2d');
 
-// Build the embed
-const tradeEmbed = new EmbedBuilder()
+// Background
+ctx.fillStyle = '#1a1a1a';
+ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+// Title
+ctx.font = 'bold 32px sans-serif';
+ctx.fillStyle = '#ffffff';
+ctx.textAlign = 'center';
+ctx.fillText('• Trade •', canvas.width / 2, 50);
+
+// User1
+ctx.textAlign = 'left';
+ctx.font = 'bold 20px sans-serif';
+ctx.fillStyle = '#ffffff';
+ctx.fillText(`${user1.username}`, 40, 110);
+ctx.font = '16px sans-serif';
+ctx.fillText(`Side: ${q2}`, 40, 140);
+
+// User2
+ctx.font = 'bold 20px sans-serif';
+ctx.fillText(`${user2.username}`, 40, 200);
+ctx.font = '16px sans-serif';
+ctx.fillText(`Side: ${q3}`, 40, 230);
+
+// Avatars
+const user1Avatar = await loadImage(Buffer.from(user1AvatarBuffer));
+const user2Avatar = await loadImage(Buffer.from(user2AvatarBuffer));
+
+ctx.drawImage(user1Avatar, 550, 80, 80, 80); // User1 avatar right side
+ctx.drawImage(user2Avatar, 550, 170, 80, 80); // User2 avatar right side
+
+// Send image in embed
+const attachment = new AttachmentBuilder(canvas.toBuffer('image/png'), { name: 'trade.png' });
+
+const embed = new EmbedBuilder()
   .setColor('#000000')
   .setTitle('• Trade •')
-  .setDescription(
-    `**__Trade Participants__**\n\n` +
-    `> <@${user1.id}> • **${user1.username}**\n` +
-    `> **Side:** \`${q2}\`  [‎](${user1.displayAvatarURL({ extension: 'png' })})\n\n` +
-    `> <@${user2.id}> • **${user2.username}**\n` +
-    `> **Side:** \`${q3}\`  [‎](${user2.displayAvatarURL({ extension: 'png' })})`
-  )
-  .setFooter({
-    text: `Ticket by ${user1.username}`,
-    iconURL: user1.displayAvatarURL({ dynamic: true })
-  })
+  .setImage('attachment://trade.png')
+  .setFooter({ text: `Ticket by ${user1.username}`, iconURL: user1.displayAvatarURL({ dynamic: true }) })
   .setTimestamp();
 
-// Send the embed message
 const tradeMessage = await ticket.send({
-  content: `<@${user1.id}> <@${OWNER_ID}> <@${user2.id}>`,
-  embeds: [tradeEmbed],
-  files
+  content: `<@${user1.id}> <@${OWNER_ID}> <@${q4}>`,
+  embeds: [embed],
+  files: [attachment]
 });
-
 await tradeMessage.react('🔐');
 const collector = tradeMessage.createReactionCollector({
   filter: (reaction, user) => reaction.emoji.name === '🔐' && !user.bot,
