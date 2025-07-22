@@ -737,94 +737,93 @@ if (interaction.isButton() && interaction.customId === 'transcript') {
   }
 
   try {
-    const Canvas = require('@napi-rs/canvas');
-    const { loadImage } = require('canvas');
-    const fetch = require('node-fetch');
+  const Canvas = require('@napi-rs/canvas');
+  const { loadImage } = require('canvas');
+  const fetch = require('node-fetch');
 
-    const canvas = Canvas.createCanvas(700, 250);
-    const ctx = canvas.getContext('2d');
+  const canvas = Canvas.createCanvas(700, 250);
+  const ctx = canvas.getContext('2d');
 
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    const avatar1 = await fetch(user1.displayAvatarURL({ extension: 'png', size: 128 })).then(r => r.buffer());
-    const avatar2 = await fetch(user2.displayAvatarURL({ extension: 'png', size: 128 })).then(r => r.buffer());
+  const avatar1 = await fetch(user1.displayAvatarURL({ extension: 'png', size: 128 })).then(r => r.buffer());
+  const avatar2 = await fetch(user2.displayAvatarURL({ extension: 'png', size: 128 })).then(r => r.buffer());
 
-    const img1 = await loadImage(avatar1);
-    const img2 = await loadImage(avatar2);
+  const img1 = await loadImage(avatar1);
+  const img2 = await loadImage(avatar2);
 
-    ctx.drawImage(img1, 50, 50, 128, 128);
-    ctx.drawImage(img2, 500, 50, 128, 128);
+  ctx.drawImage(img1, 50, 50, 128, 128);
+  ctx.drawImage(img2, 500, 50, 128, 128);
 
-    ctx.fillStyle = '#000000';
-    ctx.font = 'bold 20px Sans';
-    ctx.fillText(`@${user1.username}'s side: ${q2}`, 50, 200);
-    ctx.fillText(`@${user2.user.username}'s side: ${q3}`, 50, 230);
+  ctx.fillStyle = '#000000';
+  ctx.font = 'bold 20px Sans';
+  ctx.fillText(`@${user1.username}'s side: ${q2}`, 50, 200);
+  ctx.fillText(`@${user2.user.username}'s side: ${q3}`, 50, 230);
 
-    const pngBuffer = await canvas.encode('png');
-    const attachment = new AttachmentBuilder(pngBuffer, { name: 'trade.png' });
+  const pngBuffer = await canvas.encode('png');
+  const attachment = new AttachmentBuilder(pngBuffer, { name: 'trade.png' });
 
-    const embed = new EmbedBuilder()
-      .setTitle('• Trade •')
+  const embed = new EmbedBuilder()
+    .setTitle('• Trade •')
+    .setColor('#000000')
+    .setDescription(`**Trade between:**\n<@${user1.id}> and <@${user2.id}>`)
+    .setImage('attachment://trade.png');
+
+  const channel = await interaction.guild.channels.create({
+    name: `ticket-${user1.username.toLowerCase()}`,
+    type: ChannelType.GuildText,
+    permissionOverwrites: [
+      { id: interaction.guild.id, deny: [PermissionFlagsBits.ViewChannel] },
+      { id: user1.id, allow: [PermissionFlagsBits.ViewChannel] },
+      { id: user2.id, allow: [PermissionFlagsBits.ViewChannel] },
+    ]
+  });
+
+  const tradeMessage = await channel.send({
+    content: `<@${user1.id}> <@${user2.id}>`,
+    embeds: [embed],
+    files: [attachment]
+  });
+
+  await tradeMessage.react('🔐');
+
+  const collector = tradeMessage.createReactionCollector({
+    filter: (reaction, user) => reaction.emoji.name === '🔐' && !user.bot,
+    max: 1,
+    time: 60000
+  });
+
+  collector.on('collect', async (reaction, user) => {
+    const guildMember = await interaction.guild.members.fetch(user.id).catch(() => null);
+    if (!guildMember) return;
+
+    await channel.setName(`mm-${guildMember.user.username}`).catch(console.error);
+
+    const confirmEmbed = new EmbedBuilder()
       .setColor('#000000')
-      .setDescription(`**Trade between:**\n<@${user1.id}> and <@${user2.id}>`)
-      .setImage('attachment://trade.png');
+      .setDescription(`**${guildMember} is your middleman.**`);
 
-    const channel = await interaction.guild.channels.create({
-      name: `ticket-${user1.username.toLowerCase()}`,
-      type: ChannelType.GuildText,
-      permissionOverwrites: [
-        { id: interaction.guild.id, deny: [PermissionFlagsBits.ViewChannel] },
-        { id: user1.id, allow: [PermissionFlagsBits.ViewChannel] },
-        { id: user2.id, allow: [PermissionFlagsBits.ViewChannel] },
-      ]
-    });
+    const profileEmbed = new EmbedBuilder()
+      .setColor('#000000')
+      .setTitle('Middleman Profile')
+      .setThumbnail(guildMember.displayAvatarURL())
+      .addFields(
+        { name: '**Username**', value: guildMember.user.username, inline: true },
+        { name: '**ID**', value: guildMember.user.id, inline: true }
+      );
 
-    const tradeMessage = await channel.send({
-      content: `<@${user1.id}> <@${user2.id}>`,
-      embeds: [embed],
-      files: [attachment]
-    });
+    await channel.send({ embeds: [confirmEmbed] });
+    await channel.send({ embeds: [profileEmbed] });
+  });
 
-    await tradeMessage.react('🔐');
+  await interaction.editReply({ content: `✅ Ticket created: ${channel}` });
 
-    const collector = tradeMessage.createReactionCollector({
-      filter: (reaction, user) => reaction.emoji.name === '🔐' && !user.bot,
-      max: 1,
-      time: 60000
-    });
-
-    collector.on('collect', async (reaction, user) => {
-      const guildMember = await interaction.guild.members.fetch(user.id).catch(() => null);
-      if (!guildMember) return;
-
-      await channel.setName(`mm-${guildMember.user.username}`).catch(console.error);
-
-      const confirmEmbed = new EmbedBuilder()
-        .setColor('#000000')
-        .setDescription(`**${guildMember} is your middleman.**`);
-
-      const profileEmbed = new EmbedBuilder()
-        .setColor('#000000')
-        .setTitle('Middleman Profile')
-        .setThumbnail(guildMember.displayAvatarURL())
-        .addFields(
-          { name: '**Username**', value: guildMember.user.username, inline: true },
-          { name: '**ID**', value: guildMember.user.id, inline: true }
-        );
-
-      await channel.send({ embeds: [confirmEmbed] });
-      await channel.send({ embeds: [profileEmbed] });
-    });
-
-    await interaction.editReply({ content: `✅ Ticket created: ${channel}` });
-
-  } catch (err) {
-    console.error('❌ Interaction error:', err);
-    await interaction.editReply({ content: `❌ Failed to create ticket.` });
-  }
-}
-});
+} catch (err) {
+  console.error('❌ Interaction error:', err);
+  await interaction.editReply({ content: `❌ Failed to create ticket.` });
+} // ← this closes the try/catch
+}); // ← this closes your outer listener
 await interaction.editReply({ content: `✅ Ticket created: ${channel}` });
 async function handleTranscript(interaction, channel) {
   try {
