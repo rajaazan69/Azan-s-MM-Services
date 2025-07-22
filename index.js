@@ -698,6 +698,7 @@ if (commandName === 'untimeout') {
         .setCustomId('ticketModal')
         .setTitle('Middleman Request')
         .addComponents(
+          new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('q1').setLabel("What's the trade?").setStyle(TextInputStyle.Short).setRequired(true)),
           new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('q2').setLabel("What's your side?").setStyle(TextInputStyle.Paragraph).setRequired(true)),
           new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('q3').setLabel("What's their side?").setStyle(TextInputStyle.Paragraph).setRequired(true)),
           new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('q4').setLabel("Their Discord ID?").setStyle(TextInputStyle.Short).setRequired(true))
@@ -719,7 +720,7 @@ if (interaction.isButton() && interaction.customId === 'transcript') {
     if (interaction.isButton() && interaction.customId === 'delete') {
       await interaction.channel.delete().catch(console.error);
     }
-client.on('interactionCreate', async interaction => {
+
     if (interaction.isModalSubmit() && interaction.customId === 'ticketModal') {
       // Prevent multiple tickets per user
 const existing = interaction.guild.channels.cache.find(c =>
@@ -730,6 +731,7 @@ const existing = interaction.guild.channels.cache.find(c =>
 if (existing) {
   return interaction.reply({ content: `❌ You already have an open ticket: ${existing}`, ephemeral: true });
 }
+      const q1 = interaction.fields.getTextInputValue('q1');
       const q2 = interaction.fields.getTextInputValue('q2');
       const q3 = interaction.fields.getTextInputValue('q3');
       const q4 = interaction.fields.getTextInputValue('q4');
@@ -762,62 +764,35 @@ const ticket = await interaction.guild.channels.create({
   permissionOverwrites
 });
       const embed = new EmbedBuilder()
-  .setColor('#000000')
-  .setTitle('•trade•')
+  .setTitle('Middleman Request')
+  .setColor('#2B2D31')
   .setDescription(
-    `<@${interaction.user.id}>          <@${q4}>\n` +
-    `** **\n` +
-    `[Avatar1]                      [Avatar2]\n` +
-    `** **\n` +
+    `**User 1:** <@${interaction.user.id}>\n` +
+    `**User 2:** ${targetMention}\n\n` +
+    `**Trade Details**\n` +
+    `> ${q1}\n\n` +
+    `**User 1 is giving:**\n` +
     `> ${q2}\n\n` +
+    `**User 2 is giving:**\n` +
     `> ${q3}`
   )
-  .setThumbnail(interaction.user.displayAvatarURL({ dynamic: true }))
-  .setImage((interaction.guild.members.cache.get(q4)?.user.displayAvatarURL({ dynamic: true })) || null)
   .setFooter({ text: `Ticket by ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
   .setTimestamp();
 
-        const msg = await ticket.send({
-  content: `<@${interaction.user.id}> <@${OWNER_ID}> <@${q4}>`,
+        await ticket.send({
+  content: `<@${interaction.user.id}> <@${OWNER_ID}> ${isValidId ? targetMention : ''}`,
   embeds: [embed]
 });
+          
 
-await msg.react('🔐');
+        await interaction.reply({ content: `✅ Ticket created: ${ticket}`, ephemeral: true });
+      
+    }
 
-const filter = (reaction, user) =>
-  reaction.emoji.name === '🔐' && !user.bot;
-
-const collector = msg.createReactionCollector({ filter, max: 1 });
-
-collector.on('collect', async (reaction, user) => {
-  await ticket.setName(user.username);
-
-  const mmMember = await interaction.guild.members.fetch(user.id).catch(() => null);
-  if (!mmMember) return;
-
-  await ticket.send({
-    embeds: [
-      new EmbedBuilder()
-        .setColor('#000000')
-        .setDescription(`<@${user.id}> is your middleman.`)
-    ]
-  });
-
-  await ticket.send({
-    embeds: [
-      new EmbedBuilder()
-        .setColor('#000000')
-        .setTitle('Middleman Profile')
-        .setThumbnail(user.displayAvatarURL())
-        .addFields(
-          { name: 'Username', value: `**${user.tag}**`, inline: true },
-          { name: 'User ID', value: `**${user.id}**`, inline: true },
-        )
-        ]
-      });
-    });
+  } catch (err) {
+    console.error('❌ Interaction error:', err);
   }
-}); // ✅ This closes the whole modal listener!
+});
 
 async function handleTranscript(interaction, channel) {
   try {
@@ -1085,10 +1060,10 @@ await interaction.editReply({ embeds: [embed] });
       await interaction.reply({
         content: '⚠️ Something went wrong while processing your request.',
         ephemeral: true
-        });
-      }
+      });
     }
   }
+}
 });
 app.get('/', (req, res) => res.sendStatus(200));
 app.listen(3000, () => console.log('🌐 Express server is running'));
