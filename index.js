@@ -815,7 +815,7 @@ if (interaction.isButton() && interaction.customId === 'transcript') {
     console.error('❌ Interaction error:', err);
     await interaction.reply({ content: '❌ Something went wrong while creating the ticket.', ephemeral: true });
   }
-}
+});
 
 async function handleTranscript(interaction, channel) {
   try {
