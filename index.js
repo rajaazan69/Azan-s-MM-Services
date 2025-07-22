@@ -12,7 +12,6 @@ const fs = require('fs');
 require('dotenv').config();
 const { MongoClient } = require('mongodb');
 const stickyMap = new Map();
-const { generateTradeCanvas } = require('./generateTradeCanvas');
 
 const mongoUri = process.env.MONGO_URI;
 const mongoClient = new MongoClient(mongoUri);
@@ -723,7 +722,6 @@ if (interaction.isButton() && interaction.customId === 'transcript') {
     }
 
     if (interaction.isModalSubmit() && interaction.customId === 'ticketModal') {
-      await interaction.deferReply({ ephemeral: false });
       // Prevent multiple tickets per user
 const existing = interaction.guild.channels.cache.find(c =>
   c.parentId === TICKET_CATEGORY &&
@@ -765,60 +763,25 @@ const ticket = await interaction.guild.channels.create({
   parent: TICKET_CATEGORY,
   permissionOverwrites
 });
-      const user1 = interaction.user;
-const user2 = await client.users.fetch(q4).catch(() => null);
+      const embed = new EmbedBuilder()
+  .setTitle('Middleman Request')
+  .setColor('#2B2D31')
+  .setDescription(
+    `**User 1:** <@${interaction.user.id}>\n` +
+    `**User 2:** ${targetMention}\n\n` +
+    `**Trade Details**\n` +
+    `> ${q1}\n\n` +
+    `**User 1 is giving:**\n` +
+    `> ${q2}\n\n` +
+    `**User 2 is giving:**\n` +
+    `> ${q3}`
+  )
+  .setFooter({ text: `Ticket by ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
+  .setTimestamp();
 
-if (!user2) return interaction.editReply({ content: 'Invalid user ID.' });
-
-const canvasImage = await generateTradeCanvas(user1, user2, q2, q3);
-
-await ticket.send({
-  content: `<@${user1.id}> <@${OWNER_ID}> <@${user2.id}>`,
-  files: [new AttachmentBuilder(canvasImage.toBuffer(), { name: 'trade.png' })]
-});
-        const tradeMessage = await ticket.send({
+        await ticket.send({
   content: `<@${interaction.user.id}> <@${OWNER_ID}> ${isValidId ? targetMention : ''}`,
   embeds: [embed]
-});
-
-// React with 🔐 for middleman claim
-await tradeMessage.react('🔐');
-
-// Wait for the first user to react with 🔐
-const collector = tradeMessage.createReactionCollector({
-  filter: (reaction, user) =>
-    reaction.emoji.name === '🔐' &&
-    !user.bot &&
-    interaction.guild.members.cache.get(user.id)?.roles.cache.has(MIDDLEMAN_ROLE),
-  max: 1,
-  time: 60_000 // 60 seconds timeout
-});
-
-collector.on('collect', async (reaction, user) => {
-  const middleman = await interaction.guild.members.fetch(user.id);
-
-  // Rename channel to middleman's username
-  await ticket.setName(`mm-${middleman.user.username}`);
-
-  // Confirmation embed
-  const confirmEmbed = new EmbedBuilder()
-    .setColor('#000000')
-    .setDescription(`**${middleman} is your middleman.**`);
-
-  await ticket.send({ content: `<@${interaction.user.id}> <@${q4}>`, embeds: [confirmEmbed] });
-
-  // Profile card embed
-  const profileCard = new EmbedBuilder()
-    .setColor('#000000')
-    .setTitle('Middleman Profile')
-    .setThumbnail(middleman.displayAvatarURL())
-    .addFields(
-      { name: '**Mention**', value: `<@${middleman.id}>`, inline: true },
-      { name: '**Username**', value: `${middleman.user.tag}`, inline: true },
-      { name: '**User ID**', value: `${middleman.id}`, inline: true }
-    );
-
-  await ticket.send({ embeds: [profileCard] });
 });
           
 
