@@ -769,46 +769,59 @@ if (interaction.isButton() && interaction.customId === 'transcript') {
 
   const tradeEmbed = new EmbedBuilder()
   .setColor('#000000')
-  .setTitle('Trade Details')
-  .setDescription(
-    `**User 1:** <@${interaction.user.id}>  🖼️ [Avatar](${interaction.user.displayAvatarURL({ extension: 'png', size: 64 })})\n` +
-    `**User 2:** <@${q4}>  🖼️ [Avatar](${user2.displayAvatarURL({ extension: 'png', size: 64 })})\n\n` +
-    `<@${interaction.user.id}> is giving:\n` +
-    `> ${q2}\n\n` +
-    `<@${q4}> is giving:\n` +
-    `>${q3}`
+  .setTitle('Trade Information')
+  .addFields(
+    {
+      name: '**User 1**',
+      value: `<@${interaction.user.id}>\n[Avatar](${interaction.user.displayAvatarURL({ extension: 'png', size: 64 })})`,
+      inline: true
+    },
+    {
+      name: '**User 2**',
+      value: `<@${q4}>\n[Avatar](${user2.displayAvatarURL({ extension: 'png', size: 64 })})`,
+      inline: true
+    },
+    {
+      name: `What <@${interaction.user.id}> is giving`,
+      value: `> ${q2}`,
+      inline: false
+    },
+    {
+      name: `What <@${q4}> is giving`,
+      value: `> ${q3}`,
+      inline: false
+    }
   )
-  .setFooter({ text: 'Click 🔐 to claim this trade.' })
+  .setFooter({ text: 'Click 🔐 to claim this ticket as middleman.' })
   .setTimestamp();
 
 const tradeMessage = await ticket.send({ embeds: [tradeEmbed] });
-  await tradeMessage.react('🔐');
-const botReactions = tradeMessage.reactions.cache.get('🔐');
-if (botReactions) {
-  await botReactions.users.remove(client.user.id);
-}
+  await tradeMessage.react('🔐').catch(console.error);
 
-const filter = (reaction, user) => {
-  return reaction.emoji.name === '🔐' && !user.bot;
-};
+// Delay briefly to ensure cache is updated
+setTimeout(async () => {
+  const botReactions = tradeMessage.reactions.cache.get('🔐');
+  if (botReactions?.users.has(client.user.id)) {
+    await botReactions.users.remove(client.user.id).catch(() => {});
+  }
+}, 1500);
 
+const filter = (reaction, user) => reaction.emoji.name === '🔐' && !user.bot;
 const collector = tradeMessage.createReactionCollector({ filter, max: 1, time: 60000 });
 
 collector.on('collect', async (reaction, user) => {
-  if (!user) return;
+  await ticket.setName(user.username).catch(() => {});
 
-  await ticket.setName(user.username);
-
-  const confirmationEmbed = new EmbedBuilder()
+  const confirmEmbed = new EmbedBuilder()
     .setColor('#000000')
     .setDescription(`**${user} is your middleman.**`);
 
-  await ticket.send({ content: `<@${interaction.user.id}> <@${q4}>`, embeds: [confirmationEmbed] });
+  await ticket.send({ content: `<@${interaction.user.id}> <@${q4}>`, embeds: [confirmEmbed] });
 
-  const profileCard = new EmbedBuilder()
+  const profileEmbed = new EmbedBuilder()
     .setColor('#000000')
     .setTitle('Middleman Profile')
-    .setThumbnail(user.displayAvatarURL())
+    .setThumbnail(user.displayAvatarURL({ size: 256 }))
     .addFields(
       { name: '**Mention**', value: `${user}`, inline: true },
       { name: '**Username**', value: `\`${user.username}\``, inline: true },
@@ -817,7 +830,7 @@ collector.on('collect', async (reaction, user) => {
     .setFooter({ text: 'Middleman Claimed', iconURL: user.displayAvatarURL() })
     .setTimestamp();
 
-  await ticket.send({ embeds: [profileCard] });
+  await ticket.send({ embeds: [profileEmbed] });
 });
   await interaction.editReply({ content: `✅ Ticket created: ${ticket}`, ephemeral: true });
 }
