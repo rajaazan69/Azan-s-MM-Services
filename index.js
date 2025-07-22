@@ -770,17 +770,16 @@ if (interaction.isButton() && interaction.customId === 'transcript') {
   const tradeEmbed = new EmbedBuilder()
     .setColor('#000000')
     .setTitle('__**• TRADE •**__')
-    .addFields(
-      { name: 'User 1', value: `<@${user1.id}>`, inline: true },
-      { name: 'User 2', value: targetMention, inline: true },
-      { name: '\u200B', value: '\u200B', inline: false },
-      { name: `What ${user1.username} is giving:`, value: `> ${q2}`, inline: false },
-      { name: `What ${user2?.user.username || 'User 2'} is giving:`, value: `> ${q3}`, inline: false }
-    )
-    .setThumbnail(user1.displayAvatarURL({ size: 256 }))
-    .setImage(user2?.user.displayAvatarURL({ size: 512 }) || null)
-    .setFooter({ text: `Ticket by ${user1.tag}`, iconURL: user1.displayAvatarURL({ size: 256 }) })
-    .setTimestamp();
+    .setDescription(
+    `**User 1:** <@${user1.id}>        [Avatar](${user1.displayAvatarURL({ size: 256 })})\n\n` +
+    `**User 2:** <@${q4}>        [Avatar](${user2?.user?.displayAvatarURL({ size: 256 }) || 'Avatar not found'})\n\n` +
+    `**What <@${user1.id}> is giving:**\n> ${q2}\n\n` +
+    `**What <@${q4}> is giving:**\n> ${q3}`
+  )
+  .setThumbnail(user1.displayAvatarURL({ size: 256 }))
+  .setImage(user2?.user?.displayAvatarURL({ size: 512 }) || null)
+  .setFooter({ text: `Ticket by ${user1.tag}`, iconURL: user1.displayAvatarURL({ size: 256 }) })
+  .setTimestamp();
 
   const tradeMessage = await ticket.send({
     content: `<@${user1.id}> <@${OWNER_ID}> ${isValidId ? targetMention : ''}`,
@@ -789,34 +788,45 @@ if (interaction.isButton() && interaction.customId === 'transcript') {
 
   await tradeMessage.react('🔐');
 
-  const filter = (reaction, user) =>
-    reaction.emoji.name === '🔐' &&
-    !user.bot &&
-    reaction.message.id === tradeMessage.id;
+// Create a reaction collector for 🔐 emoji
+const filter = (reaction, user) => {
+  return reaction.emoji.name === '🔐' && !user.bot; // Ignore bot reactions
+};
 
-  const collector = tradeMessage.createReactionCollector({ filter, max: 1 });
+const collector = tradeMessage.createReactionCollector({
+  filter,
+  max: 1,
+  time: 60000 // 60 seconds to claim
+});
 
-  collector.on('collect', async (reaction, user) => {
-    const middleman = await interaction.guild.members.fetch(user.id);
+collector.on('collect', async (reaction, user) => {
+  if (!user) return;
 
-    await ticket.setName(middleman.user.username);
+  // Rename ticket channel
+  await ticket.setName(user.username);
 
-    const confirmationEmbed = new EmbedBuilder()
-      .setColor('#000000')
-      .setDescription(`**${middleman} is your middleman.**`);
+  // Small embed: '@user is your middleman.'
+  const confirmationEmbed = new EmbedBuilder()
+    .setColor('#000000')
+    .setDescription(`**${user} is your middleman.**`);
 
-    const profileCard = new EmbedBuilder()
-      .setColor('#000000')
-      .setAuthor({ name: middleman.user.username, iconURL: middleman.user.displayAvatarURL({ size: 256 }) })
-      .setThumbnail(middleman.user.displayAvatarURL({ size: 256 }))
-      .addFields(
-        { name: 'Username', value: `\`${middleman.user.username}\``, inline: true },
-        { name: 'User ID', value: `\`${middleman.user.id}\``, inline: true }
-      );
+  await ticket.send({ content: `<@${interaction.user.id}> <@${q4}>`, embeds: [confirmationEmbed] });
 
-    await ticket.send({ embeds: [confirmationEmbed] });
-    await ticket.send({ embeds: [profileCard] });
-  });
+  // Profile Card Embed
+  const profileCard = new EmbedBuilder()
+    .setColor('#000000')
+    .setTitle('Middleman Profile')
+    .setThumbnail(user.displayAvatarURL())
+    .addFields(
+      { name: '**Mention**', value: `${user}`, inline: true },
+      { name: '**Username**', value: `\`${user.username}\``, inline: true },
+      { name: '**Discord ID**', value: `\`${user.id}\``, inline: true }
+    )
+    .setFooter({ text: 'Middleman Claimed', iconURL: user.displayAvatarURL() })
+    .setTimestamp();
+
+  await ticket.send({ embeds: [profileCard] });
+});
 
   await interaction.editReply({ content: `✅ Ticket created: ${ticket}`, ephemeral: true });
 }
