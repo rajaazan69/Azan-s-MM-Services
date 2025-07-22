@@ -809,7 +809,6 @@ const tradeMessage = await ticket.send({
   embeds: [tradeEmbed],
   files
 });
-const sentMessage = await channel.send({ embeds: [tradeMessage] });
 await tradeMessage.react('🔐');
 
 const collector = tradeMessage.createReactionCollector({
