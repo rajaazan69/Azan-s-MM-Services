@@ -736,18 +736,17 @@ if (interaction.isButton() && interaction.customId === 'transcript') {
     return await interaction.followUp({ content: `❌ Invalid Discord ID provided.`, ephemeral: true });
   }
 
-  const Canvas = require('@napi-rs/canvas');
-  const { loadImage } = require('canvas');
-  const fetch = require('node-fetch');
-
-  const canvas = Canvas.createCanvas(700, 250);
-  const ctx = canvas.getContext('2d');
-
-  // Background
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-
   try {
+    const Canvas = require('@napi-rs/canvas');
+    const { loadImage } = require('canvas');
+    const fetch = require('node-fetch');
+
+    const canvas = Canvas.createCanvas(700, 250);
+    const ctx = canvas.getContext('2d');
+
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
     const avatar1 = await fetch(user1.displayAvatarURL({ extension: 'png', size: 128 })).then(r => r.buffer());
     const avatar2 = await fetch(user2.displayAvatarURL({ extension: 'png', size: 128 })).then(r => r.buffer());
 
@@ -763,7 +762,6 @@ if (interaction.isButton() && interaction.customId === 'transcript') {
     ctx.fillText(`@${user2.user.username}'s side: ${q3}`, 50, 230);
 
     const pngBuffer = await canvas.encode('png');
-
     const attachment = new AttachmentBuilder(pngBuffer, { name: 'trade.png' });
 
     const embed = new EmbedBuilder()
@@ -782,52 +780,51 @@ if (interaction.isButton() && interaction.customId === 'transcript') {
       ]
     });
 
-    await channel.send({
+    const tradeMessage = await channel.send({
       content: `<@${user1.id}> <@${user2.id}>`,
       embeds: [embed],
       files: [attachment]
     });
-await tradeMessage.react('🔐');
-const collector = tradeMessage.createReactionCollector({
-  filter: (reaction, user) => reaction.emoji.name === '🔐' && !user.bot,
-  max: 1,
-  time: 60000
-});
 
-collector.on('collect', async (reaction, user) => {
-  const guildMember = await interaction.guild.members.fetch(user.id).catch(() => null);
-  if (!guildMember) return;
+    await tradeMessage.react('🔐');
 
-  await ticket.setName(`mm-${guildMember.user.username}`).catch(console.error);
+    const collector = tradeMessage.createReactionCollector({
+      filter: (reaction, user) => reaction.emoji.name === '🔐' && !user.bot,
+      max: 1,
+      time: 60000
+    });
 
-  const confirmEmbed = new EmbedBuilder()
-    .setColor('#000000')
-    .setDescription(`**${guildMember} is your middleman.**`);
+    collector.on('collect', async (reaction, user) => {
+      const guildMember = await interaction.guild.members.fetch(user.id).catch(() => null);
+      if (!guildMember) return;
 
-  const profileEmbed = new EmbedBuilder()
-    .setColor('#000000')
-    .setTitle('Middleman Profile')
-    .setThumbnail(guildMember.displayAvatarURL())
-    .addFields(
-      { name: '**Username**', value: guildMember.user.username, inline: true },
-      { name: '**ID**', value: guildMember.user.id, inline: true }
-    );
+      await channel.setName(`mm-${guildMember.user.username}`).catch(console.error);
 
-  await ticket.send({ embeds: [confirmEmbed] });
-  await ticket.send({ embeds: [profileEmbed] });
-});
-// Store message ID in DB or memory if needed for matching later
-          
+      const confirmEmbed = new EmbedBuilder()
+        .setColor('#000000')
+        .setDescription(`**${guildMember} is your middleman.**`);
 
-        await interaction.editReply({ content: `✅ Ticket created: ${ticket}` });
-      
-    }
+      const profileEmbed = new EmbedBuilder()
+        .setColor('#000000')
+        .setTitle('Middleman Profile')
+        .setThumbnail(guildMember.displayAvatarURL())
+        .addFields(
+          { name: '**Username**', value: guildMember.user.username, inline: true },
+          { name: '**ID**', value: guildMember.user.id, inline: true }
+        );
+
+      await channel.send({ embeds: [confirmEmbed] });
+      await channel.send({ embeds: [profileEmbed] });
+    });
+
+    await interaction.editReply({ content: `✅ Ticket created: ${channel}` });
 
   } catch (err) {
     console.error('❌ Interaction error:', err);
+    await interaction.editReply({ content: `❌ Failed to create ticket.` });
   }
-});
-
+}
+await interaction.editReply({ content: `✅ Ticket created: ${channel}` });
 async function handleTranscript(interaction, channel) {
   try {
     const messages = await channel.messages.fetch({ limit: 100 });
