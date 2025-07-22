@@ -770,12 +770,17 @@ if (interaction.isButton() && interaction.customId === 'transcript') {
   const tradeEmbed = new EmbedBuilder()
     .setColor('#000000')
     .setTitle('__**• TRADE •**__')
-    .setDescription(
-    `**User 1:** <@${user1.id}>        [Avatar](${user1.displayAvatarURL({ size: 256 })})\n\n` +
-    `**User 2:** <@${q4}>        [Avatar](${user2?.user?.displayAvatarURL({ size: 256 }) || 'Avatar not found'})\n\n` +
-    `**What <@${user1.id}> is giving:**\n> ${q2}\n\n` +
-    `**What <@${q4}> is giving:**\n> ${q3}`
-  )
+   .setDescription(
+  `**User 1:** <@${user1.id}>\n` +
+  `**Avatar:** [Click Here](${user1.displayAvatarURL({ size: 256 })})\n\n` +
+  `**User 2:** <@${q4}>\n` +
+  `**Avatar:** [Click Here](${user2?.user?.displayAvatarURL({ size: 256 }) || 'Avatar not found'})\n\n` +
+  `━━━━━━━━━━━━━━━━━━\n` +
+  `**What <@${user1.id}> is giving:**\n` +
+  `> ${q2}\n\n` +
+  `**What <@${q4}> is giving:**\n` +
+  `> ${q3}`
+)
   .setThumbnail(user1.displayAvatarURL({ size: 256 }))
   .setImage(user2?.user?.displayAvatarURL({ size: 512 }) || null)
   .setFooter({ text: `Ticket by ${user1.tag}`, iconURL: user1.displayAvatarURL({ size: 256 }) })
@@ -787,7 +792,10 @@ if (interaction.isButton() && interaction.customId === 'transcript') {
   });
 
   await tradeMessage.react('🔐');
-
+const botReactions = tradeMessage.reactions.cache.get('🔐');
+if (botReactions) {
+  await botReactions.users.remove(client.user.id); // Remove bot reaction to avoid false collect
+}
 // Create a reaction collector for 🔐 emoji
 const filter = (reaction, user) => {
   return reaction.emoji.name === '🔐' && !user.bot; // Ignore bot reactions
