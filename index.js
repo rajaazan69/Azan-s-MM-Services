@@ -13,7 +13,6 @@ require('dotenv').config();
 const { MongoClient } = require('mongodb');
 const stickyMap = new Map();
 const { createCanvas, loadImage } = require('canvas');
-const path = require('path');
 
 const mongoUri = process.env.MONGO_URI;
 const mongoClient = new MongoClient(mongoUri);
