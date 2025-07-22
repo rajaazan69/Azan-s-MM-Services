@@ -769,7 +769,7 @@ const user2 = isValidId ? await interaction.guild.members.fetch(q4).catch(() => 
 
 const tradeEmbed = new EmbedBuilder()
   .setColor('#000000')
-  .setDescription(`__**• TRADE •**__\n\n`
+  .setDescription(`__**• TRADE •**__\n\n`)
   .addFields(
     {
       name: 'User 1',
