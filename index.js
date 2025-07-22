@@ -722,118 +722,142 @@ if (interaction.isButton() && interaction.customId === 'transcript') {
     }
 
     if (interaction.isModalSubmit() && interaction.customId === 'ticketModal') {
-  await interaction.deferReply({ ephemeral: true });
+      await interaction.deferReply({ ephemeral: true });
+      // Prevent multiple tickets per user
+const existing = interaction.guild.channels.cache.find(c =>
+  c.parentId === TICKET_CATEGORY &&
+  c.permissionOverwrites.cache.has(interaction.user.id)
+);
 
-  const existing = interaction.guild.channels.cache.find(c =>
-    c.parentId === TICKET_CATEGORY &&
-    c.permissionOverwrites.cache.has(interaction.user.id)
-  );
+if (existing) {
+  return interaction.reply({ content: `❌ You already have an open ticket: ${existing}`, ephemeral: true });
+}
+      const q1 = interaction.fields.getTextInputValue('q1');
+      const q2 = interaction.fields.getTextInputValue('q2');
+      const q3 = interaction.fields.getTextInputValue('q3');
+      const q4 = interaction.fields.getTextInputValue('q4');
+const isValidId = /^\d{17,19}$/.test(q4);
+const targetMention = isValidId ? `<@${q4}>` : 'Unknown User';
 
-  if (existing) {
-    return interaction.reply({ content: `❌ You already have an open ticket: ${existing}`, ephemeral: true });
+// Prepare permission overwrites array
+const permissionOverwrites = [
+  { id: interaction.guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
+  { id: interaction.user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
+  { id: OWNER_ID, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
+  { id: MIDDLEMAN_ROLE, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] }
+];
+
+// Add the target user to permission overwrites if ID is valid and member exists
+if (isValidId) {
+  const member = interaction.guild.members.cache.get(q4);
+  if (member) {
+    permissionOverwrites.push({
+      id: q4,
+      allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages]
+    });
   }
+}
 
-  const q2 = interaction.fields.getTextInputValue('q2'); // Your side
-  const q3 = interaction.fields.getTextInputValue('q3'); // Their side
-  const q4 = interaction.fields.getTextInputValue('q4'); // Their ID
+const ticket = await interaction.guild.channels.create({
+  name: `ticket-${interaction.user.username}`,
+  type: ChannelType.GuildText,
+  parent: TICKET_CATEGORY,
+  permissionOverwrites
+});
+      const user1 = interaction.user;
+const user2 = isValidId ? await interaction.guild.members.fetch(q4).catch(() => null) : null;
 
-  const isValidId = /^\d{17,19}$/.test(q4);
-  const targetMention = isValidId ? `<@${q4}>` : 'Unknown User';
-
-  const permissionOverwrites = [
-    { id: interaction.guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
-    { id: interaction.user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
-    { id: OWNER_ID, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
-    { id: MIDDLEMAN_ROLE, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] }
-  ];
-
-  if (isValidId) {
-    const member = interaction.guild.members.cache.get(q4);
-    if (member) {
-      permissionOverwrites.push({
-        id: q4,
-        allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages]
-      });
-    }
-  }
-
-  const ticket = await interaction.guild.channels.create({
-    name: `ticket-${interaction.user.username}`,
-    type: ChannelType.GuildText,
-    parent: TICKET_CATEGORY,
-    permissionOverwrites
-  });
-
-  const user1 = interaction.user;
-  const user2 = isValidId ? await interaction.guild.members.fetch(q4).catch(() => null) : null;
-
-  const tradeEmbed = new EmbedBuilder()
+const tradeEmbed = new EmbedBuilder()
   .setColor('#000000')
-  .setTitle('Trade Information')
+  .setDescription(`__**• TRADE •**__\n\n`)
   .addFields(
     {
-      name: '**User 1**',
-      value: `<@${interaction.user.id}>\n[Avatar](${interaction.user.displayAvatarURL({ extension: 'png', size: 64 })})`,
+      name: 'User 1',
+      value: `<@${user1.id}>`,
       inline: true
     },
     {
-      name: '**User 2**',
-      value: `<@${q4}>\n[Avatar](${user2.displayAvatarURL({ extension: 'png', size: 64 })})`,
+      name: 'User 2',
+      value: isValidId ? `<@${q4}>` : 'Unknown User',
       inline: true
     },
     {
-      name: `What <@${interaction.user.id}> is giving`,
+      name: '\u200B',
+      value: '\u200B',
+      inline: false
+    },
+    {
+      name: 'User 1 is giving:',
       value: `> ${q2}`,
       inline: false
     },
     {
-      name: `What <@${q4}> is giving`,
+      name: 'User 2 is giving:',
       value: `> ${q3}`,
       inline: false
     }
   )
-  .setFooter({ text: 'Click 🔐 to claim this ticket as middleman.' })
+  .setFooter({
+    text: `Ticket by ${user1.tag}`,
+    iconURL: user1.displayAvatarURL()
+  })
   .setTimestamp();
 
-const tradeMessage = await ticket.send({ embeds: [tradeEmbed] });
-  await tradeMessage.react('🔐').catch(console.error);
+        const tradeMessage = await ticket.send({
+  content: `<@${interaction.user.id}> <@${OWNER_ID}> ${isValidId ? targetMention : ''}`,
+  embeds: [
+    new EmbedBuilder()
+      .setColor('#000000')
+      .setTitle('• Trade •')
+      .setDescription(
+        `**User 1:** <@${interaction.user.id}>\n` +
+        `**User 2:** ${targetMention}\n\n` +
+        `**What <@${interaction.user.id}> is giving:**\n> ${q2}\n\n` +
+        `**What ${targetMention} is giving:**\n> ${q3}`
+      )
+      .setThumbnail(interaction.user.displayAvatarURL()) // Avatar of user1
+      .setImage(isValidId ? `https://cdn.discordapp.com/avatars/${q4}/${interaction.guild.members.cache.get(q4)?.user.avatar}.png?size=256` : null)
+      .setFooter({ text: `Ticket by ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
+      .setTimestamp()
+  ]
+});
 
-// Delay briefly to ensure cache is updated
-setTimeout(async () => {
-  const botReactions = tradeMessage.reactions.cache.get('🔐');
-  if (botReactions?.users.has(client.user.id)) {
-    await botReactions.users.remove(client.user.id).catch(() => {});
-  }
-}, 1500);
+await tradeMessage.react('🔐');
 
-const filter = (reaction, user) => reaction.emoji.name === '🔐' && !user.bot;
-const collector = tradeMessage.createReactionCollector({ filter, max: 1, time: 60000 });
+const collector = tradeMessage.createReactionCollector({
+  filter: (reaction, user) => reaction.emoji.name === '🔐' && !user.bot,
+  max: 1,
+  time: 60000
+});
 
 collector.on('collect', async (reaction, user) => {
-  await ticket.setName(user.username).catch(() => {});
+  const guildMember = await interaction.guild.members.fetch(user.id).catch(() => null);
+  if (!guildMember) return;
+
+  await ticket.setName(`mm-${guildMember.user.username}`).catch(console.error);
 
   const confirmEmbed = new EmbedBuilder()
     .setColor('#000000')
-    .setDescription(`**${user} is your middleman.**`);
-
-  await ticket.send({ content: `<@${interaction.user.id}> <@${q4}>`, embeds: [confirmEmbed] });
+    .setDescription(`**${guildMember} is your middleman.**`);
 
   const profileEmbed = new EmbedBuilder()
     .setColor('#000000')
     .setTitle('Middleman Profile')
-    .setThumbnail(user.displayAvatarURL({ size: 256 }))
+    .setThumbnail(guildMember.displayAvatarURL())
     .addFields(
-      { name: '**Mention**', value: `${user}`, inline: true },
-      { name: '**Username**', value: `\`${user.username}\``, inline: true },
-      { name: '**Discord ID**', value: `\`${user.id}\``, inline: true }
-    )
-    .setFooter({ text: 'Middleman Claimed', iconURL: user.displayAvatarURL() })
-    .setTimestamp();
+      { name: '**Username**', value: guildMember.user.username, inline: true },
+      { name: '**ID**', value: guildMember.user.id, inline: true }
+    );
 
+  await ticket.send({ embeds: [confirmEmbed] });
   await ticket.send({ embeds: [profileEmbed] });
 });
-  await interaction.editReply({ content: `✅ Ticket created: ${ticket}`, ephemeral: true });
-}
+// Store message ID in DB or memory if needed for matching later
+          
+
+        await interaction.reply({ content: `✅ Ticket created: ${ticket}`, ephemeral: true });
+      
+    }
 
   } catch (err) {
     console.error('❌ Interaction error:', err);
