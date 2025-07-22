@@ -2,7 +2,7 @@ const { createCanvas, loadImage, registerFont } = require('canvas');
 const { AttachmentBuilder } = require('discord.js');
 const path = require('path');
 
-registerFont('./fonts/Inter-Bold.ttf', { family: 'Inter' });
+registerFont('./Inter-Bold.ttf', { family: 'Inter' });
 
 async function generateTradeCanvas(user1, user2, side1, side2) {
   const canvas = createCanvas(900, 250);
