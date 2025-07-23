@@ -1073,24 +1073,5 @@ setInterval(() => {
 }, 5 * 60 * 1000); // Ping every 5 minutes
 
 client.on('error', console.error);
-
-process.on('unhandledRejection', (reason, p) => {
-  console.error('Unhandled Rejection:', reason);
-});
-
-(async () => {
-  try {
-    console.log("🚀 Attempting to log in to Discord...");
-
-    const timeout = setTimeout(() => {
-      console.warn("⚠️ Still waiting on client.login after 10 seconds...");
-    }, 10000);
-
-    await client.login(process.env.TOKEN);
-    clearTimeout(timeout);
-
-    console.log(`✅ Logged in as ${client.user?.tag || "Unknown bot"}`);
-  } catch (err) {
-    console.error("❌ Discord login failed:", err);
-  }
-})();
+process.on('unhandledRejection', (reason, p) => console.error('Unhandled Rejection:', reason));
+client.login(process.env.TOKEN);
