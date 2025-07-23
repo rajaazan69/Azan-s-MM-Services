@@ -1079,7 +1079,7 @@ setInterval(() => {
     .catch(err => {
       console.error(`❌ Self-ping failed:`, err);
     });
-}, 60 * 1000); // every 1 minute for now
+}, 1000 * 60 * 5); // Every 5 minutes
 client.on('error', console.error);
 process.on('unhandledRejection', (reason, p) => console.error('Unhandled Rejection:', reason));
 client.login(process.env.TOKEN);
