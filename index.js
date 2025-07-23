@@ -1081,7 +1081,14 @@ process.on('unhandledRejection', (reason, p) => {
 (async () => {
   try {
     console.log("🚀 Attempting to log in to Discord...");
+
+    const timeout = setTimeout(() => {
+      console.warn("⚠️ Still waiting on client.login after 10 seconds...");
+    }, 10000);
+
     await client.login(process.env.TOKEN);
+    clearTimeout(timeout);
+
     console.log(`✅ Logged in as ${client.user?.tag || "Unknown bot"}`);
   } catch (err) {
     console.error("❌ Discord login failed:", err);
