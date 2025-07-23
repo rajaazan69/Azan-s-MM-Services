@@ -1,3 +1,4 @@
+
 const {
   Client, GatewayIntentBits, Partials, ChannelType, PermissionsBitField, PermissionFlagsBits,
   ActionRowBuilder, ModalBuilder, TextInputBuilder, TextInputStyle,
@@ -762,27 +763,25 @@ const ticket = await interaction.guild.channels.create({
   parent: TICKET_CATEGORY,
   permissionOverwrites
 });
-      const embed1 = new EmbedBuilder()
+      const embed = new EmbedBuilder()
+  .setTitle('Middleman Request')
   .setColor('#2B2D31')
-  .setAuthor({ name: '•TRADE•' })
-  .addFields(
-    { name: 'User 1', value: `<@${interaction.user.id}>`, inline: true },
-    { name: 'User 2', value: `${targetMention}`, inline: true }
+  .setDescription(
+    `**User 1:** <@${interaction.user.id}>\n` +
+    `**User 2:** ${targetMention}\n\n` +
+    `**Trade Details**\n` +
+    `> ${q1}\n\n` +
+    `**User 1 is giving:**\n` +
+    `> ${q2}\n\n` +
+    `**User 2 is giving:**\n` +
+    `> ${q3}`
   )
   .setFooter({ text: `Ticket by ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
   .setTimestamp();
 
-const embed2 = new EmbedBuilder()
-  .setColor('#2B2D31')
-  .addFields(
-    { name: 'Trade Details', value: `> ${q1}` },
-    { name: 'User 1 is giving', value: `> ${q2}` },
-    { name: 'User 2 is giving', value: `> ${q3}` }
-  );
-
         await ticket.send({
-  content: `<@${interaction.user.id}> <@${OWNER_ID}> ${isValidId ? targetMention : ''}`,
-  embeds: [embed1, embed2]
+  content: `<@${interaction.user.id}> made a ticket with ${isValidId ? `<@${q4}>` : '`Unknown User`'}.\nPlease wait until <@${OWNER_ID}> assists you.`,
+  embeds: [embed]
 });
           
 
