@@ -1072,7 +1072,9 @@ app.get('/', (req, res) => {
 app.listen(3000, () => console.log('🌐 Express server is running'));
 
 setInterval(() => {
-  fetch(BASE_URL).catch(() => {});
+  fetch(BASE_URL)
+    .then(() => console.log(`✅ Self-pinged ${BASE_URL}`))
+    .catch(err => console.error(`❌ Self-ping failed:`, err));
 }, 5 * 60 * 1000); // Ping every 5 minutes
 
 client.on('error', console.error);
