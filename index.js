@@ -51,7 +51,6 @@ const TICKET_CATEGORY = '1373027564926406796';
 const TRANSCRIPT_CHANNEL = '1373058123547283568';
 const BASE_URL = process.env.BASE_URL;
 
-app.get('/', (req, res) => res.send('Bot is online.'));
 app.get('/transcripts/:filename', (req, res) => {
   const filePath = path.join(__dirname, 'transcripts', req.params.filename);
   if (fs.existsSync(filePath)) res.sendFile(filePath);
