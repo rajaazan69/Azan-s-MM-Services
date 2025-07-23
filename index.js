@@ -1067,7 +1067,7 @@ await interaction.editReply({ embeds: [embed] });
 });
 app.get('/', (req, res) => {
   console.log('👀 UptimeRobot pinged the server');
-  res.sendStatus(200);
+  res.status(200).send('✅ Server is alive');
 });
 app.listen(3000, () => console.log('🌐 Express server is running'));
 
