@@ -1072,11 +1072,15 @@ app.get('/', (req, res) => {
 app.listen(3000, () => console.log('🌐 Express server is running'));
 
 setInterval(() => {
-  fetch(BASE_URL)
-    .then(() => console.log(`✅ Self-pinged ${BASE_URL}`))
-    .catch(err => console.error(`❌ Self-ping failed:`, err));
-}, 5 * 60 * 1000); // Ping every 5 minutes
-
+  console.log('⏳ Self-ping running...');
+  fetch('https://azan-s-mm-services.onrender.com/')
+    .then(res => {
+      console.log(`✅ Self-ping success: ${res.status} at ${new Date().toISOString()}`);
+    })
+    .catch(err => {
+      console.error(`❌ Self-ping failed:`, err);
+    });
+}, 60 * 1000); // every 1 minute for now
 client.on('error', console.error);
 process.on('unhandledRejection', (reason, p) => console.error('Unhandled Rejection:', reason));
 client.login(process.env.TOKEN);
