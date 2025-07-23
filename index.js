@@ -1065,7 +1065,10 @@ await interaction.editReply({ embeds: [embed] });
   }
 }
 });
-app.get('/', (req, res) => res.sendStatus(200));
+app.get('/', (req, res) => {
+  console.log('👀 UptimeRobot pinged the server');
+  res.sendStatus(200);
+});
 app.listen(3000, () => console.log('🌐 Express server is running'));
 
 setInterval(() => {
