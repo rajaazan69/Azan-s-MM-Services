@@ -705,7 +705,8 @@ if (commandName === 'untimeout') {
       await interaction.showModal(modal).catch(console.error);
     }
     const generateTradeCanvas = require('./generateTradeCanvas');
-
+const user1 = interaction.user;
+const user2 = await interaction.guild.members.fetch(q4).catch(() => null);
 if (!user2) return interaction.reply({ content: 'Invalid user ID.', ephemeral: true });
 
 const image = await generateTradeCanvas(user1.user, user2.user, q2, q3);
@@ -767,9 +768,6 @@ const ticket = await interaction.guild.channels.create({
   parent: TICKET_CATEGORY,
   permissionOverwrites
 });
-      // Fetch both user objects
-const user1 = interaction.user;
-const user2 = await interaction.guild.members.fetch(q4).catch(() => null);
 
 // Generate canvas trade image
 const canvasImage = await generateTradeCanvas(user1, user2?.user || null, q2, q3); // ✅ correct 4 args
