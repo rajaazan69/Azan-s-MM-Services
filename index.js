@@ -775,8 +775,7 @@ const user1 = interaction.user;
 const user2 = await interaction.guild.members.fetch(q4).catch(() => null);
 
 // Generate canvas trade image
-const canvasImage = await generateTradeCanvas(user1, user2?.user || null, q2, q3, q1);
-
+const canvasImage = await generateTradeCanvas(user1, user2?.user || null, q2, q3); // ✅ correct 4 args
 // Send canvas image in ticket
 await ticket.send({
   content: `<@${user1.id}> made a ticket with ${user2 ? `<@${user2.id}>` : '`Unknown User`'}.\nPlease wait until <@${OWNER_ID}> assists you.`,
