@@ -3,7 +3,6 @@ const { AttachmentBuilder } = require('discord.js');
 const path = require('path');
 
 // Optional: Use a custom font (you can replace this with your own TTF)
-registerFont(path.join(__dirname, 'fonts', 'arial-bold.ttf'), { family: 'Arial' });
 
 module.exports = async function generateTradeCanvas(user1, user2, user1Side, user2Side, tradeTitle) {
   const width = 1000;
