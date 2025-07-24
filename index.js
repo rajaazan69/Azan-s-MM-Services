@@ -1,4 +1,3 @@
-
 const {
   Client, GatewayIntentBits, Partials, ChannelType, PermissionsBitField, PermissionFlagsBits,
   ActionRowBuilder, ModalBuilder, TextInputBuilder, TextInputStyle,
@@ -17,14 +16,12 @@ const stickyMap = new Map();
 const mongoUri = process.env.MONGO_URI;
 const mongoClient = new MongoClient(mongoUri);
 let tagsCollection;
-let transcriptsCollection;
-let ticketsCollection;
+let transcriptsCollection; // Add this next to tagsCollection
 
 mongoClient.connect().then(() => {
   const db = mongoClient.db('ticketbot');
   tagsCollection = db.collection('tags');
-  transcriptsCollection = db.collection('transcripts');
-  ticketsCollection = db.collection('tickets');
+  transcriptsCollection = db.collection('transcripts'); // ✅ added
   console.log('✅ Connected to MongoDB Atlas');
 }).catch(err => {
   console.error('❌ MongoDB connection error:', err);
@@ -190,7 +187,7 @@ new SlashCommandBuilder()
       .setDescription('Reason for removing timeout')
       .setRequired(false))
   .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers),
-  new SlashCommandBuilder()
+    new SlashCommandBuilder()
     .setName('servers')
     .setDescription('Get Roblox server join options')
     .addStringOption(option =>
@@ -201,12 +198,7 @@ new SlashCommandBuilder()
           { name: 'GAG', value: 'gag' },
           { name: 'MM2', value: 'mm2' },
           { name: 'SAB', value: 'sab' }
-        )
-    ),
-
-  new SlashCommandBuilder()
-    .setName('checkvouch')
-    .setDescription('Check if both users in the ticket have vouched')
+        ))
 ].map(command => command.toJSON());
     await rest.put(Routes.applicationCommands(client.user.id), { body: commands });
     console.log('✅ Slash commands registered');
@@ -901,62 +893,20 @@ async function handleTranscript(interaction, channel) {
 client.on('interactionCreate', async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
 
-  // 🔹 Sticky message command
   if (interaction.commandName === 'setsticky') {
     const channel = interaction.options.getChannel('channel');
     const message = interaction.options.getString('message');
 
+    // Send the sticky message now
     const sentMessage = await channel.send({ content: message });
 
+    // Save it in stickyMap
     stickyMap.set(channel.id, {
       message,
       messageId: sentMessage.id
     });
 
     await interaction.reply({ content: `✅ Sticky message set in ${channel}`, ephemeral: true });
-  }
-
-  // 🔹 Check vouch command
-  if (interaction.commandName === 'checkvouch') {
-    const parentId = interaction.channel?.parentId || interaction.channel?.parent?.id;
-    if (parentId !== TICKET_CATEGORY) {
-      return interaction.reply({ content: '❌ This command must be used in a ticket channel.', ephemeral: true });
-    }
-
-    const ticket = await ticketsCollection.findOne({ channelId: interaction.channel.id });
-    if (!ticket) {
-      return interaction.reply({ content: '❌ Ticket data not found.', ephemeral: true });
-    }
-
-    const vouchChannel = client.channels.cache.get(VOUCH_CHANNEL);
-    if (!vouchChannel) {
-      return interaction.reply({ content: '❌ Vouch channel not found.', ephemeral: true });
-    }
-
-    const messages = await vouchChannel.messages.fetch({ limit: 50 });
-    const keywords = ['vouch', '+rep', 'vouched', 'rep', 'trusted'];
-    const vouchedUsers = new Set();
-
-    for (const msg of messages.values()) {
-      if (msg.author.bot) continue;
-      const content = msg.content.toLowerCase();
-      if (keywords.some(k => content.includes(k))) {
-        vouchedUsers.add(msg.author.id);
-      }
-    }
-
-    const notVouched = ticket.participants.filter(id => !vouchedUsers.has(id));
-
-    if (notVouched.length > 0) {
-      return interaction.reply({
-        content: `❌ Not all users have vouched yet.\nMissing: ${notVouched.map(id => `<@${id}>`).join(', ')}`,
-        ephemeral: true
-      });
-    }
-
-    await interaction.reply('✅ Both users have vouched. Generating transcript and closing ticket...');
-    await handleTranscript(interaction, interaction.channel);
-    await interaction.channel.delete().catch(console.error);
   }
 });
 client.on('messageCreate', async (message) => {
@@ -1132,4 +1082,3 @@ setInterval(() => {
 }, 1000 * 60 * 5); // Every 5 minutes
 client.on('error', console.error);
 process.on('unhandledRejection', (reason, p) => console.error('Unhandled Rejection:', reason));
-client.login(process.env.TOKEN);
