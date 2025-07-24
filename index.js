@@ -12,6 +12,7 @@ const fs = require('fs');
 require('dotenv').config();
 const { MongoClient } = require('mongodb');
 const stickyMap = new Map();
+const generateTradeCanvas = require('./generateTradeCanvas');
 
 const mongoUri = process.env.MONGO_URI;
 const mongoClient = new MongoClient(mongoUri);
@@ -762,25 +763,17 @@ const ticket = await interaction.guild.channels.create({
   parent: TICKET_CATEGORY,
   permissionOverwrites
 });
-      const embed = new EmbedBuilder()
-  .setTitle('Middleman Request')
-  .setColor('#2B2D31')
-  .setDescription(
-    `**User 1:** <@${interaction.user.id}>\n` +
-    `**User 2:** ${targetMention}\n\n` +
-    `**Trade Details**\n` +
-    `> ${q1}\n\n` +
-    `**User 1 is giving:**\n` +
-    `> ${q2}\n\n` +
-    `**User 2 is giving:**\n` +
-    `> ${q3}`
-  )
-  .setFooter({ text: `Ticket by ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
-  .setTimestamp();
+      // Fetch both user objects
+const user1 = interaction.user;
+const user2 = await interaction.guild.members.fetch(q4).catch(() => null);
 
-        await ticket.send({
-  content: `<@${interaction.user.id}> made a ticket with ${isValidId ? `<@${q4}>` : '`Unknown User`'}.\nPlease wait until <@${OWNER_ID}> assists you.`,
-  embeds: [embed]
+// Generate canvas trade image
+const canvasImage = await generateTradeCanvas(user1, user2?.user || null, q2, q3, q1);
+
+// Send canvas image in ticket
+await ticket.send({
+  content: `<@${user1.id}> made a ticket with ${user2 ? `<@${user2.id}>` : '`Unknown User`'}.\nPlease wait until <@${OWNER_ID}> assists you.`,
+  files: [canvasImage]
 });
           
 
