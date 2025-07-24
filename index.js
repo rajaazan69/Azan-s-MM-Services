@@ -17,12 +17,14 @@ const stickyMap = new Map();
 const mongoUri = process.env.MONGO_URI;
 const mongoClient = new MongoClient(mongoUri);
 let tagsCollection;
-let transcriptsCollection; // Add this next to tagsCollection
+let transcriptsCollection;
+let ticketsCollection;
 
 mongoClient.connect().then(() => {
   const db = mongoClient.db('ticketbot');
   tagsCollection = db.collection('tags');
-  transcriptsCollection = db.collection('transcripts'); // ✅ added
+  transcriptsCollection = db.collection('transcripts');
+  ticketsCollection = db.collection('tickets');
   console.log('✅ Connected to MongoDB Atlas');
 }).catch(err => {
   console.error('❌ MongoDB connection error:', err);
