@@ -744,7 +744,8 @@ const targetMention = isValidId ? `<@${q4}>` : 'Unknown User';
     return interaction.reply({ content: '❌ Invalid user ID provided.', ephemeral: true });
   }
 
-  const canvasImage = await generateTradeCanvas(user1, user2, q2, q3);
+  const generateTradeCanvas = require('./generateTradeCanvas');
+  const image = await generateTradeCanvas(user1, user2, q2, q3);
 
 // Prepare permission overwrites array
 const permissionOverwrites = [
