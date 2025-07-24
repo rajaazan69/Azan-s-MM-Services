@@ -2,7 +2,7 @@ const { handleTranscript } = require('../utils/handleTranscript'); // or whereve
 const { ChannelType, AttachmentBuilder } = require('discord.js');
 
 const vouchKeywords = ['+vouch', 'vouch', 'rep', '+rep', 'vouching'];
-const VOUCH_CHANNEL_ID = 'YOUR_VOUCH_CHANNEL_ID_HERE'; // 🟡 <-- Replace with your real channel ID
+const VOUCH_CHANNEL_ID = '1373027974827212923'; // 🟡 <-- Replace with your real channel ID
 
 const recentTrades = [];
 
