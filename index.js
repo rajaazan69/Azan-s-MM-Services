@@ -918,32 +918,31 @@ client.on('interactionCreate', async (interaction) => {
 client.on('messageCreate', async (message) => {
   if (message.author.bot || message.channel.type !== ChannelType.GuildText) return;
 
+  // Sticky message logic
   const sticky = stickyMap.get(message.channel.id);
-  if (!sticky) return;
+  if (sticky) {
+    try {
+      const oldMsg = await message.channel.messages.fetch(sticky.messageId).catch(() => {});
+      if (oldMsg) await oldMsg.delete().catch(() => {});
 
-  try {
-    const oldMsg = await message.channel.messages.fetch(sticky.messageId).catch(() => {});
-    if (oldMsg) await oldMsg.delete().catch(() => {});
+      const newMsg = await message.channel.send({ content: sticky.message });
 
-    const newMsg = await message.channel.send({ content: sticky.message });
-
-    stickyMap.set(message.channel.id, {
-      message: sticky.message,
-      messageId: newMsg.id
-    });
-  } catch (err) {
-    console.error('Sticky message error:', err);
+      stickyMap.set(message.channel.id, {
+        message: sticky.message,
+        messageId: newMsg.id
+      });
+    } catch (err) {
+      console.error('Sticky message error:', err);
+    }
   }
-}
-// ✅ Place this right below your sticky message logic
- if (message.channel.id === VOUCH_CHANNEL) {
+
+  // ✅ Vouch logic
+  if (message.channel.id === VOUCH_CHANNEL) {
     const keywords = ['vouch', '+rep', 'vouched', 'rep', 'trusted'];
     const content = message.content.toLowerCase();
-
     const matched = keywords.some(keyword => content.includes(keyword));
     if (!matched) return;
 
-    // Check if user was part of any ticket
     const recentTicket = await ticketsCollection.findOne({
       channelId: { $exists: true },
       participants: { $elemMatch: { $eq: message.author.id } }
@@ -951,12 +950,30 @@ client.on('messageCreate', async (message) => {
 
     if (!recentTicket) return;
 
-    // ✅ Send vouch confirmation into the ticket channel
     const ticketChannel = message.client.channels.cache.get(recentTicket.channelId);
-    if (ticketChannel) {
-      await ticketChannel.send({
-        content: `✅ **${message.author} has vouched!**`
-      });
+    if (!ticketChannel) return;
+
+    // Send the vouch notice
+    await ticketChannel.send({
+      content: `✅ **${message.author} has vouched!**`
+    });
+
+    // Add to vouched list in DB
+    const updated = await ticketsCollection.findOneAndUpdate(
+      { channelId: recentTicket.channelId },
+      { $addToSet: { vouched: message.author.id } },
+      { returnDocument: 'after' }
+    );
+
+    // Check if both participants have vouched
+    const allVouched = recentTicket.participants.every(id =>
+      updated.value.vouched?.includes(id)
+    );
+
+    if (allVouched) {
+      await ticketChannel.send('✅ Both users have vouched. Generating transcript and closing ticket...');
+      await handleTranscript({ reply: () => {}, editReply: () => {}, deferred: true }, ticketChannel);
+      await ticketChannel.delete().catch(console.error);
     }
   }
 });
