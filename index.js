@@ -722,6 +722,7 @@ if (interaction.isButton() && interaction.customId === 'transcript') {
     }
 
     if (interaction.isModalSubmit() && interaction.customId === 'ticketModal') {
+      await interaction.deferReply({ ephemeral: true });
       // Prevent multiple tickets per user
 const existing = interaction.guild.channels.cache.find(c =>
   c.parentId === TICKET_CATEGORY &&
@@ -774,7 +775,7 @@ const ticket = await interaction.guild.channels.create({
 });
 
 // Generate canvas trade image
-const canvasImage = await generateTradeCanvas(user1, user2?.user || null, q2, q3); // ✅ correct 4 args
+const canvasImage = await generateTradeCanvas(user1, user2, q2, q3);
 // Send canvas image in ticket
 await ticket.send({
   content: `<@${user1.id}> made a ticket with ${user2 ? `<@${user2.id}>` : '`Unknown User`'}.\nPlease wait until <@${OWNER_ID}> assists you.`,
@@ -789,7 +790,7 @@ await ticket.send({
 });
           
 
-        await interaction.reply({ content: `✅ Ticket created: ${ticket}`, ephemeral: true });
+        await interaction.editReply({ content: `✅ Ticket created: ${ticket}` });
       
     }
 
