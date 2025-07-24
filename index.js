@@ -706,9 +706,6 @@ if (commandName === 'untimeout') {
     }
     const generateTradeCanvas = require('./generateTradeCanvas');
 
-const user1 = interaction.user;
-const user2 = await interaction.guild.members.fetch(q4).catch(() => null);
-
 if (!user2) return interaction.reply({ content: 'Invalid user ID.', ephemeral: true });
 
 const image = await generateTradeCanvas(user1.user, user2.user, q2, q3);
