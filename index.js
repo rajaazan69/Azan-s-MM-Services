@@ -746,8 +746,8 @@ const targetMention = isValidId ? `<@${q4}>` : 'Unknown User';
   }
 
   const generateTradeCanvas = require('./generateTradeCanvas');
-  const image = await generateTradeCanvas(user1, user2, q2, q3);
-
+const imageBuffer = await generateTradeCanvas(user1.user, user2.user, q2, q3);
+const attachment = new AttachmentBuilder(imageBuffer, { name: 'trade.png' });
 // Prepare permission overwrites array
 const permissionOverwrites = [
   { id: interaction.guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
@@ -779,15 +779,13 @@ const canvasImage = await generateTradeCanvas(user1, user2, q2, q3);
 // Send canvas image in ticket
 await ticket.send({
   content: `<@${user1.id}> made a ticket with ${user2 ? `<@${user2.id}>` : '`Unknown User`'}.\nPlease wait until <@${OWNER_ID}> assists you.`,
-  embeds: [
-    new EmbedBuilder()
-      .setColor('#000000')
-      .setTitle('• Trade Details •')
-      .setDescription(`Here is the trade request between <@${user1.id}> and <@${user2.id}>.`)
-      .setImage('attachment://trade.png')
-  ],
-  files: [canvasImage]
-});
+ embeds: [
+  new EmbedBuilder()
+    .setColor('#000000')
+    .setTitle('• TRADE •')
+    .setImage('attachment://trade.png')
+],
+files: [attachment]
           
 
         await interaction.editReply({ content: `✅ Ticket created: ${ticket}` });
