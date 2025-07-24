@@ -787,7 +787,7 @@ await ticket.send({
       .setDescription(`Here is the trade request between <@${user1.id}> and <@${user2.id}>.`)
       .setImage('attachment://trade.png')
   ],
-  files: [image]
+  files: [canvasImage]
 });
           
 
