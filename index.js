@@ -1132,4 +1132,3 @@ setInterval(() => {
 client.on('error', console.error);
 process.on('unhandledRejection', (reason, p) => console.error('Unhandled Rejection:', reason));
 client.login(process.env.TOKEN);
-require('./events/messageVouchHandler')(client);
