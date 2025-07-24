@@ -12,7 +12,6 @@ const fs = require('fs');
 require('dotenv').config();
 const { MongoClient } = require('mongodb');
 const stickyMap = new Map();
-const generateTradeCanvas = require('./generateTradeCanvas');
 
 const mongoUri = process.env.MONGO_URI;
 const mongoClient = new MongoClient(mongoUri);
@@ -705,6 +704,14 @@ if (commandName === 'untimeout') {
         );
       await interaction.showModal(modal).catch(console.error);
     }
+    const generateTradeCanvas = require('./generateTradeCanvas');
+
+const user1 = interaction.user;
+const user2 = await interaction.guild.members.fetch(q4).catch(() => null);
+
+if (!user2) return interaction.reply({ content: 'Invalid user ID.', ephemeral: true });
+
+const image = await generateTradeCanvas(user1.user, user2.user, q2, q3);
 
     // ✅ BUTTON: Transcript Fix
 if (interaction.isButton() && interaction.customId === 'transcript') {
@@ -773,7 +780,14 @@ const canvasImage = await generateTradeCanvas(user1, user2?.user || null, q2, q3
 // Send canvas image in ticket
 await ticket.send({
   content: `<@${user1.id}> made a ticket with ${user2 ? `<@${user2.id}>` : '`Unknown User`'}.\nPlease wait until <@${OWNER_ID}> assists you.`,
-  files: [canvasImage]
+  embeds: [
+    new EmbedBuilder()
+      .setColor('#000000')
+      .setTitle('• Trade Details •')
+      .setDescription(`Here is the trade request between <@${user1.id}> and <@${user2.id}>.`)
+      .setImage('attachment://trade.png')
+  ],
+  files: [image]
 });
           
 
