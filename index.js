@@ -13,6 +13,7 @@ const fs = require('fs');
 require('dotenv').config();
 const { MongoClient } = require('mongodb');
 const stickyMap = new Map();
+const recentTrades = new Map();
 
 const mongoUri = process.env.MONGO_URI;
 const mongoClient = new MongoClient(mongoUri);
@@ -51,6 +52,7 @@ const PANEL_CHANNEL = '1373048211538841702';
 const TICKET_CATEGORY = '1373027564926406796';
 const TRANSCRIPT_CHANNEL = '1373058123547283568';
 const BASE_URL = process.env.BASE_URL;
+const VOUCH_CHANNEL = '1373027974827212923';
 
 app.get('/transcripts/:filename', (req, res) => {
   const filePath = path.join(__dirname, 'transcripts', req.params.filename);
@@ -722,6 +724,7 @@ if (interaction.isButton() && interaction.customId === 'transcript') {
     }
 
     if (interaction.isModalSubmit() && interaction.customId === 'ticketModal') {
+      
       // Prevent multiple tickets per user
 const existing = interaction.guild.channels.cache.find(c =>
   c.parentId === TICKET_CATEGORY &&
@@ -763,6 +766,8 @@ const ticket = await interaction.guild.channels.create({
   parent: TICKET_CATEGORY,
   permissionOverwrites
 });
+const { addRecentTrade } = require('./utils/recentTrades');
+addRecentTrade(interaction.user.id, q4, ticket.id);
       const embed = new EmbedBuilder()
   .setTitle('Middleman Request')
   .setColor('#2B2D31')
@@ -929,9 +934,35 @@ client.on('messageCreate', async (message) => {
   } catch (err) {
     console.error('Sticky message error:', err);
   }
+}
+// ✅ Place this right below your sticky message logic
+ if (message.channel.id === VOUCH_CHANNEL) {
+    const keywords = ['vouch', '+rep', 'vouched', 'rep', 'trusted'];
+    const content = message.content.toLowerCase();
+
+    const matched = keywords.some(keyword => content.includes(keyword));
+    if (!matched) return;
+
+    // Check if user was part of any ticket
+    const recentTicket = await ticketsCollection.findOne({
+      channelId: { $exists: true },
+      participants: { $elemMatch: { $eq: message.author.id } }
+    });
+
+    if (!recentTicket) return;
+
+    // ✅ Send vouch confirmation into the ticket channel
+    const ticketChannel = message.client.channels.cache.get(recentTicket.channelId);
+    if (ticketChannel) {
+      await ticketChannel.send({
+        content: `✅ **${message.author} has vouched!**`
+      });
+    }
+  }
 });
 client.on('interactionCreate', async (interaction) => {
   const parentId = interaction.channel?.parentId || interaction.channel?.parent?.id;
+  
 
   // 📄 Transcript slash command
   if (interaction.isChatInputCommand() && interaction.commandName === 'transcript') {
@@ -1084,3 +1115,4 @@ setInterval(() => {
 client.on('error', console.error);
 process.on('unhandledRejection', (reason, p) => console.error('Unhandled Rejection:', reason));
 client.login(process.env.TOKEN);
+require('./events/messageVouchHandler')(client);
