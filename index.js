@@ -188,7 +188,6 @@ new SlashCommandBuilder()
       .setDescription('Reason for removing timeout')
       .setRequired(false))
   .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers),
-    const commands = [
   new SlashCommandBuilder()
     .setName('servers')
     .setDescription('Get Roblox server join options')
