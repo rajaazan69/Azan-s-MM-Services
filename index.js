@@ -916,12 +916,12 @@ client.on('interactionCreate', async (interaction) => {
   }
 });
 client.on('messageCreate', async (message) => {
-  if (message.author.bot || message.channel.type !== ChannelType.GuildText) return;
+  try {
+    if (message.author.bot || message.channel.type !== ChannelType.GuildText) return;
 
-  // Sticky message logic
-  const sticky = stickyMap.get(message.channel.id);
-  if (sticky) {
-    try {
+    // Sticky message logic
+    const sticky = stickyMap.get(message.channel.id);
+    if (sticky) {
       const oldMsg = await message.channel.messages.fetch(sticky.messageId).catch(() => {});
       if (oldMsg) await oldMsg.delete().catch(() => {});
 
@@ -931,50 +931,56 @@ client.on('messageCreate', async (message) => {
         message: sticky.message,
         messageId: newMsg.id
       });
-    } catch (err) {
-      console.error('Sticky message error:', err);
     }
-  }
 
-  // ✅ Vouch logic
-  if (message.channel.id === VOUCH_CHANNEL) {
-    const keywords = ['vouch', '+rep', 'vouched', 'rep', 'trusted'];
-    const content = message.content.toLowerCase();
-    const matched = keywords.some(keyword => content.includes(keyword));
-    if (!matched) return;
+    // ✅ Vouch detection logic
+    if (message.channel.id === VOUCH_CHANNEL) {
+      const keywords = ['vouch', '+rep', 'vouched', 'rep', 'trusted'];
+      const content = message.content.toLowerCase();
+      const matched = keywords.some(keyword => content.includes(keyword));
+      if (!matched) return;
 
-    const recentTicket = await ticketsCollection.findOne({
-      channelId: { $exists: true },
-      participants: { $elemMatch: { $eq: message.author.id } }
-    });
+      console.log(`✅ Vouch detected from ${message.author.tag}`);
 
-    if (!recentTicket) return;
+      const recentTicket = await ticketsCollection.findOne({
+        channelId: { $exists: true },
+        participants: { $elemMatch: { $eq: message.author.id } }
+      });
 
-    const ticketChannel = message.client.channels.cache.get(recentTicket.channelId);
-    if (!ticketChannel) return;
+      if (!recentTicket) {
+        console.log('❌ No matching ticket found for this user.');
+        return;
+      }
 
-    // Send the vouch notice
-    await ticketChannel.send({
-      content: `✅ **${message.author} has vouched!**`
-    });
+      const ticketChannel = message.client.channels.cache.get(recentTicket.channelId);
+      if (!ticketChannel) return;
 
-    // Add to vouched list in DB
-    const updated = await ticketsCollection.findOneAndUpdate(
-      { channelId: recentTicket.channelId },
-      { $addToSet: { vouched: message.author.id } },
-      { returnDocument: 'after' }
-    );
+      await ticketChannel.send({
+        content: `✅ **${message.author} has vouched!**`
+      });
 
-    // Check if both participants have vouched
-    const allVouched = recentTicket.participants.every(id =>
-      updated.value.vouched?.includes(id)
-    );
+      const updated = await ticketsCollection.findOneAndUpdate(
+        { channelId: recentTicket.channelId },
+        { $addToSet: { vouched: message.author.id } },
+        { returnDocument: 'after' }
+      );
 
-    if (allVouched) {
-      await ticketChannel.send('✅ Both users have vouched. Generating transcript and closing ticket...');
-      await handleTranscript({ reply: () => {}, editReply: () => {}, deferred: true }, ticketChannel);
-      await ticketChannel.delete().catch(console.error);
+      const allVouched = recentTicket.participants.every(id =>
+        updated.value.vouched?.includes(id)
+      );
+
+      if (allVouched) {
+        await ticketChannel.send('✅ Both users have vouched. Generating transcript and closing ticket...');
+        await handleTranscript(
+          { reply: () => {}, editReply: () => {}, deferred: true },
+          ticketChannel
+        );
+        await ticketChannel.delete().catch(console.error);
+      }
     }
+
+  } catch (err) {
+    console.error('❌ Error in messageCreate handler:', err);
   }
 });
 client.on('interactionCreate', async (interaction) => {
