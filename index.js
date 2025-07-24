@@ -1,4 +1,3 @@
-
 const {
   Client, GatewayIntentBits, Partials, ChannelType, PermissionsBitField, PermissionFlagsBits,
   ActionRowBuilder, ModalBuilder, TextInputBuilder, TextInputStyle,
@@ -13,7 +12,6 @@ const fs = require('fs');
 require('dotenv').config();
 const { MongoClient } = require('mongodb');
 const stickyMap = new Map();
-const recentTrades = new Map();
 
 const mongoUri = process.env.MONGO_URI;
 const mongoClient = new MongoClient(mongoUri);
@@ -52,7 +50,6 @@ const PANEL_CHANNEL = '1373048211538841702';
 const TICKET_CATEGORY = '1373027564926406796';
 const TRANSCRIPT_CHANNEL = '1373058123547283568';
 const BASE_URL = process.env.BASE_URL;
-const VOUCH_CHANNEL = '1373027974827212923';
 
 app.get('/transcripts/:filename', (req, res) => {
   const filePath = path.join(__dirname, 'transcripts', req.params.filename);
@@ -724,7 +721,6 @@ if (interaction.isButton() && interaction.customId === 'transcript') {
     }
 
     if (interaction.isModalSubmit() && interaction.customId === 'ticketModal') {
-      
       // Prevent multiple tickets per user
 const existing = interaction.guild.channels.cache.find(c =>
   c.parentId === TICKET_CATEGORY &&
@@ -766,8 +762,6 @@ const ticket = await interaction.guild.channels.create({
   parent: TICKET_CATEGORY,
   permissionOverwrites
 });
-const { addRecentTrade } = require('./utils/recentTrades');
-addRecentTrade(interaction.user.id, q4, ticket.id);
       const embed = new EmbedBuilder()
   .setTitle('Middleman Request')
   .setColor('#2B2D31')
@@ -785,7 +779,7 @@ addRecentTrade(interaction.user.id, q4, ticket.id);
   .setTimestamp();
 
         await ticket.send({
-  content: `<@${interaction.user.id}> made a ticket with ${isValidId ? `<@${q4}>` : '`Unknown User`'}.\nPlease wait until <@${OWNER_ID}> assists you.`,
+  content: `<@${interaction.user.id}> <@${OWNER_ID}> ${isValidId ? targetMention : ''}`,
   embeds: [embed]
 });
           
@@ -916,76 +910,27 @@ client.on('interactionCreate', async (interaction) => {
   }
 });
 client.on('messageCreate', async (message) => {
+  if (message.author.bot || message.channel.type !== ChannelType.GuildText) return;
+
+  const sticky = stickyMap.get(message.channel.id);
+  if (!sticky) return;
+
   try {
-    if (message.author.bot || message.channel.type !== ChannelType.GuildText) return;
+    const oldMsg = await message.channel.messages.fetch(sticky.messageId).catch(() => {});
+    if (oldMsg) await oldMsg.delete().catch(() => {});
 
-    // Sticky message logic
-    const sticky = stickyMap.get(message.channel.id);
-    if (sticky) {
-      const oldMsg = await message.channel.messages.fetch(sticky.messageId).catch(() => {});
-      if (oldMsg) await oldMsg.delete().catch(() => {});
+    const newMsg = await message.channel.send({ content: sticky.message });
 
-      const newMsg = await message.channel.send({ content: sticky.message });
-
-      stickyMap.set(message.channel.id, {
-        message: sticky.message,
-        messageId: newMsg.id
-      });
-    }
-
-    // ✅ Vouch detection logic
-    if (message.channel.id === VOUCH_CHANNEL) {
-      const keywords = ['vouch', '+rep', 'vouched', 'rep', 'trusted'];
-      const content = message.content.toLowerCase();
-      const matched = keywords.some(keyword => content.includes(keyword));
-      if (!matched) return;
-
-      console.log(`✅ Vouch detected from ${message.author.tag}`);
-
-      const recentTicket = await ticketsCollection.findOne({
-        channelId: { $exists: true },
-        participants: { $elemMatch: { $eq: message.author.id } }
-      });
-
-      if (!recentTicket) {
-        console.log('❌ No matching ticket found for this user.');
-        return;
-      }
-
-      const ticketChannel = message.client.channels.cache.get(recentTicket.channelId);
-      if (!ticketChannel) return;
-
-      await ticketChannel.send({
-        content: `✅ **${message.author} has vouched!**`
-      });
-
-      const updated = await ticketsCollection.findOneAndUpdate(
-        { channelId: recentTicket.channelId },
-        { $addToSet: { vouched: message.author.id } },
-        { returnDocument: 'after' }
-      );
-
-      const allVouched = recentTicket.participants.every(id =>
-        updated.value.vouched?.includes(id)
-      );
-
-      if (allVouched) {
-        await ticketChannel.send('✅ Both users have vouched. Generating transcript and closing ticket...');
-        await handleTranscript(
-          { reply: () => {}, editReply: () => {}, deferred: true },
-          ticketChannel
-        );
-        await ticketChannel.delete().catch(console.error);
-      }
-    }
-
+    stickyMap.set(message.channel.id, {
+      message: sticky.message,
+      messageId: newMsg.id
+    });
   } catch (err) {
-    console.error('❌ Error in messageCreate handler:', err);
+    console.error('Sticky message error:', err);
   }
 });
 client.on('interactionCreate', async (interaction) => {
   const parentId = interaction.channel?.parentId || interaction.channel?.parent?.id;
-  
 
   // 📄 Transcript slash command
   if (interaction.isChatInputCommand() && interaction.commandName === 'transcript') {
