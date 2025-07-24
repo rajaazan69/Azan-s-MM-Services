@@ -704,12 +704,7 @@ if (commandName === 'untimeout') {
         );
       await interaction.showModal(modal).catch(console.error);
     }
-    const generateTradeCanvas = require('./generateTradeCanvas');
-const user1 = interaction.user;
-const user2 = await interaction.guild.members.fetch(q4).catch(() => null);
-if (!user2) return interaction.reply({ content: 'Invalid user ID.', ephemeral: true });
-
-const image = await generateTradeCanvas(user1.user, user2.user, q2, q3);
+    
 
     // ✅ BUTTON: Transcript Fix
 if (interaction.isButton() && interaction.customId === 'transcript') {
@@ -742,6 +737,14 @@ if (existing) {
       const q4 = interaction.fields.getTextInputValue('q4');
 const isValidId = /^\d{17,19}$/.test(q4);
 const targetMention = isValidId ? `<@${q4}>` : 'Unknown User';
+ const user1 = interaction.user;
+  const user2 = await interaction.client.users.fetch(q4).catch(() => null);
+
+  if (!user2) {
+    return interaction.reply({ content: '❌ Invalid user ID provided.', ephemeral: true });
+  }
+
+  const canvasImage = await generateTradeCanvas(user1, user2, q2, q3);
 
 // Prepare permission overwrites array
 const permissionOverwrites = [
