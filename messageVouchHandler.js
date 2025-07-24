@@ -1,5 +1,5 @@
 const vouchKeywords = ['+vouch', 'vouch', 'rep', '+rep', 'vouching'];
-const VOUCH_CHANNEL_ID = 'YOUR_VOUCH_CHANNEL_ID_HERE';
+const VOUCH_CHANNEL_ID = '1373027974827212923';
 
 const { handleTranscript } = require('../utils/handleTranscript'); // or wherever you defined it
 
