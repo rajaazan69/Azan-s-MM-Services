@@ -1082,4 +1082,4 @@ setInterval(() => {
 }, 1000 * 60 * 5); // Every 5 minutes
 client.on('error', console.error);
 process.on('unhandledRejection', (reason, p) => console.error('Unhandled Rejection:', reason));
-client.login(process.env.TOKEN
+client.login(process.env.TOKEN);
