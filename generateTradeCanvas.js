@@ -28,9 +28,8 @@ module.exports = async (user1, user2, side1, side2) => {
   ctx.stroke();
 
   // Fetch avatars
-  const avatar1 = await loadImage(user1.displayAvatarURL({ format: 'png', size: 128 }));
-  const avatar2 = await loadImage(user2.displayAvatarURL({ format: 'png', size: 128 }));
-
+  const avatar1 = await loadImage(user1.displayAvatarURL({ format: 'png', size: 128, dynamic: false }));
+const avatar2 = await loadImage(user2.displayAvatarURL({ format: 'png', size: 128, dynamic: false }));
   // Left user
   ctx.drawImage(avatar1, 50, 100, 128, 128);
   ctx.fillStyle = '#ffffff';
