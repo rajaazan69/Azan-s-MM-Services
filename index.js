@@ -747,7 +747,7 @@ const targetMention = isValidId ? `<@${q4}>` : 'Unknown User';
   }
 
   const generateTradeCanvas = require('./generateTradeCanvas');
-const imageBuffer = await generateTradeCanvas(user1.user, user2.user, q2, q3);
+const imageBuffer = await generateTradeCanvas(user1, user2, q2, q3);
 const attachment = new AttachmentBuilder(imageBuffer, { name: 'trade.png' });
 // Prepare permission overwrites array
 const permissionOverwrites = [
