@@ -780,12 +780,12 @@ const canvasImage = await generateTradeCanvas(user1, user2, q2, q3);
 await ticket.send({
   content: `<@${user1.id}> made a ticket with ${user2 ? `<@${user2.id}>` : '`Unknown User`'}.\nPlease wait until <@${OWNER_ID}> assists you.`,
  embeds: [
-  new EmbedBuilder()
-    .setColor('#000000')
-    .setTitle('• TRADE •')
-    .setImage('attachment://trade.png')
-],
-files: [attachment]
+    new EmbedBuilder()
+      .setColor('#000000')
+      .setTitle('• TRADE •')
+      .setImage('attachment://trade.png')
+  ],
+  files: [attachment]
 });
           
 
