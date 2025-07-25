@@ -722,7 +722,7 @@ if (interaction.isButton() && interaction.customId === 'transcript') {
     }
 
     if (interaction.isModalSubmit() && interaction.customId === 'ticketModal') {
-      await interaction.deferReply({ ephemeral: true });
+      await interaction.deferReply({ ephemeral: false }); // optional
       // Prevent multiple tickets per user
 const existing = interaction.guild.channels.cache.find(c =>
   c.parentId === TICKET_CATEGORY &&
@@ -730,8 +730,10 @@ const existing = interaction.guild.channels.cache.find(c =>
 );
 
 if (existing) {
-  return interaction.reply({ content: `❌ You already have an open ticket: ${existing}`, ephemeral: true });
+  return await interaction.reply({ content: `❌ You already have an open ticket: ${existing}`, ephemeral: true });
 }
+
+await interaction.deferReply({ ephemeral: false });
       const q1 = interaction.fields.getTextInputValue('q1');
       const q2 = interaction.fields.getTextInputValue('q2');
       const q3 = interaction.fields.getTextInputValue('q3');
