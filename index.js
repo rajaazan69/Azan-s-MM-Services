@@ -722,82 +722,105 @@ if (interaction.isButton() && interaction.customId === 'transcript') {
     }
 
     if (interaction.isModalSubmit() && interaction.customId === 'ticketModal') {
-      await interaction.deferReply({ ephemeral: false }); // optional
-      // Prevent multiple tickets per user
-const existing = interaction.guild.channels.cache.find(c =>
-  c.parentId === TICKET_CATEGORY &&
-  c.permissionOverwrites.cache.has(interaction.user.id)
-);
+  try {
+    // Check if user already has a ticket open
+    const existing = interaction.guild.channels.cache.find(c =>
+      c.parentId === TICKET_CATEGORY &&
+      c.permissionOverwrites.cache.has(interaction.user.id)
+    );
 
-if (existing) {
-  return await interaction.reply({ content: `❌ You already have an open ticket: ${existing}`, ephemeral: true });
-}
-
-await interaction.deferReply({ ephemeral: false });
-      const q1 = interaction.fields.getTextInputValue('q1');
-      const q2 = interaction.fields.getTextInputValue('q2');
-      const q3 = interaction.fields.getTextInputValue('q3');
-      const q4 = interaction.fields.getTextInputValue('q4');
-const isValidId = /^\d{17,19}$/.test(q4);
-const targetMention = isValidId ? `<@${q4}>` : 'Unknown User';
- const user1 = interaction.user;
-  const user2 = await interaction.client.users.fetch(q4).catch(() => null);
-
-  if (!user2) {
-    return interaction.reply({ content: '❌ Invalid user ID provided.', ephemeral: true });
-  }
-
-  const generateTradeCanvas = require('./generateTradeCanvas');
-const imageBuffer = await generateTradeCanvas(user1.user, user2.user, q2, q3);
-const attachment = new AttachmentBuilder(imageBuffer, { name: 'trade.png' });
-// Prepare permission overwrites array
-const permissionOverwrites = [
-  { id: interaction.guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
-  { id: interaction.user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
-  { id: OWNER_ID, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
-  { id: MIDDLEMAN_ROLE, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] }
-];
-
-// Add the target user to permission overwrites if ID is valid and member exists
-if (isValidId) {
-  const member = interaction.guild.members.cache.get(q4);
-  if (member) {
-    permissionOverwrites.push({
-      id: q4,
-      allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages]
-    });
-  }
-}
-
-const ticket = await interaction.guild.channels.create({
-  name: `ticket-${interaction.user.username}`,
-  type: ChannelType.GuildText,
-  parent: TICKET_CATEGORY,
-  permissionOverwrites
-});
-
-// Generate canvas trade image
-// Send canvas image in ticket
-await ticket.send({
-  content: `<@${user1.id}> made a ticket with ${user2 ? `<@${user2.id}>` : '`Unknown User`'}.\nPlease wait until <@${OWNER_ID}> assists you.`,
- embeds: [
-    new EmbedBuilder()
-      .setColor('#000000')
-      .setTitle('• TRADE •')
-      .setImage('attachment://trade.png')
-  ],
-  files: [attachment]
-});
-          
-
-        await interaction.editReply({ content: `✅ Ticket created: ${ticket}` });
-      
+    if (existing) {
+      return await interaction.reply({
+        content: `❌ You already have an open ticket: ${existing}`,
+        ephemeral: true
+      });
     }
+
+    // Extract modal inputs
+    const q1 = interaction.fields.getTextInputValue('q1'); // trade description (not used here but ok)
+    const q2 = interaction.fields.getTextInputValue('q2'); // your side
+    const q3 = interaction.fields.getTextInputValue('q3'); // their side
+    const q4 = interaction.fields.getTextInputValue('q4'); // their Discord ID
+
+    const isValidId = /^\d{17,19}$/.test(q4);
+    const targetMention = isValidId ? `<@${q4}>` : 'Unknown User';
+
+    const user1 = interaction.user;
+    const user2 = await interaction.client.users.fetch(q4).catch(() => null);
+
+    if (!user2) {
+      return await interaction.reply({
+        content: '❌ Invalid user ID provided.',
+        ephemeral: true
+      });
+    }
+
+    // DEFER AFTER all validations pass
+    await interaction.deferReply({ ephemeral: false });
+
+    // Generate trade canvas image
+    const generateTradeCanvas = require('./generateTradeCanvas');
+    const imageBuffer = await generateTradeCanvas(user1, user2, q2, q3);
+    const attachment = new AttachmentBuilder(imageBuffer, { name: 'trade.png' });
+
+    // Setup permissions
+    const permissionOverwrites = [
+      { id: interaction.guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
+      { id: interaction.user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
+      { id: OWNER_ID, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
+      { id: MIDDLEMAN_ROLE, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] }
+    ];
+
+    if (isValidId) {
+      const member = interaction.guild.members.cache.get(q4);
+      if (member) {
+        permissionOverwrites.push({
+          id: q4,
+          allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages]
+        });
+      }
+    }
+
+    // Create ticket channel
+    const ticket = await interaction.guild.channels.create({
+      name: `ticket-${interaction.user.username}`,
+      type: ChannelType.GuildText,
+      parent: TICKET_CATEGORY,
+      permissionOverwrites
+    });
+
+    // Send trade embed with image
+    await ticket.send({
+      content: `<@${user1.id}> made a ticket with <@${user2.id}>.\nPlease wait until <@${OWNER_ID}> assists you.`,
+      embeds: [
+        new EmbedBuilder()
+          .setColor('#000000')
+          .setTitle('• TRADE •')
+          .setImage('attachment://trade.png')
+      ],
+      files: [attachment]
+    });
+
+    // Final success reply
+    await interaction.editReply({ content: `✅ Ticket created: ${ticket}` });
 
   } catch (err) {
     console.error('❌ Interaction error:', err);
+
+    // Handle fallback reply safely
+    if (!interaction.replied) {
+      await interaction.reply({
+        content: '❌ An unexpected error occurred while handling your ticket.',
+        ephemeral: true
+      });
+    } else {
+      await interaction.followUp({
+        content: '⚠️ Something went wrong after your interaction was acknowledged.',
+        ephemeral: true
+      });
+    }
   }
-});
+}
 
 async function handleTranscript(interaction, channel) {
   try {
