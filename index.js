@@ -786,6 +786,7 @@ await ticket.send({
     .setImage('attachment://trade.png')
 ],
 files: [attachment]
+});
           
 
         await interaction.editReply({ content: `✅ Ticket created: ${ticket}` });
