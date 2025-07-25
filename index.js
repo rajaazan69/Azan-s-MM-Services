@@ -775,7 +775,6 @@ const ticket = await interaction.guild.channels.create({
 });
 
 // Generate canvas trade image
-const canvasImage = await generateTradeCanvas(user1, user2, q2, q3);
 // Send canvas image in ticket
 await ticket.send({
   content: `<@${user1.id}> made a ticket with ${user2 ? `<@${user2.id}>` : '`Unknown User`'}.\nPlease wait until <@${OWNER_ID}> assists you.`,
