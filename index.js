@@ -200,14 +200,7 @@ new SlashCommandBuilder()
           { name: 'GAG', value: 'gag' },
           { name: 'MM2', value: 'mm2' },
           { name: 'SAB', value: 'sab' }
-        )),
-        new SlashCommandBuilder()
-  .setName('stats')
-  .setDescription('View middleman stats for a user')
-  .addUserOption(option =>
-    option.setName('user')
-      .setDescription('User to view stats for')
-      .setRequired(false))
+        ))
 ].map(command => command.toJSON());
     await rest.put(Routes.applicationCommands(client.user.id), { body: commands });
     console.log('✅ Slash commands registered');
@@ -253,36 +246,6 @@ if (interaction.isChatInputCommand()) {
     await target.send({ embeds: [panelEmbed], components: [btn] });
     await interaction.reply({ content: '✅ Setup complete.', ephemeral: true }).catch(() => {});
   }
-}
-if (commandName === 'stats') {
-  await interaction.deferReply({ ephemeral: false }).catch(() => {});
-
-  const user = interaction.options.getUser('user') || interaction.user;
-  const userId = user.id;
-
-  // Fetch all transcripted trades involving this user
-  const transcripts = await transcriptsCollection.find({
-    'participants.userId': userId,
-    rating: { $exists: true }
-  }).toArray();
-
-  const dealsCompleted = transcripts.length;
-
-  const totalRating = transcripts.reduce((sum, t) => sum + (t.rating || 0), 0);
-  const averageRating = dealsCompleted > 0 ? (totalRating / dealsCompleted).toFixed(1) : 'N/A';
-
-  const embed = new EmbedBuilder()
-    .setTitle(`Client Stats`)
-    .setColor('#000000')
-    .setThumbnail(user.displayAvatarURL({ size: 1024 }))
-    .setDescription(
-      `**Username:** ${user.tag}\n\n` +
-      `**Deals Completed:** **${dealsCompleted}**\n` +
-      `**Middleman Remarks:** **${averageRating}/5**`
-    )
-    .setTimestamp();
-
-  await interaction.editReply({ embeds: [embed] });
 }
 
       if (commandName === 'tagcreate') {
@@ -997,32 +960,6 @@ client.on('interactionCreate', async (interaction) => {
     return handleTranscript(interaction, interaction.channel);
   }
 });
-// Only send this dropdown in the ticket, not in the log channel
-if (interaction.channel && interaction.guild) {
-  const ratingRow = new ActionRowBuilder().addComponents(
-    new StringSelectMenuBuilder()
-      .setCustomId(`rate_${interaction.channel.id}`)
-      .setPlaceholder('Rate this Trade (Owner Only)')
-      .addOptions([
-        { label: '0/5', value: '0' },
-        { label: '1/5', value: '1' },
-        { label: '2/5', value: '2' },
-        { label: '3/5', value: '3' },
-        { label: '4/5', value: '4' },
-        { label: '5/5', value: '5' }
-      ])
-  );
-
-  const ownerOnlyMessage = await interaction.channel.send({
-    content: `<@1356149794040446998> Please rate this trade.`,
-    components: [ratingRow]
-  });
-
-  // Optional: Auto-delete the menu after a while to prevent abuse
-  setTimeout(() => {
-    ownerOnlyMessage.delete().catch(() => {});
-  }, 10 * 60 * 1000); // 10 minutes
-}
 const gameData = {
   gag: {
     name: 'GAG',
@@ -1052,39 +989,6 @@ Object.values(gameData).forEach(game => {
       console.log(`Preloaded: ${game.name} thumbnail with status ${res.statusCode}`);
     }).on('error', err => {
       console.error(`Failed to preload: ${game.name}`, err.message);
-    });
-  }
-});
-client.on('interactionCreate', async interaction => {
-  if (!interaction.isStringSelectMenu()) return;
-
-  // Rating dropdown handler
-  if (interaction.customId.startsWith('rate_')) {
-    if (interaction.user.id !== '1356149794040446998') {
-      return interaction.reply({ content: '❌ Only the owner can submit ratings.', ephemeral: true });
-    }
-
-    const channelId = interaction.customId.split('rate_')[1];
-    const rating = parseInt(interaction.values[0]);
-
-    if (isNaN(rating) || rating < 0 || rating > 5) {
-      return interaction.reply({ content: '❌ Invalid rating.', ephemeral: true });
-    }
-
-    const transcriptRecord = await transcriptsCollection.findOne({ channelId });
-    if (!transcriptRecord) {
-      return interaction.reply({ content: '❌ Transcript not found for this ticket.', ephemeral: true });
-    }
-
-    // Save rating to the transcript
-    await transcriptsCollection.updateOne(
-      { channelId },
-      { $set: { rating } }
-    );
-
-    await interaction.update({
-      content: `✅ You rated this trade **${rating}/5**.`,
-      components: []
     });
   }
 });
