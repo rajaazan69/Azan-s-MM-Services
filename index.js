@@ -1007,30 +1007,33 @@ client.on('interactionCreate', async (interaction) => {
     await interaction.deferReply({ ephemeral: true }).catch(() => {});
     return handleTranscript(interaction, interaction.channel);
   }
-if (interaction.isStringSelectMenu() && interaction.customId === 'rate_trade') {
+ if (interaction.isStringSelectMenu() && interaction.customId === 'rate_trade') {
     if (interaction.user.id !== OWNER_ID) {
       return interaction.reply({ content: '❌ Only the owner can rate trades.', ephemeral: true });
     }
 
-    // Try to find ticket user from message content
-    const messages = await interaction.channel.messages.fetch({ limit: 10 });
-    const match = messages.find(msg => msg.content.includes('<@') && msg.content.includes('Made A Ticket With'));
-    const matchedId = match?.content.match(/<@(\d+)> Made A Ticket With/);
-    const ratedUserId = matchedId?.[1];
+    try {
+      const messages = await interaction.channel.messages.fetch({ limit: 10 });
+      const match = messages.find(msg => msg.content.includes('<@') && msg.content.includes('Made A Ticket With'));
+      const matchedId = match?.content.match(/<@(\d+)> Made A Ticket With/);
+      const ratedUserId = matchedId?.[1];
 
-    if (!ratedUserId) {
-      return interaction.reply({ content: '❌ Could not identify the ticket user.', ephemeral: true });
-    }
+      if (!ratedUserId) {
+        return interaction.reply({ content: '❌ Could not identify the ticket user.', ephemeral: true });
+      }
 
-    const rating = parseInt(interaction.values[0]);
+      const rating = parseInt(interaction.values[0]);
 
-    await transcriptsCollection.insertOne({
-      userId: ratedUserId,
-      rating,
-      timestamp: new Date()
-    });
+      await transcriptsCollection.insertOne({
+        userId: ratedUserId,
+        rating,
+        timestamp: new Date()
+      });
 
-    await interaction.reply({ content: `✅ Rating **${rating}/5** saved.`, ephemeral: true });
+      await interaction.reply({ content: `✅ Rating **${rating}/5** saved.`, ephemeral: true });
+    } catch (err) {
+      console.error('Rating failed:', err);
+      await interaction.reply({ content: '❌ An error occurred while saving the rating.', ephemeral: true });
   }
 const gameData = {
   gag: {
