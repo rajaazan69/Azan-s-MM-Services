@@ -199,7 +199,7 @@ new SlashCommandBuilder()
           { name: 'GAG', value: 'gag' },
           { name: 'MM2', value: 'mm2' },
           { name: 'SAB', value: 'sab' }
-        ))
+        )),
         new SlashCommandBuilder()
   .setName('stats')
   .setDescription('Show user trade statistics')
@@ -207,7 +207,7 @@ new SlashCommandBuilder()
     option.setName('user')
       .setDescription('Select the user to show stats for')
       .setRequired(true)
-  ),
+  )
 ].map(command => command.toJSON());
     await rest.put(Routes.applicationCommands(client.user.id), { body: commands });
     console.log('✅ Slash commands registered');
