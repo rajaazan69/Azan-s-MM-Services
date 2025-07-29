@@ -200,6 +200,14 @@ new SlashCommandBuilder()
           { name: 'MM2', value: 'mm2' },
           { name: 'SAB', value: 'sab' }
         ))
+        new SlashCommandBuilder()
+  .setName('stats')
+  .setDescription('Show user trade statistics')
+  .addUserOption(option =>
+    option.setName('user')
+      .setDescription('Select the user to show stats for')
+      .setRequired(true)
+  ),
 ].map(command => command.toJSON());
     await rest.put(Routes.applicationCommands(client.user.id), { body: commands });
     console.log('✅ Slash commands registered');
@@ -419,7 +427,27 @@ if (interaction.isChatInputCommand()) {
         if ((channel.parentId || channel.parent?.id) !== TICKET_CATEGORY) return interaction.reply({ content: '❌ You can only generate transcripts in ticket channels!', ephemeral: true });
         await interaction.deferReply({ ephemeral: true }).catch(() => {});
         await handleTranscript(interaction, channel);
-      }
+      // 🔽 STEP 3: Ask owner for rating in the ticket
+if (interaction.channel) {
+  const row = new ActionRowBuilder().addComponents(
+    new StringSelectMenuBuilder()
+      .setCustomId('rate_trade')
+      .setPlaceholder('Select a rating for this trade')
+      .addOptions([
+        { label: '0/5 - Terrible', value: '0' },
+        { label: '1/5 - Poor', value: '1' },
+        { label: '2/5 - Fair', value: '2' },
+        { label: '3/5 - Good', value: '3' },
+        { label: '4/5 - Very Good', value: '4' },
+        { label: '5/5 - Excellent', value: '5' }
+      ])
+  );
+
+  await interaction.channel.send({
+    content: `<@${OWNER_ID}> Please rate this trade for statistics.`,
+    components: [row]
+  }).catch(console.error);
+}
     if (commandName === 'i') {
   const username = options.getString('username');
   await interaction.deferReply();
@@ -690,6 +718,27 @@ if (commandName === 'untimeout') {
     await interaction.editReply({ content: '❌ Failed to remove timeout from the user.' });
   }
 }
+if (commandName === 'stats') {
+  const targetUser = options.getUser('user');
+
+  const transcripts = await transcriptsCollection.find({ participants: targetUser.id }).toArray();
+  const tradeCount = transcripts.length;
+
+  const remarksData = transcripts.map(t => t.remark).filter(r => typeof r === 'number');
+  const avgRemarks = remarksData.length
+    ? (remarksData.reduce((a, b) => a + b, 0) / remarksData.length).toFixed(1)
+    : 'N/A';
+
+  const embed = new EmbedBuilder()
+    .setColor('#2b2d31')
+    .setAuthor({ name: `${targetUser.username}`, iconURL: targetUser.displayAvatarURL() })
+    .setThumbnail(targetUser.displayAvatarURL({ size: 256 }))
+    .setDescription(`**Deals Completed**: \`${tradeCount}\`\n**Middleman Remarks**: \`${avgRemarks}/5\``)
+    .setFooter({ text: 'Stats powered by Azan’s MM', iconURL: client.user.displayAvatarURL() })
+    .setTimestamp();
+
+  await interaction.reply({ embeds: [embed] });
+}
     
 
     // ✅ BUTTON: Open Modal
@@ -958,7 +1007,31 @@ client.on('interactionCreate', async (interaction) => {
     await interaction.deferReply({ ephemeral: true }).catch(() => {});
     return handleTranscript(interaction, interaction.channel);
   }
-});
+if (interaction.isStringSelectMenu() && interaction.customId === 'rate_trade') {
+    if (interaction.user.id !== OWNER_ID) {
+      return interaction.reply({ content: '❌ Only the owner can rate trades.', ephemeral: true });
+    }
+
+    // Try to find ticket user from message content
+    const messages = await interaction.channel.messages.fetch({ limit: 10 });
+    const match = messages.find(msg => msg.content.includes('<@') && msg.content.includes('Made A Ticket With'));
+    const matchedId = match?.content.match(/<@(\d+)> Made A Ticket With/);
+    const ratedUserId = matchedId?.[1];
+
+    if (!ratedUserId) {
+      return interaction.reply({ content: '❌ Could not identify the ticket user.', ephemeral: true });
+    }
+
+    const rating = parseInt(interaction.values[0]);
+
+    await transcriptsCollection.insertOne({
+      userId: ratedUserId,
+      rating,
+      timestamp: new Date()
+    });
+
+    await interaction.reply({ content: `✅ Rating **${rating}/5** saved.`, ephemeral: true });
+  }
 const gameData = {
   gag: {
     name: 'GAG',
@@ -991,8 +1064,6 @@ Object.values(gameData).forEach(game => {
     });
   }
 });
-
-
 client.on('interactionCreate', async (interaction) => {
   if (interaction.isChatInputCommand() && interaction.commandName === 'servers') {
     const game = interaction.options.getString('game');
