@@ -14,6 +14,11 @@ const fs = require('fs');
 require('dotenv').config();
 const { MongoClient } = require('mongodb');
 const stickyMap = new Map();
+const { createCanvas, loadImage } = require('@napi-rs/canvas');
+const fetch = require('node-fetch');
+const fs = require('fs'); // only needed if you want to save locally (optional)
+const path = require('path');
+const { AttachmentBuilder, EmbedBuilder } = require('discord.js');
 
 const mongoUri = process.env.MONGO_URI;
 const mongoClient = new MongoClient(mongoUri);
@@ -760,38 +765,34 @@ if (interaction.isModalSubmit() && interaction.customId === 'ticketModal') {
     permissionOverwrites
   });
 
-  const user1 = interaction.user;
-  const user2 = member2;
+ const user1 = interaction.user;
+const user2 = await interaction.client.users.fetch(user2ID);
 
-  const embed = new EmbedBuilder()
-    .setTitle('• Trade •')
-    .setColor('#000000')
-    .setDescription(
-      `**Trade Type:** ${q1}\n\n` +
-      `**[1] ${user1}**\n` +
-      `**side:** ${q2}\n\n` +
-      `**[9] ${user2 ? user2 : `Unknown User`}**\n` +
-      `**side:** ${q3}`
-    )
-    .setTimestamp();
+// Generate image buffer
+const buffer = await generateTradeImage({
+  user1: {
+    username: user1.username,
+    avatarURL: user1.displayAvatarURL({ extension: 'png' })
+  },
+  user2: {
+    username: user2.username,
+    avatarURL: user2.displayAvatarURL({ extension: 'png' })
+  },
+  user1Side,
+  user2Side,
+  tradeType: 'H' // Or fetch from modal if you want this as input too
+});
 
-  const avatar1 = new AttachmentBuilder(user1.displayAvatarURL({ extension: 'png', size: 128 })).setName('user1.png');
-  const avatar2 = user2
-    ? new AttachmentBuilder(user2.displayAvatarURL({ extension: 'png', size: 128 })).setName('user2.png')
-    : null;
+// Create attachment and embed
+const attachment = new AttachmentBuilder(buffer, { name: 'trade_embed.png' });
+const embed = new EmbedBuilder()
+  .setColor(0x000000)
+  .setImage('attachment://trade_embed.png');
 
-  await ticket.send({
-    content: `${user1} created a ticket with ${user2 ? user2 : '`Unknown User`'}. Please wait for a middleman.`,
-    embeds: [embed],
-    files: avatar2 ? [avatar1, avatar2] : [avatar1]
-  });
-
-  await interaction.reply({ content: `✅ Ticket created: ${ticket}`, ephemeral: true });
-}
-
-  } catch (err) {
-    console.error('❌ Interaction error:', err);
-  }
+// Reply/send image
+await interaction.reply({
+  embeds: [embed],
+  files: [attachment]
 });
 
 async function handleTranscript(interaction, channel) {
@@ -890,6 +891,40 @@ async function handleTranscript(interaction, channel) {
       await interaction.editReply({ content: '❌ Failed to generate transcript.' }).catch(() => {});
     }
   }
+}
+async function generateTradeImage({ user1, user2, user1Side, user2Side, tradeType }) {
+  const canvas = createCanvas(500, 250);
+  const ctx = canvas.getContext('2d');
+
+  // Background
+  ctx.fillStyle = '#1e1e1e'; // Dark
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Title
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 26px sans-serif';
+  ctx.fillText('• Trade •', 20, 40);
+
+  // Trade Type
+  ctx.font = 'bold 18px sans-serif';
+  ctx.fillText(`Trade Type: ${tradeType}`, 20, 75);
+
+  // User 1 Info
+  ctx.font = '16px sans-serif';
+  ctx.fillText(`[1] ${user1.username}`, 20, 120);
+  ctx.fillText(`side: ${user1Side}`, 20, 145);
+
+  // User 2 Info
+  ctx.fillText(`[9] ${user2.username}`, 260, 120);
+  ctx.fillText(`side: ${user2Side}`, 260, 145);
+
+  // Avatars
+  const avatar1 = await loadImage(user1.avatarURL);
+  const avatar2 = await loadImage(user2.avatarURL);
+  ctx.drawImage(avatar1, 170, 100, 60, 60);
+  ctx.drawImage(avatar2, 430, 100, 60, 60);
+
+  return canvas.toBuffer('image/png');
 }
 client.on('interactionCreate', async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
@@ -1065,6 +1100,7 @@ await interaction.editReply({ embeds: [embed] });
   }
 }
 });
+
 app.get('/', (req, res) => {
   console.log('👀 UptimeRobot pinged the server');
   res.status(200).send('✅ Server is alive');
