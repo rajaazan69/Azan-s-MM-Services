@@ -732,9 +732,10 @@ const existing = interaction.guild.channels.cache.find(c =>
 if (existing) {
   return interaction.reply({ content: `❌ You already have an open ticket: ${existing}`, ephemeral: true });
 }
-      const yourSide = interaction.fields.getTextInputValue('q2');
-  const theirSide = interaction.fields.getTextInputValue('q3');
-  const user2Id = interaction.fields.getTextInputValue('q4');
+      const q1 = interaction.fields.getTextInputValue('q1');
+      const q2 = interaction.fields.getTextInputValue('q2');
+      const q3 = interaction.fields.getTextInputValue('q3');
+      const q4 = interaction.fields.getTextInputValue('q4');
 const isValidId = /^\d{17,19}$/.test(q4);
 const targetMention = isValidId ? `<@${q4}>` : 'Unknown User';
 
@@ -763,24 +764,25 @@ const ticket = await interaction.guild.channels.create({
   parent: TICKET_CATEGORY,
   permissionOverwrites
 });
-      const tradeEmbed = new EmbedBuilder()
-  .setTitle('• TRADE •')
-  .setColor('#000000')
+      const embed = new EmbedBuilder()
+  .setTitle('Middleman Request')
+  .setColor('#2B2D31')
   .setDescription(
-    `**User 1**\n` +
-    `> **Username**: ${user1.tag}\n` +
-    `> **ID**: ${user1.id}\n` +
-    `> **Side of the Trade**: ${yourSide}\n\n` +
-
-    `**User 2**\n` +
-    `> **Username**: ${user2.tag}\n` +
-    `> **ID**: ${user2.id}\n` +
-    `> **Side of the Trade**: ${theirSide}`
-  );
+    `**User 1:** <@${interaction.user.id}>\n` +
+    `**User 2:** ${targetMention}\n\n` +
+    `**Trade Details**\n` +
+    `> ${q1}\n\n` +
+    `**User 1 is giving:**\n` +
+    `> ${q2}\n\n` +
+    `**User 2 is giving:**\n` +
+    `> ${q3}`
+  )
+  .setFooter({ text: `Ticket by ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
+  .setTimestamp();
 
         await ticket.send({
   content: `<@${interaction.user.id}> made a ticket with ${isValidId ? `<@${q4}>` : '`Unknown User`'}.\nPlease wait until <@${OWNER_ID}> assists you.`,
-  embeds: [tradeEmbed]
+  embeds: [embed]
 });
           
 
