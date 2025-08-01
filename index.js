@@ -14,8 +14,6 @@ const fs = require('fs');
 require('dotenv').config();
 const { MongoClient } = require('mongodb');
 const stickyMap = new Map();
-const { createCanvas, loadImage } = require('@napi-rs/canvas');
-const fetch = require('node-fetch');
 
 const mongoUri = process.env.MONGO_URI;
 const mongoClient = new MongoClient(mongoUri);
@@ -724,72 +722,77 @@ if (interaction.isButton() && interaction.customId === 'transcript') {
       await interaction.channel.delete().catch(console.error);
     }
 
-if (interaction.isModalSubmit() && interaction.customId === 'ticketModal') {
-  const existing = interaction.guild.channels.cache.find(c =>
-    c.parentId === TICKET_CATEGORY &&
-    c.permissionOverwrites.cache.has(interaction.user.id)
-  );
-  if (existing) {
-    return interaction.reply({ content: `❌ You already have an open ticket: ${existing}`, ephemeral: true });
-  }
+    if (interaction.isModalSubmit() && interaction.customId === 'ticketModal') {
+      // Prevent multiple tickets per user
+const existing = interaction.guild.channels.cache.find(c =>
+  c.parentId === TICKET_CATEGORY &&
+  c.permissionOverwrites.cache.has(interaction.user.id)
+);
 
-  const q1 = interaction.fields.getTextInputValue('q1'); // What's the trade?
-  const q2 = interaction.fields.getTextInputValue('q2'); // Your side
-  const q3 = interaction.fields.getTextInputValue('q3'); // Their side
-  const q4 = interaction.fields.getTextInputValue('q4'); // Their user ID
+if (existing) {
+  return interaction.reply({ content: `❌ You already have an open ticket: ${existing}`, ephemeral: true });
+}
+      const q1 = interaction.fields.getTextInputValue('q1');
+      const q2 = interaction.fields.getTextInputValue('q2');
+      const q3 = interaction.fields.getTextInputValue('q3');
+      const q4 = interaction.fields.getTextInputValue('q4');
+const isValidId = /^\d{17,19}$/.test(q4);
+const targetMention = isValidId ? `<@${q4}>` : 'Unknown User';
 
-  const isValidId = /^\d{17,19}$/.test(q4);
-  const member2 = isValidId ? await interaction.guild.members.fetch(q4).catch(() => null) : null;
+// Prepare permission overwrites array
+const permissionOverwrites = [
+  { id: interaction.guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
+  { id: interaction.user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
+  { id: OWNER_ID, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
+  { id: MIDDLEMAN_ROLE, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] }
+];
 
-  const permissionOverwrites = [
-    { id: interaction.guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
-    { id: interaction.user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
-    { id: OWNER_ID, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
-    { id: MIDDLEMAN_ROLE, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] }
-  ];
-
-  if (member2) {
+// Add the target user to permission overwrites if ID is valid and member exists
+if (isValidId) {
+  const member = interaction.guild.members.cache.get(q4);
+  if (member) {
     permissionOverwrites.push({
-      id: member2.id,
+      id: q4,
       allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages]
     });
   }
+}
 
-  const ticket = await interaction.guild.channels.create({
-    name: `ticket-${interaction.user.username}`,
-    type: ChannelType.GuildText,
-    parent: TICKET_CATEGORY,
-    permissionOverwrites
-  });
-
- const user1 = interaction.user;
-const user2 = await interaction.client.users.fetch(user2ID);
-
-// Generate image buffer
-const buffer = await generateTradeImage({
-  user1: {
-    username: user1.username,
-    avatarURL: user1.displayAvatarURL({ extension: 'png' })
-  },
-  user2: {
-    username: user2.username,
-    avatarURL: user2.displayAvatarURL({ extension: 'png' })
-  },
-  user1Side,
-  user2Side,
-  tradeType: 'H' // Or fetch from modal if you want this as input too
+const ticket = await interaction.guild.channels.create({
+  name: `ticket-${interaction.user.username}`,
+  type: ChannelType.GuildText,
+  parent: TICKET_CATEGORY,
+  permissionOverwrites
 });
+      const embed = new EmbedBuilder()
+  .setTitle('Middleman Request')
+  .setColor('#2B2D31')
+  .setDescription(
+    `**User 1:** <@${interaction.user.id}>\n` +
+    `**User 2:** ${targetMention}\n\n` +
+    `**Trade Details**\n` +
+    `> ${q1}\n\n` +
+    `**User 1 is giving:**\n` +
+    `> ${q2}\n\n` +
+    `**User 2 is giving:**\n` +
+    `> ${q3}`
+  )
+  .setFooter({ text: `Ticket by ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
+  .setTimestamp();
 
-// Create attachment and embed
-const attachment = new AttachmentBuilder(buffer, { name: 'trade_embed.png' });
-const embed = new EmbedBuilder()
-  .setColor(0x000000)
-  .setImage('attachment://trade_embed.png');
+        await ticket.send({
+  content: `<@${interaction.user.id}> made a ticket with ${isValidId ? `<@${q4}>` : '`Unknown User`'}.\nPlease wait until <@${OWNER_ID}> assists you.`,
+  embeds: [embed]
+});
+          
 
-// Reply/send image
-await interaction.reply({
-  embeds: [embed],
-  files: [attachment]
+        await interaction.reply({ content: `✅ Ticket created: ${ticket}`, ephemeral: true });
+      
+    }
+
+  } catch (err) {
+    console.error('❌ Interaction error:', err);
+  }
 });
 
 async function handleTranscript(interaction, channel) {
@@ -888,40 +891,6 @@ async function handleTranscript(interaction, channel) {
       await interaction.editReply({ content: '❌ Failed to generate transcript.' }).catch(() => {});
     }
   }
-}
-async function generateTradeImage({ user1, user2, user1Side, user2Side, tradeType }) {
-  const canvas = createCanvas(500, 250);
-  const ctx = canvas.getContext('2d');
-
-  // Background
-  ctx.fillStyle = '#1e1e1e'; // Dark
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-  // Title
-  ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 26px sans-serif';
-  ctx.fillText('• Trade •', 20, 40);
-
-  // Trade Type
-  ctx.font = 'bold 18px sans-serif';
-  ctx.fillText(`Trade Type: ${tradeType}`, 20, 75);
-
-  // User 1 Info
-  ctx.font = '16px sans-serif';
-  ctx.fillText(`[1] ${user1.username}`, 20, 120);
-  ctx.fillText(`side: ${user1Side}`, 20, 145);
-
-  // User 2 Info
-  ctx.fillText(`[9] ${user2.username}`, 260, 120);
-  ctx.fillText(`side: ${user2Side}`, 260, 145);
-
-  // Avatars
-  const avatar1 = await loadImage(user1.avatarURL);
-  const avatar2 = await loadImage(user2.avatarURL);
-  ctx.drawImage(avatar1, 170, 100, 60, 60);
-  ctx.drawImage(avatar2, 430, 100, 60, 60);
-
-  return canvas.toBuffer('image/png');
 }
 client.on('interactionCreate', async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
@@ -1097,7 +1066,6 @@ await interaction.editReply({ embeds: [embed] });
   }
 }
 });
-
 app.get('/', (req, res) => {
   console.log('👀 UptimeRobot pinged the server');
   res.status(200).send('✅ Server is alive');
