@@ -764,25 +764,24 @@ const ticket = await interaction.guild.channels.create({
   parent: TICKET_CATEGORY,
   permissionOverwrites
 });
-      const embed = new EmbedBuilder()
-  .setTitle('Middleman Request')
-  .setColor('#2B2D31')
+      const tradeEmbed = new EmbedBuilder()
+  .setTitle('• TRADE •')
+  .setColor('#000000')
   .setDescription(
-    `**User 1:** <@${interaction.user.id}>\n` +
-    `**User 2:** ${targetMention}\n\n` +
-    `**Trade Details**\n` +
-    `> ${q1}\n\n` +
-    `**User 1 is giving:**\n` +
-    `> ${q2}\n\n` +
-    `**User 2 is giving:**\n` +
-    `> ${q3}`
-  )
-  .setFooter({ text: `Ticket by ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
-  .setTimestamp();
+    `**User 1**\n` +
+    `> **Username**: ${user1.tag}\n` +
+    `> **ID**: ${user1.id}\n` +
+    `> **Side of the Trade**: ${yourSide}\n\n` +
+
+    `**User 2**\n` +
+    `> **Username**: ${user2.tag}\n` +
+    `> **ID**: ${user2.id}\n` +
+    `> **Side of the Trade**: ${theirSide}`
+  );
 
         await ticket.send({
   content: `<@${interaction.user.id}> made a ticket with ${isValidId ? `<@${q4}>` : '`Unknown User`'}.\nPlease wait until <@${OWNER_ID}> assists you.`,
-  embeds: [embed]
+  embeds: [tradeEmbed]
 });
           
 
