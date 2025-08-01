@@ -16,7 +16,6 @@ const { MongoClient } = require('mongodb');
 const stickyMap = new Map();
 const { createCanvas, loadImage } = require('@napi-rs/canvas');
 const fetch = require('node-fetch');
-const { AttachmentBuilder, EmbedBuilder } = require('discord.js');
 
 const mongoUri = process.env.MONGO_URI;
 const mongoClient = new MongoClient(mongoUri);
