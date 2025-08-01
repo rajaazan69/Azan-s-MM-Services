@@ -16,7 +16,6 @@ const { MongoClient } = require('mongodb');
 const stickyMap = new Map();
 const { createCanvas, loadImage } = require('@napi-rs/canvas');
 const fetch = require('node-fetch');
-const fs = require('fs'); // only needed if you want to save locally (optional)
 const path = require('path');
 const { AttachmentBuilder, EmbedBuilder } = require('discord.js');
 
