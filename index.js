@@ -732,10 +732,9 @@ const existing = interaction.guild.channels.cache.find(c =>
 if (existing) {
   return interaction.reply({ content: `❌ You already have an open ticket: ${existing}`, ephemeral: true });
 }
-      const q1 = interaction.fields.getTextInputValue('q1');
-      const q2 = interaction.fields.getTextInputValue('q2');
-      const q3 = interaction.fields.getTextInputValue('q3');
-      const q4 = interaction.fields.getTextInputValue('q4');
+      const yourSide = interaction.fields.getTextInputValue('q2');
+  const theirSide = interaction.fields.getTextInputValue('q3');
+  const user2Id = interaction.fields.getTextInputValue('q4');
 const isValidId = /^\d{17,19}$/.test(q4);
 const targetMention = isValidId ? `<@${q4}>` : 'Unknown User';
 
