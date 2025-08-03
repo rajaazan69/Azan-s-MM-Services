@@ -788,7 +788,7 @@ const ticket = await interaction.guild.channels.create({
   "\x1b[1;4;34m" + q3 + "\x1b[0m\n" +
   "```"
 )
-**━━━━━━━━━━━━━━━━━━**
+'**━━━━━━━━━━━━━━━━━━**'
 
 This trade is being handled securely by Azan's MM Services.`
   )
