@@ -769,7 +769,7 @@ const ticket = await interaction.guild.channels.create({
   .setTitle('## •TRADE RECEIPT•')
   .setThumbnail(interaction.user.displayAvatarURL({ dynamic: true }))
 .setDescription(
-  `> **## •TRADE•:**\n` +
+  `> ## **•TRADE•:**\n` +
   "```ansi\n" +
   "\x1b[2;37m" + q1 + "\x1b[0m\n" +
   "```\n\n" +
@@ -786,11 +786,13 @@ const ticket = await interaction.guild.channels.create({
   `> **Their Side Of The Trade:**\n` +
   "```ansi\n" +
   "\x1b[1;4;34m" + q3 + "\x1b[0m\n" +
- `**━━━━━━━━━━━━━━━━━━**\n\n` +
-'This trade is being handled securely by Azan's MM Services.`
-  )
-  .setFooter({ text: 'Secure Trade Protocol • AZAN MM', iconURL: client.user.displayAvatarURL() })
-  .setTimestamp();
+  "```\n\n" +
+
+  `**━━━━━━━━━━━━━━━━━━**\n\n` +
+  `This trade is being handled securely by Azan's MM Services.`
+)
+.setFooter({ text: 'Secure Trade Protocol • AZAN MM', iconURL: client.user.displayAvatarURL() })
+.setTimestamp();
 
         await ticket.send({
   content: `<@${interaction.user.id}> made a ticket with ${isValidId ? `<@${q4}>` : '`Unknown User`'}.\nPlease wait until <@${OWNER_ID}> assists you.`,
