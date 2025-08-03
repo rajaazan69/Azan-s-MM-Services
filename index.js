@@ -787,10 +787,8 @@ const ticket = await interaction.guild.channels.create({
   "```ansi\n" +
   "\x1b[1;4;34m" + q3 + "\x1b[0m\n" +
   "```"
-)
-'**━━━━━━━━━━━━━━━━━━**'
-
-This trade is being handled securely by Azan's MM Services.`
+ `**━━━━━━━━━━━━━━━━━━**\n\n` +
+'This trade is being handled securely by Azan's MM Services.`
   )
   .setFooter({ text: 'Secure Trade Protocol • AZAN MM', iconURL: client.user.displayAvatarURL() })
   .setTimestamp();
