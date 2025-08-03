@@ -41,7 +41,12 @@ if (fs.existsSync(tagsPath)) {
 }
 
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent],
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMembers,       // ✅ REQUIRED for member joins
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent
+  ],
   partials: [Partials.Channel]
 });
 
@@ -765,34 +770,21 @@ const ticket = await interaction.guild.channels.create({
   permissionOverwrites
 });
       const embed = new EmbedBuilder()
-  .setColor('#000000')
-  .setTitle('## •TRADE RECEIPT•')
-  .setThumbnail(interaction.user.displayAvatarURL({ dynamic: true }))
-.setDescription(
-  `> ## **•TRADE•:**\n` +
-  "```ansi\n" +
-  "\x1b[2;37m" + q1 + "\x1b[0m\n" +
-  "```\n\n" +
+  .setTitle(## •TRADE•)
+  .setColor('#2B2D31')
+  .setDescription(
+    `**User 1:** <@${interaction.user.id}>\n` +
+    `**User 2:** ${targetMention}\n\n` +
+    `**Trade Details**\n` +
+    `> ${q1}\n\n` +
+    `**User 1 is giving:**\n` +
+    `> ${q2}\n\n` +
+    `**User 2 is giving:**\n` +
+    `> ${q3}`
+  )
+  .setFooter({ text: `Ticket by ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
+  .setTimestamp();
 
-  `> **User 1**\n` +
-  `<@${interaction.user.id}>\n` +
-  `> **Their Side Of The Trade:**\n` +
-  "```ansi\n" +
-  "\x1b[1;4;32m" + q2 + "\x1b[0m\n" +
-  "```\n\n" +
-
-  `> **User 2**\n` +
-  `${targetMention}\n` +
-  `> **Their Side Of The Trade:**\n` +
-  "```ansi\n" +
-  "\x1b[1;4;34m" + q3 + "\x1b[0m\n" +
-  "```\n\n" +
-
-  `**━━━━━━━━━━━━━━━━━━**\n\n` +
-  `This trade is being handled securely by Azan's MM Services.`
-)
-.setFooter({ text: 'Secure Trade Protocol • AZAN MM', iconURL: client.user.displayAvatarURL() })
-.setTimestamp();
 
         await ticket.send({
   content: `<@${interaction.user.id}> made a ticket with ${isValidId ? `<@${q4}>` : '`Unknown User`'}.\nPlease wait until <@${OWNER_ID}> assists you.`,
@@ -1081,6 +1073,7 @@ await interaction.editReply({ embeds: [embed] });
 }
 });
 client.on('guildMemberAdd', async (member) => {
+  console.log(`${member.user.tag} joined ${member.guild.name}`);
   const welcomeChannelId = '1373078546422960148'; // Replace this
   const vouchesChannelId = '1373027974827212923'; // Replace this
   const proofsChannelId = '1373027988391596202';   // Replace this
