@@ -770,12 +770,14 @@ const ticket = await interaction.guild.channels.create({
   .setDescription(
     `**User 1:** <@${interaction.user.id}>\n` +
     `**User 2:** ${targetMention}\n\n` +
-    `**Trade Details**\n` +
-    `> ${q1}\n\n` +
+    ``**Trade Details**\n` +
+    `## \`${q1}\`\n` +
+    `\n━━━━━━━━━━━━━━━\n\n` +
     `**User 1 is giving:**\n` +
-    `> ${q2}\n\n` +
+    `## \`${q2}\`\n` +
+    `\n━━━━━━━━━━━━━━━\n\n` +
     `**User 2 is giving:**\n` +
-    `> ${q3}`
+    `## \`${q3}\``
   )
   .setFooter({ text: `Ticket by ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
   .setTimestamp();
