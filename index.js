@@ -770,7 +770,7 @@ const ticket = await interaction.guild.channels.create({
   .setDescription(
     `**User 1:** <@${interaction.user.id}>\n` +
     `**User 2:** ${targetMention}\n\n` +
-    ``**Trade Details**\n` +
+    `**Trade Details**\n` +
     `## \`${q1}\`\n` +
     `\n━━━━━━━━━━━━━━━\n\n` +
     `**User 1 is giving:**\n` +
