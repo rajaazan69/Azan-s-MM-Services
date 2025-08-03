@@ -766,29 +766,31 @@ const ticket = await interaction.guild.channels.create({
 });
       const embed = new EmbedBuilder()
   .setColor('#000000')
-  .setTitle('📦 TRADE RECEIPT')
+  .setTitle('**•TRADE RECEIPT•**')
   .setThumbnail(interaction.user.displayAvatarURL({ dynamic: true }))
   .setDescription(
-`> 🧾 **Trade Description**
+`>**Trade Description**
 \`\`\`ansi
 [2;37m${q1}
 \`\`\`
 
-━━━━━━━━━━━━━━━━━━
+**━━━━━━━━━━━━━━━━━━**
 
-> 👤 **User 1**
+>**User 1**
 <@${interaction.user.id}>
+>**Their Side Of The Trade**
 \`\`\`ansi
 [1;32m${q2}
 \`\`\`
 
 > **User 2**
 ${targetMention}
+>**Their Side Of The Trade**
 \`\`\`ansi
 [1;34m${q3}
 \`\`\`
 
-━━━━━━━━━━━━━━━━━━
+**━━━━━━━━━━━━━━━━━━**
 
 This trade is being handled securely by Azan's MM Services.`
   )
