@@ -1066,6 +1066,28 @@ await interaction.editReply({ embeds: [embed] });
   }
 }
 });
+client.on('guildMemberAdd', async (member) => {
+  const welcomeChannelId = '1373078546422960148'; // Replace this
+  const vouchesChannelId = '1373027974827212923'; // Replace this
+  const proofsChannelId = '1373027988391596202';   // Replace this
+
+  const welcomeChannel = member.guild.channels.cache.get(welcomeChannelId);
+  if (!welcomeChannel) return;
+
+  const embed = new EmbedBuilder()
+    .setColor('#000000')
+    .setThumbnail(member.user.displayAvatarURL({ dynamic: true }))
+    .setDescription(
+      `Welcome to **Azan’s Middleman Services** ${member}!\n\n` +
+      `To view vouches: <#${vouchesChannelId}>\n` +
+      `To view proofs: <#${proofsChannelId}>\n\n` +
+      `We hope you enjoy your stay here!`
+    )
+    .setFooter({ text: `User ID: ${member.id}` })
+    .setTimestamp();
+
+  welcomeChannel.send({ embeds: [embed] }).catch(console.error);
+});
 app.get('/', (req, res) => {
   console.log('👀 UptimeRobot pinged the server');
   res.status(200).send('✅ Server is alive');
