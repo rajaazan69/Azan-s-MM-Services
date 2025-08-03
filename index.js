@@ -765,21 +765,34 @@ const ticket = await interaction.guild.channels.create({
   permissionOverwrites
 });
       const embed = new EmbedBuilder()
-  .setTitle('Middleman Request')
-  .setColor('#2B2D31')
+  .setColor('#000000')
+  .setTitle('📦 TRADE RECEIPT')
+  .setThumbnail(interaction.user.displayAvatarURL({ dynamic: true }))
   .setDescription(
-    `**User 1:** <@${interaction.user.id}>\n` +
-    `**User 2:** ${targetMention}\n\n` +
-    `**Trade Details**\n` +
-    `## \`${q1}\`\n` +
-    `\n━━━━━━━━━━━━━━━\n\n` +
-    `**User 1 is giving:**\n` +
-    `## \`${q2}\`\n` +
-    `\n━━━━━━━━━━━━━━━\n\n` +
-    `**User 2 is giving:**\n` +
-    `## \`${q3}\``
+`> 🧾 **Trade Description**
+\`\`\`ansi
+[2;37m${q1}
+\`\`\`
+
+━━━━━━━━━━━━━━━━━━
+
+> 👤 **User 1**
+<@${interaction.user.id}>
+\`\`\`ansi
+[1;32m${q2}
+\`\`\`
+
+> **User 2**
+${targetMention}
+\`\`\`ansi
+[1;34m${q3}
+\`\`\`
+
+━━━━━━━━━━━━━━━━━━
+
+This trade is being handled securely by Azan's MM Services.`
   )
-  .setFooter({ text: `Ticket by ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
+  .setFooter({ text: 'Secure Trade Protocol • AZAN MM', iconURL: client.user.displayAvatarURL() })
   .setTimestamp();
 
         await ticket.send({
