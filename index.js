@@ -769,13 +769,11 @@ const ticket = await interaction.guild.channels.create({
   parent: TICKET_CATEGORY,
   permissionOverwrites
 });
-     const embed = new EmbedBuilder()
-  .setTitle('Middleman Request')
-  .setColor('#2B2D31')
-  .addFields({
-  name: 'Test Box',
-  value: '```(test) Hello from a box```'
-})
+     const { EmbedBuilder } = require('discord.js');
+
+const embed = new EmbedBuilder()
+    .setTitle('Single-Line Code Example')
+    .setDescription('Here is some inline code: `console.log("Hello!");`');
   .setFooter({ text: `Ticket by ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
   .setTimestamp();
 const infoEmbed = new EmbedBuilder()
