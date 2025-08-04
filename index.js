@@ -770,26 +770,19 @@ const ticket = await interaction.guild.channels.create({
   permissionOverwrites
 });
      const embed = new EmbedBuilder()
+  .setTitle('Middleman Request')
   .setColor('#2B2D31')
-  .setDescription(`## • TRADE •\n**User 1:** <@${interaction.user.id}>\n**User 2:** ${targetMention}`)
-  .addFields(
-    {
-      name: '**Trade Description**',
-      value: `> ${q1}`, // This line creates the box you're referring to
-      inline: false
-    },
-    {
-      name: '**User 1 is giving:**',
-      value: `> ${q2}`, // The `>` here creates the shaded rectangle box
-      inline: true
-    },
-    {
-      name: '**User 2 is giving:**',
-      value: `> ${q3}`,
-      inline: true
-    }
+  .setDescription(
+    '## •TRADE•'
+    `**User 1:** <@${interaction.user.id}>\n` +
+    `**User 2:** ${targetMention}\n\n` +
+    `**Trade Details**\n` +
+    `> ${q1}\n\n` +
+    `**User 1 is giving:**\n` +
+    `> ${q2}\n\n` +
+    `**User 2 is giving:**\n` +
+    `> ${q3}`
   )
-  .setThumbnail(interaction.user.displayAvatarURL({ dynamic: true }))
   .setFooter({ text: `Ticket by ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
   .setTimestamp();
 const infoEmbed = new EmbedBuilder()
