@@ -781,7 +781,7 @@ const ticket = await interaction.guild.channels.create({
   `**User 1 is giving:**\n` +
   `\`\`\`${q2}\`\`\`\n\n` +
   `**User 2 is giving:**\n` +
-  `\`\`\`${q3}\`\`\``;
+  `\`\`\`${q3}\`\`\``
   )
   .setFooter({ text: `Ticket by ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
   .setTimestamp();
