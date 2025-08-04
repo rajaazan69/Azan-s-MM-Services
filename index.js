@@ -775,24 +775,10 @@ const ticket = await interaction.guild.channels.create({
   .setDescription(
     `## • TRADE •\n` +
     `**User 1:** <@${interaction.user.id}>\n` +
-    `**User 2:** ${targetMention}`
-  )
-  .addFields(
-    {
-      name: '**Trade Details**',
-      value: `> ${q1.trim().replace(/\n/g, ' ')}`,
-      inline: false
-    },
-    {
-      name: '**User 1 is giving:**',
-      value: `> ${q2.trim().replace(/\n/g, ' ')}`,
-      inline: true
-    },
-    {
-      name: '**User 2 is giving:**',
-      value: `> ${q3.trim().replace(/\n/g, ' ')}`,
-      inline: true
-    }
+    `**User 2:** ${targetMention}\n\n` +
+    `> **Trade Details:** ${q1}\n` +
+    `> **User 1 is giving:** ${q2}\n` +
+    `> **User 2 is giving:** ${q3}`
   )
   .setFooter({ text: `Ticket by ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
   .setTimestamp();
@@ -802,7 +788,6 @@ const infoEmbed = new EmbedBuilder()
     `Please wait for our **Middleman Team** to assist you.\n` +
     `Make sure to abide by all the rules and **vouch when the trade is over**.`
   );
-  await ticket.send({ embeds: [infoEmbed] });
 
         await ticket.send({
   content: `<@${interaction.user.id}> made a ticket with ${isValidId ? `<@${q4}>` : '`Unknown User`'}.\nPlease wait until <@${OWNER_ID}> assists you.`,
