@@ -771,38 +771,17 @@ const ticket = await interaction.guild.channels.create({
 });
      const embed = new EmbedBuilder()
   .setTitle('Middleman Request')
-  .setColor('#1a1c1f') // Dark but not pure black
+  .setColor('#2B2D31')
   .addFields(
-    {
-      name: '**User 1:**',
-      value: `<@${interaction.user.id}>`,
-      inline: false
-    },
-    {
-      name: '**User 2:**',
-      value: `${targetMention}`,
-      inline: false
-    },
-    {
-      name: '**Trade Details:**',
-      value: `\`\`\`\n(test) ${q1}\n\`\`\``,
-      inline: false
-    },
-    {
-      name: '**User 1 is giving:**',
-      value: `\`\`\`\n(test) ${q2}\n\`\`\``,
-      inline: false
-    },
-    {
-      name: '**User 2 is giving:**',
-      value: `\`\`\`\n(test) ${q3}\n\`\`\``,
-      inline: false
-    }
+    { name: '**User 1**', value: `<@${interaction.user.id}>`, inline: true },
+    { name: '**User 2**', value: `${targetMention}`, inline: true },
+    { name: '\u200B', value: '\u200B' }, // spacer
+
+    { name: '**Trade Details**', value: `\`\`\`${q1}\`\`\`` },
+    { name: '**User 1 is giving**', value: `\`\`\`${q2}\`\`\`` },
+    { name: '**User 2 is giving**', value: `\`\`\`${q3}\`\`\`` },
   )
-  .setFooter({
-    text: `Ticket by ${interaction.user.tag}`,
-    iconURL: interaction.user.displayAvatarURL()
-  })
+  .setFooter({ text: `Ticket by ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
   .setTimestamp();
 const infoEmbed = new EmbedBuilder()
   .setColor('#2B2D31')
