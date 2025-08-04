@@ -773,15 +773,15 @@ const ticket = await interaction.guild.channels.create({
   .setTitle('Middleman Request')
   .setColor('#2B2D31')
   .setDescription(
-    `## •TRADE•`
-    `**User 1:** <@${interaction.user.id}>\n` +
-    `**User 2:** ${targetMention}\n\n` +
-    `**Trade Details**\n` +
-    `> ${q1}\n\n` +
-    `**User 1 is giving:**\n` +
-    `> ${q2}\n\n` +
-    `**User 2 is giving:**\n` +
-    `> ${q3}`
+    `## •TRADE•\n\n` +
+  `**User 1:** <@${interaction.user.id}>\n` +
+  `**User 2:** ${targetMention}\n\n` +
+  `**Trade Details**\n` +
+  `> ${q1}\n\n` +
+  `**User 1 is giving:**\n` +
+  `\`\`\`${q2}\`\`\`\n\n` +
+  `**User 2 is giving:**\n` +
+  `\`\`\`${q3}\`\`\``;
   )
   .setFooter({ text: `Ticket by ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
   .setTimestamp();
