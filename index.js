@@ -769,7 +769,7 @@ const ticket = await interaction.guild.channels.create({
   parent: TICKET_CATEGORY,
   permissionOverwrites
 });
-      const embed = new EmbedBuilder()
+     const embed = new EmbedBuilder()
   .setColor('#2B2D31')
   .setThumbnail(interaction.user.displayAvatarURL({ dynamic: true }))
   .setDescription(
@@ -780,17 +780,17 @@ const ticket = await interaction.guild.channels.create({
   .addFields(
     {
       name: '**Trade Details**',
-      value: `> ${q1}`,
+      value: `> ${q1.trim().replace(/\n/g, ' ')}`,
       inline: false
     },
     {
       name: '**User 1 is giving:**',
-      value: `> ${q2}`,
+      value: `> ${q2.trim().replace(/\n/g, ' ')}`,
       inline: true
     },
     {
       name: '**User 2 is giving:**',
-      value: `> ${q3}`,
+      value: `> ${q3.trim().replace(/\n/g, ' ')}`,
       inline: true
     }
   )
@@ -806,7 +806,7 @@ const infoEmbed = new EmbedBuilder()
 
         await ticket.send({
   content: `<@${interaction.user.id}> made a ticket with ${isValidId ? `<@${q4}>` : '`Unknown User`'}.\nPlease wait until <@${OWNER_ID}> assists you.`,
-  embeds: [embed]
+  embeds: [infoEmbed, embed]
 });
           
 
