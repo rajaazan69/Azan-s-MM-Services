@@ -773,7 +773,7 @@ const ticket = await interaction.guild.channels.create({
   .setTitle('Middleman Request')
   .setColor('#2B2D31')
   .setDescription(
-    '## •TRADE•'
+    `## •TRADE•`
     `**User 1:** <@${interaction.user.id}>\n` +
     `**User 2:** ${targetMention}\n\n` +
     `**Trade Details**\n` +
