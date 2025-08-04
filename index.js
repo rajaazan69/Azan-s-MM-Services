@@ -726,6 +726,22 @@ if (interaction.isButton() && interaction.customId === 'transcript') {
     if (interaction.isButton() && interaction.customId === 'delete') {
       await interaction.channel.delete().catch(console.error);
     }
+    if (interaction.isButton() && interaction.customId === 'close_ticket') {
+  if (!interaction.channel) return;
+
+  await interaction.reply({
+    embeds: [
+      new EmbedBuilder()
+        .setColor('#2B2D31')
+        .setDescription(`🔒 Ticket closed by <@${interaction.user.id}>.`)
+    ],
+    ephemeral: false
+  });
+
+  setTimeout(() => {
+    interaction.channel.delete().catch(console.error);
+  }, 2000); // 2-second delay to allow the message to send
+}
 
     if (interaction.isModalSubmit() && interaction.customId === 'ticketModal') {
       // Prevent multiple tickets per user
@@ -798,10 +814,16 @@ const infoEmbed = new EmbedBuilder()
     `Please wait for our **Middleman Team** to assist you.\n` +
     `Make sure to abide by all the rules and **vouch when the trade is over**.`
   );
-
+const closeButtonRow = new ActionRowBuilder().addComponents(
+  new ButtonBuilder()
+    .setCustomId('close_ticket')
+    .setLabel('Close')
+    .setStyle(ButtonStyle.Danger)
+);
         await ticket.send({
   content: `<@${interaction.user.id}> made a ticket with ${isValidId ? `<@${q4}>` : '`Unknown User`'}.\nPlease wait until <@${OWNER_ID}> assists you.`,
   embeds: [infoEmbed, embed]
+  components: [closeButtonRow]
 });
           
 
