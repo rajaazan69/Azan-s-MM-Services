@@ -771,32 +771,27 @@ const ticket = await interaction.guild.channels.create({
 });
      const embed = new EmbedBuilder()
   .setTitle('Middleman Request')
-  .setColor('#1a1c1f') // nice blackish color
+  .setColor('#1a1c1f') // dark grey-black color
   .addFields(
     {
       name: '**User 1:**',
-      value: `<@${interaction.user.id}>`,
-      inline: false
+      value: `<@${interaction.user.id}>`
     },
     {
       name: '**User 2:**',
-      value: `${targetMention}`,
-      inline: false
+      value: `${targetMention}`
     },
     {
       name: '**Trade Details:**',
-      value: `\`\`\`\n${q1}\n\`\`\``,
-      inline: false
+      value: '```(test) ' + q1 + '```'
     },
     {
       name: '**User 1 is giving:**',
-      value: `\`\`\`\n${q2}\n\`\`\``,
-      inline: false
+      value: '```(test) ' + q2 + '```'
     },
     {
       name: '**User 2 is giving:**',
-      value: `\`\`\`\n${q3}\n\`\`\``,
-      inline: false
+      value: '```(test) ' + q3 + '```'
     }
   )
   .setFooter({
