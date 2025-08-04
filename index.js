@@ -770,7 +770,7 @@ const ticket = await interaction.guild.channels.create({
   permissionOverwrites
 });
      const embed = new EmbedBuilder()
-  .setColor('#2B2D31')
+  .setColor('#0A0A0A')
   .setDescription(
     `## •TRADE•\n\n` +
     `**User 1:** <@${interaction.user.id}>\n` +
