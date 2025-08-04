@@ -771,20 +771,38 @@ const ticket = await interaction.guild.channels.create({
 });
       const embed = new EmbedBuilder()
   .setColor('#2B2D31')
+  .setThumbnail(interaction.user.displayAvatarURL({ dynamic: true }))
   .setDescription(
-    `> ## •TRADE•\n` +
+    `## • TRADE •\n` +
     `**User 1:** <@${interaction.user.id}>\n` +
-    `**User 2:** ${targetMention}\n\n` +
-    `**Trade Details**\n` +
-    `> ${q1}\n\n` +
-    `**User 1 is giving:**\n` +
-    `> ${q2}\n\n` +
-    `**User 2 is giving:**\n` +
-    `> ${q3}`
+    `**User 2:** ${targetMention}`
+  )
+  .addFields(
+    {
+      name: '**Trade Details**',
+      value: `> ${q1}`,
+      inline: false
+    },
+    {
+      name: '**User 1 is giving:**',
+      value: `> ${q2}`,
+      inline: true
+    },
+    {
+      name: '**User 2 is giving:**',
+      value: `> ${q3}`,
+      inline: true
+    }
   )
   .setFooter({ text: `Ticket by ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
   .setTimestamp();
-
+const infoEmbed = new EmbedBuilder()
+  .setColor('#2B2D31')
+  .setDescription(
+    `Please wait for our **Middleman Team** to assist you.\n` +
+    `Make sure to abide by all the rules and **vouch when the trade is over**.`
+  );
+  await ticket.send({ embeds: [infoEmbed] });
 
         await ticket.send({
   content: `<@${interaction.user.id}> made a ticket with ${isValidId ? `<@${q4}>` : '`Unknown User`'}.\nPlease wait until <@${OWNER_ID}> assists you.`,
