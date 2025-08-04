@@ -822,7 +822,7 @@ const closeButtonRow = new ActionRowBuilder().addComponents(
 );
         await ticket.send({
   content: `<@${interaction.user.id}> made a ticket with ${isValidId ? `<@${q4}>` : '`Unknown User`'}.\nPlease wait until <@${OWNER_ID}> assists you.`,
-  embeds: [infoEmbed, embed]
+  embeds: [infoEmbed, embed],
   components: [closeButtonRow]
 });
           
