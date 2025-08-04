@@ -774,7 +774,7 @@ const ticket = await interaction.guild.channels.create({
   .setColor('#2B2D31')
   .addFields({
   name: 'Test Box',
-  value: '```hello box```',
+  value: '```(test) Hello from a box```'
 })
   .setFooter({ text: `Ticket by ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
   .setTimestamp();
