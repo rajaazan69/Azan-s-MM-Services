@@ -778,9 +778,9 @@ const embed = new EmbedBuilder()
     { name: '**User 2**', value: `${targetMention}`, inline: true },
     { name: '\u200B', value: '\u200B' }, // empty spacer
 
-    { name: '**Trade Details**', value: `> ${q1}` },
-    { name: '**User 1 is giving**', value: `> ${q2}` },
-    { name: '**User 2 is giving**', value: `> ${q3}` },
+    { name: '**Trade Details:**', value: `> ${q1}` },
+    { name: '**User 1 is giving:**', value: `> ${q2}` },
+    { name: '**User 2 is giving:**', value: `> ${q3}` },
   )
   .setFooter({ text: `Ticket by ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
   .setTimestamp();
