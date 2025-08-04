@@ -772,20 +772,20 @@ const ticket = await interaction.guild.channels.create({
 
 const embed = new EmbedBuilder()
   .setTitle('Middleman Request')
-  .setColor('#2B2D31')
+  .setColor('#FFFFFF')
   .addFields(
     { name: '**User 1**', value: `<@${interaction.user.id}>`, inline: true },
     { name: '**User 2**', value: `${targetMention}`, inline: true },
     { name: '\u200B', value: '\u200B' }, // empty spacer
 
-    { name: '**Trade Details:**', value: `> ${q1}` },
-    { name: '**User 1 is giving:**', value: `> ${q2}` },
-    { name: '**User 2 is giving:**', value: `> ${q3}` },
+    { name: '**Trade Details**', value: `> ${q1}` },
+    { name: '**User 1 is giving**', value: `> ${q2}` },
+    { name: '**User 2 is giving**', value: `> ${q3}` },
   )
   .setFooter({ text: `Ticket by ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
   .setTimestamp();
 const infoEmbed = new EmbedBuilder()
-  .setColor('#2B2D31')
+  .setColor('#FFFFFF')
   .setDescription(
     `Please wait for our **Middleman Team** to assist you.\n` +
     `Make sure to abide by all the rules and **vouch when the trade is over**.`
