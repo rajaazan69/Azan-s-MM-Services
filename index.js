@@ -733,61 +733,38 @@ if (interaction.isButton() && interaction.customId === 'transcript') {
     const channel = interaction.channel;
     const guild = interaction.guild;
 
-    // Only allow use inside ticket channels
+    // Check if inside ticket category
     const parentId = channel.parentId || channel.parent?.id;
     if (parentId !== TICKET_CATEGORY) {
-      return await interaction.reply({ content: '❌ This button can only be used inside ticket channels.', ephemeral: true });
+      return interaction.reply({ content: '❌ This button can only be used inside ticket channels.', ephemeral: true });
     }
 
-    // Get ticket owner ID (the user who made the ticket)
-    const perms = channel.permissionOverwrites.cache;
-    const VIEW_CHANNEL = PermissionsBitField.Flags.ViewChannel;
-    const ticketOwnerId = [...perms.values()]
-      .filter(po => po.type === 'member' || po.type === 0)
-      .find(po => (po.allow?.bitfield & VIEW_CHANNEL) === VIEW_CHANNEL &&
-        po.id !== OWNER_ID &&
-        po.id !== MIDDLEMAN_ROLE &&
-        po.id !== guild.id
-      )?.id;
-
-    if (!ticketOwnerId) {
-      return await interaction.reply({ content: '❌ Could not determine the ticket owner.', ephemeral: true });
-    }
-
-    // Find the "other" user ID stored in your tickets collection for this channel
-    const ticketData = await ticketsCollection.findOne({ channelId: channel.id });
-if (!ticketData) {
-  return interaction.reply({ content: '❌ Could not find ticket data.', ephemeral: true });
-}
-const ticketOwnerId = ticketData.user1;
-const secondUserId = ticketData.user2;
-
-    // Defer reply because Mongo updates + message fetch might take time
+    // Defer reply so we can do async operations without timeout or "already replied" errors
     await interaction.deferReply({ ephemeral: true });
 
-    // Helper function to add/increment points in Mongo
-    async function addPoints(userId) {
-      if (!userId) return;
+    // Get ticket data from DB
+    const ticketData = await ticketsCollection.findOne({ channelId: channel.id });
+    if (!ticketData) {
+      return interaction.editReply({ content: '❌ Could not find ticket data.' });
+    }
+
+    const userIds = [ticketData.user1, ticketData.user2].filter(Boolean);
+
+    // Add points for each user
+    for (const userId of userIds) {
       const existing = await clientPointsCollection.findOne({ userId });
       if (existing) {
-        await clientPointsCollection.updateOne(
-          { userId },
-          { $inc: { points: 1 } }
-        );
+        await clientPointsCollection.updateOne({ userId }, { $inc: { points: 1 } });
       } else {
-        await clientPointsCollection.insertOne({
-          userId,
-          points: 1
-        });
+        await clientPointsCollection.insertOne({ userId, points: 1 });
       }
     }
 
-    // Add points for both users
-    await addPoints(ticketOwnerId);
-    await addPoints(secondUserId);
-
     // Fetch leaderboard message
-    const leaderboardChannel = await interaction.client.channels.fetch(process.env.LEADERBOARD_CHANNEL_ID);
+    const leaderboardChannel = await guild.channels.fetch(process.env.LEADERBOARD_CHANNEL_ID);
+    if (!leaderboardChannel) {
+      return interaction.editReply({ content: '❌ Leaderboard channel not found.' });
+    }
     const leaderboardMessage = await leaderboardChannel.messages.fetch(process.env.LEADERBOARD_MESSAGE_ID);
 
     // Get sorted top users
@@ -798,7 +775,7 @@ const secondUserId = ticketData.user2;
     ).join('\n');
 
     const embed = new EmbedBuilder()
-      .setTitle('**🏆 Top Clients This Month**')
+      .setTitle('🏆 Top Clients This Month')
       .setDescription(leaderboardText || 'No data yet.')
       .setColor('#2B2D31')
       .setFooter({ text: 'Client Leaderboard' })
@@ -806,12 +783,15 @@ const secondUserId = ticketData.user2;
 
     await leaderboardMessage.edit({ embeds: [embed] });
 
-    await interaction.editReply({ content: `✅ Logged 1 point for <@${ticketOwnerId}> and <@${secondUserId}>` });
+    // Reply to user confirming
+    await interaction.editReply({ content: `✅ Logged 1 point for <@${userIds.join('>, <@')}>` });
 
   } catch (err) {
     console.error('❌ Error logging points:', err);
     if (!interaction.replied && !interaction.deferred) {
       await interaction.reply({ content: '❌ Something went wrong while logging points.', ephemeral: true });
+    } else {
+      await interaction.editReply({ content: '❌ Something went wrong while logging points.' }).catch(() => {});
     }
   }
 }
