@@ -435,7 +435,6 @@ if (commandName === 'leaderboard') {
       new ButtonBuilder().setCustomId('transcript').setLabel('📄 Transcript').setStyle(ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('delete').setLabel('🗑️ Delete').setStyle(ButtonStyle.Danger)
     );
-    let clientPoints = loadClientPoints();
 
 // EXTRACT USER IDS
 // You might be storing user IDs in the channel topic or modal fields
