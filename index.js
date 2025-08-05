@@ -68,18 +68,25 @@ app.listen(PORT, () => console.log(`Uptime server running on port ${PORT}`));
 client.once('ready', async () => {
   console.log(`Bot online as ${client.user.tag}`);
 
-  // === REGISTER COMMANDS (if needed) ===
   if (process.env.REGISTER_COMMANDS === 'true') {
-    const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
-    const old = await rest.get(Routes.applicationCommands(client.user.id));
-    for (const cmd of old) {
-      await rest.delete(Routes.applicationCommand(client.user.id, cmd.id));
+    try {
+      const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
+
+      const old = await rest.get(Routes.applicationCommands(client.user.id));
+      for (const cmd of old) {
+        await rest.delete(Routes.applicationCommand(client.user.id, cmd.id));
+      }
+      console.log('✅ Old commands deleted');
+
+      await rest.put(Routes.applicationCommands(client.user.id), { body: commands });
+      console.log('✅ New commands registered');
+    } catch (err) {
+      console.error('❌ Error registering commands:', err);
     }
-    console.log('✅ Old commands deleted');
   }
 
-  // === SEND INITIAL LEADERBOARD MESSAGE ===
-  const leaderboardChannelId = '1402387584860033106'; // your actual leaderboard channel
+  // Now create the leaderboard message
+  const leaderboardChannelId = '1402387584860033106';
 
   try {
     const channel = await client.channels.fetch(leaderboardChannelId);
@@ -99,13 +106,12 @@ client.once('ready', async () => {
       ]
     });
 
-    console.log('✅ Leaderboard message sent! ID:', message.id);
-    // 👇 Copy and store this message ID for later updates
+    console.log('Leaderboard message created with ID:', message.id);
+    // Save this message.id to a database or JSON file
   } catch (err) {
-    console.error('Error sending leaderboard message:', err);
+    console.error('Error creating leaderboard message:', err);
   }
 });
-
     const commands = [
       new SlashCommandBuilder().setName('setup').setDescription('Send ticket panel').addChannelOption(opt => opt.setName('channel').setDescription('Target channel').setRequired(true)),
       new SlashCommandBuilder().setName('close').setDescription('Close the ticket'),
