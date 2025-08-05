@@ -17,11 +17,13 @@ const mongoUri = process.env.MONGO_URI;
 const mongoClient = new MongoClient(mongoUri);
 let tagsCollection;
 let transcriptsCollection; // Add this next to tagsCollection
-
+let ticketsCollection;
 mongoClient.connect().then(() => {
   const db = mongoClient.db('ticketbot');
   tagsCollection = db.collection('tags');
   transcriptsCollection = db.collection('transcripts'); // ✅ added
+ticketsCollection = db.collection('tickets');
+clientPointsCollection = db.collection('clientPoints');
   console.log('✅ Connected to MongoDB Atlas');
 }).catch(err => {
   console.error('❌ MongoDB connection error:', err);
@@ -65,6 +67,8 @@ app.listen(PORT, () => console.log(`Uptime server running on port ${PORT}`));
 
 client.once('ready', async () => {
   console.log(`Bot online as ${client.user.tag}`);
+
+  // === REGISTER COMMANDS (if needed) ===
   if (process.env.REGISTER_COMMANDS === 'true') {
     const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
     const old = await rest.get(Routes.applicationCommands(client.user.id));
@@ -72,6 +76,35 @@ client.once('ready', async () => {
       await rest.delete(Routes.applicationCommand(client.user.id, cmd.id));
     }
     console.log('✅ Old commands deleted');
+  }
+
+  // === SEND INITIAL LEADERBOARD MESSAGE ===
+  const leaderboardChannelId = '1402387584860033106'; // your actual leaderboard channel
+
+  try {
+    const channel = await client.channels.fetch(leaderboardChannelId);
+    if (!channel) {
+      console.error('Leaderboard channel not found');
+      return;
+    }
+
+    const message = await channel.send({
+      embeds: [
+        {
+          title: '🏆 General Client Leaderboard',
+          description: 'No points recorded yet!',
+          color: 0xffd700,
+          timestamp: new Date()
+        }
+      ]
+    });
+
+    console.log('✅ Leaderboard message sent! ID:', message.id);
+    // 👇 Copy and store this message ID for later updates
+  } catch (err) {
+    console.error('Error sending leaderboard message:', err);
+  }
+});
 
     const commands = [
       new SlashCommandBuilder().setName('setup').setDescription('Send ticket panel').addChannelOption(opt => opt.setName('channel').setDescription('Target channel').setRequired(true)),
@@ -372,9 +405,13 @@ if (interaction.isChatInputCommand()) {
       .setTimestamp();
 
     const row = new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('transcript').setLabel('📄 Transcript').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('delete').setLabel('🗑️ Delete').setStyle(ButtonStyle.Danger)
-    );
+      new ButtonBuilder().setCustomId('transcript').setLabel('TRANSCRIPT').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('delete').setLabel('DELETE').setStyle(ButtonStyle.Danger)
+    new ButtonBuilder()
+    .setCustomId('log_points')
+    .setLabel('LOG POINTS')
+    .setStyle(ButtonStyle.Success)
+);
 
     await interaction.editReply({ embeds: [embed], components: [row] });
     console.log('[DEBUG] Close panel sent');
@@ -724,6 +761,54 @@ if (interaction.isButton() && interaction.customId === 'transcript') {
     if (interaction.isButton() && interaction.customId === 'delete') {
       await interaction.channel.delete().catch(console.error);
     }
+    if (interaction.isButton() && interaction.customId === 'log_points') {
+  const channelId = interaction.channel.id;
+
+  try {
+    const ticket = await ticketsCollection.findOne({ channelId });
+
+    if (!ticket || !ticket.user1 || !ticket.user2) {
+      return interaction.reply({ content: '❌ Ticket data not found in database.', ephemeral: true });
+    }
+
+    const { user1, user2 } = ticket;
+
+    // Increment client points for each user
+    await clientPointsCollection.updateOne(
+      { userId: user1 },
+      { $inc: { points: 1 } },
+      { upsert: true }
+    );
+
+    if (user1 !== user2) {
+      await clientPointsCollection.updateOne(
+        { userId: user2 },
+        { $inc: { points: 1 } },
+        { upsert: true }
+      );
+    }
+
+    // Optional: Disable the button so it can't be pressed again
+    const updatedComponents = interaction.message.components[0].components.map(btn =>
+      ButtonBuilder.from(btn).setDisabled(btn.customId === 'log_clients')
+    );
+
+    await interaction.message.edit({
+      components: [new ActionRowBuilder().addComponents(...updatedComponents)],
+    });
+
+    await interaction.reply({
+      content: '✅ Points have been logged successfully!',
+      ephemeral: true,
+    });
+  } catch (err) {
+    console.error('Error logging clients:', err);
+    await interaction.reply({
+      content: '❌ Something went wrong while logging points.',
+      ephemeral: true,
+    });
+  }
+}
 
     if (interaction.isModalSubmit() && interaction.customId === 'ticketModal') {
       // Prevent multiple tickets per user
@@ -750,6 +835,7 @@ const permissionOverwrites = [
   { id: MIDDLEMAN_ROLE, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] }
 ];
 
+
 // Add the target user to permission overwrites if ID is valid and member exists
 if (isValidId) {
   const member = interaction.guild.members.cache.get(q4);
@@ -766,6 +852,11 @@ const ticket = await interaction.guild.channels.create({
   type: ChannelType.GuildText,
   parent: TICKET_CATEGORY,
   permissionOverwrites
+});
+await ticketsCollection.insertOne({
+  channelId: ticket.id,
+  user1: interaction.user.id,
+  user2: q4
 });
 
 const embed = new EmbedBuilder()
