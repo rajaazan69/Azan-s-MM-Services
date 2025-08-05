@@ -14,7 +14,16 @@ const fs = require('fs');
 require('dotenv').config();
 const { MongoClient } = require('mongodb');
 const stickyMap = new Map();
+const pointsFile = './clientPoints.json';
 
+function loadPoints() {
+  if (!fs.existsSync(pointsFile)) return {};
+  return JSON.parse(fs.readFileSync(pointsFile));
+}
+
+function savePoints(points) {
+  fs.writeFileSync(pointsFile, JSON.stringify(points, null, 2));
+}
 const mongoUri = process.env.MONGO_URI;
 const mongoClient = new MongoClient(mongoUri);
 let tagsCollection;
@@ -169,7 +178,10 @@ new SlashCommandBuilder()
   .setName('unlock')
   .setDescription('Unlock the current channel')
   .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels),
-    
+  new SlashCommandBuilder()
+  .setName('leaderboard')
+  .setDescription('View the top clients by successful trades'),
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels),
   new SlashCommandBuilder()
   .setName('setsticky')
   .setDescription('Set a sticky message for a specific channel')
@@ -269,6 +281,36 @@ if (interaction.isChatInputCommand()) {
     await interaction.editReply({ content: '❌ Failed to create tag.' });
   }
 } // ✅ <---- This is needed!
+if (commandName === 'leaderboard') {
+  await interaction.deferReply({ ephemeral: true }).catch(() => {});
+  try {
+    const topUsers = await tradesCollection
+      .find({})
+      .sort({ points: -1 })
+      .limit(10)
+      .toArray();
+
+    if (topUsers.length === 0) {
+      await interaction.editReply({ content: '❌ No trades logged yet.' });
+      return;
+    }
+
+    const leaderboardEmbed = new EmbedBuilder()
+      .setTitle('🏆 Top Clients Leaderboard')
+      .setColor('#ffffff')
+      .setDescription(
+        topUsers
+          .map((user, index) => `**#${index + 1}** <@${user.userId}> — **${user.points}** trades`)
+          .join('\n')
+      );
+
+    await interaction.editReply({ embeds: [leaderboardEmbed] });
+  } catch (err) {
+    console.error('❌ Leaderboard fetch error:', err);
+    await interaction.editReply({ content: '❌ Failed to load leaderboard.' });
+  }
+}
+
 
       if (commandName === 'tag') {
         const name = options.getString('name');
@@ -377,6 +419,21 @@ if (interaction.isChatInputCommand()) {
       new ButtonBuilder().setCustomId('transcript').setLabel('📄 Transcript').setStyle(ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('delete').setLabel('🗑️ Delete').setStyle(ButtonStyle.Danger)
     );
+    let clientPoints = loadClientPoints();
+
+// EXTRACT USER IDS
+// You might be storing user IDs in the channel topic or modal fields
+const user1 = interaction.channel.topic?.split(':')[1]; // Example: you stored "ticket-for:1234567890"
+const user2 = interaction.message.embeds[0]?.fields?.find(f => f.name === 'Trader 2')?.value?.match(/\d{17,}/)?.[0]; // Try extracting from embed
+
+if (user1) {
+  clientPoints[user1] = (clientPoints[user1] || 0) + 1;
+}
+if (user2) {
+  clientPoints[user2] = (clientPoints[user2] || 0) + 1;
+}
+
+saveClientPoints(clientPoints);
 
     await interaction.editReply({ embeds: [embed], components: [row] });
     console.log('[DEBUG] Close panel sent');
