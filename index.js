@@ -1,5 +1,3 @@
-
-
 const {
   Client, GatewayIntentBits, Partials, ChannelType, PermissionsBitField, PermissionFlagsBits,
   ActionRowBuilder, ModalBuilder, TextInputBuilder, TextInputStyle,
@@ -14,41 +12,19 @@ const fs = require('fs');
 require('dotenv').config();
 const { MongoClient } = require('mongodb');
 const stickyMap = new Map();
-const pointsFile = './clientPoints.json';
 
-function loadPoints() {
-  if (!fs.existsSync(pointsFile)) return {};
-  return JSON.parse(fs.readFileSync(pointsFile));
-}
-
-function savePoints(points) {
-  fs.writeFileSync(pointsFile, JSON.stringify(points, null, 2));
-}
-function loadTicketDB() {
-  if (!fs.existsSync(ticketDBPath)) return {};
-  return JSON.parse(fs.readFileSync(ticketDBPath, 'utf8'));
-}
-
-function saveTicketDB(data) {
-  fs.writeFileSync(ticketDBPath, JSON.stringify(data, null, 2));
-}
-
-// Save on ticket create:
-const ticketDB = loadTicketDB();
-ticketDB[channel.id] = {
-  user1: interaction.user.id,
-  user2: otherUserIdFromModal // this is the one they pasted
-};
-saveTicketDB(ticketDB);
 const mongoUri = process.env.MONGO_URI;
 const mongoClient = new MongoClient(mongoUri);
 let tagsCollection;
 let transcriptsCollection; // Add this next to tagsCollection
-
+let ticketUsersCollection; // For storing user1/user2 per ticket
+let clientPointsCollection;
 mongoClient.connect().then(() => {
   const db = mongoClient.db('ticketbot');
   tagsCollection = db.collection('tags');
   transcriptsCollection = db.collection('transcripts'); // ✅ added
+ticketUsersCollection = db.collection('ticketUsers');
+clientPointsCollection = db.collection('clientPoints');
   console.log('✅ Connected to MongoDB Atlas');
 }).catch(err => {
   console.error('❌ MongoDB connection error:', err);
@@ -132,6 +108,10 @@ client.once('ready', async () => {
       .setDescription('Reason for the kick')
       .setRequired(false))
   .setDefaultMemberPermissions(PermissionFlagsBits.KickMembers),
+  new SlashCommandBuilder()
+  .setName('leaderboard')
+  .setDescription('View top clients based on completed tickets')
+  .setDefaultMemberPermissions(PermissionFlagsBits.KickMembers),
 
 new SlashCommandBuilder()
   .setName('ban')
@@ -194,10 +174,7 @@ new SlashCommandBuilder()
   .setName('unlock')
   .setDescription('Unlock the current channel')
   .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels),
-  new SlashCommandBuilder()
-  .setName('leaderboard')
-  .setDescription('View the top clients by successful trades')
-    .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels),
+    
   new SlashCommandBuilder()
   .setName('setsticky')
   .setDescription('Set a sticky message for a specific channel')
@@ -297,36 +274,6 @@ if (interaction.isChatInputCommand()) {
     await interaction.editReply({ content: '❌ Failed to create tag.' });
   }
 } // ✅ <---- This is needed!
-if (commandName === 'leaderboard') {
-  await interaction.deferReply({ ephemeral: true }).catch(() => {});
-  try {
-    const topUsers = await tradesCollection
-      .find({})
-      .sort({ points: -1 })
-      .limit(10)
-      .toArray();
-
-    if (topUsers.length === 0) {
-      await interaction.editReply({ content: '❌ No trades logged yet.' });
-      return;
-    }
-
-    const leaderboardEmbed = new EmbedBuilder()
-      .setTitle('🏆 Top Clients Leaderboard')
-      .setColor('#ffffff')
-      .setDescription(
-        topUsers
-          .map((user, index) => `**#${index + 1}** <@${user.userId}> — **${user.points}** trades`)
-          .join('\n')
-      );
-
-    await interaction.editReply({ embeds: [leaderboardEmbed] });
-  } catch (err) {
-    console.error('❌ Leaderboard fetch error:', err);
-    await interaction.editReply({ content: '❌ Failed to load leaderboard.' });
-  }
-}
-
 
       if (commandName === 'tag') {
         const name = options.getString('name');
@@ -435,24 +382,27 @@ if (commandName === 'leaderboard') {
       new ButtonBuilder().setCustomId('transcript').setLabel('📄 Transcript').setStyle(ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('delete').setLabel('🗑️ Delete').setStyle(ButtonStyle.Danger)
     );
-
-// EXTRACT USER IDS
-// You might be storing user IDs in the channel topic or modal fields
-const ticketDB = loadTicketDB();
-const ticketData = ticketDB[interaction.channel.id];
-
+    const ticketData = ticketDB[interaction.channel.id];
 if (!ticketData) {
-  return interaction.reply({ content: '❌ Could not find ticket data.', ephemeral: true });
+  await interaction.reply({ content: '❌ No ticket data found for this channel.', ephemeral: true });
+  return;
 }
 
 const { user1, user2 } = ticketData;
 
-let clientPoints = loadClientPoints();
+async function logClientPoints(userId) {
+  if (!userId) return;
+  await clientPointsCollection.updateOne(
+    { userId },
+    { $inc: { points: 1 } },
+    { upsert: true }
+  );
+  console.log(`✅ Client points logged for ${userId}`);
+}
 
-if (user1) clientPoints[user1] = (clientPoints[user1] || 0) + 1;
-if (user2 && user2 !== user1) clientPoints[user2] = (clientPoints[user2] || 0) + 1;
+await logClientPoints(user1);
+if (user2 && user2 !== user1) await logClientPoints(user2);
 
-saveClientPoints(clientPoints);
     await interaction.editReply({ embeds: [embed], components: [row] });
     console.log('[DEBUG] Close panel sent');
 
@@ -474,6 +424,33 @@ saveClientPoints(clientPoints);
         if (parentId === TICKET_CATEGORY) await channel.delete();
         else await interaction.reply({ content: '❌ You can only delete ticket channels!', ephemeral: true });
       }
+      if (commandName === 'leaderboard') {
+  try {
+    const topClients = await clientPointsCollection
+      .find({})
+      .sort({ points: -1 })
+      .limit(10)
+      .toArray();
+
+    if (!topClients.length) {
+      return interaction.reply({ content: '❌ No points logged yet.' });
+    }
+
+    const leaderboard = topClients.map((entry, index) =>
+      `**${index + 1}.** <@${entry.userId}> — \`${entry.points}\` point${entry.points === 1 ? '' : 's'}`
+    ).join('\n');
+
+    const lbEmbed = new EmbedBuilder()
+      .setTitle('🏆 Client Leaderboard')
+      .setDescription(leaderboard)
+      .setColor('#FFD700');
+
+    await interaction.reply({ embeds: [lbEmbed] });
+  } catch (err) {
+    console.error('❌ Leaderboard error:', err);
+    await interaction.reply({ content: '❌ Failed to fetch leaderboard.' });
+  }
+}
 
       if (commandName === 'rename') {
         const newName = options.getString('name');
