@@ -19,12 +19,14 @@ let tagsCollection;
 let transcriptsCollection; // Add this next to tagsCollection
 let ticketUsersCollection; // For storing user1/user2 per ticket
 let clientPointsCollection;
+let ticketDB;
 mongoClient.connect().then(() => {
   const db = mongoClient.db('ticketbot');
   tagsCollection = db.collection('tags');
   transcriptsCollection = db.collection('transcripts'); // ✅ added
 ticketUsersCollection = db.collection('ticketUsers');
 clientPointsCollection = db.collection('clientPoints');
+ticketDB = db.collection('tickets');
   console.log('✅ Connected to MongoDB Atlas');
 }).catch(err => {
   console.error('❌ MongoDB connection error:', err);
