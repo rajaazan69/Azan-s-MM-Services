@@ -67,51 +67,13 @@ app.listen(PORT, () => console.log(`Uptime server running on port ${PORT}`));
 
 client.once('ready', async () => {
   console.log(`Bot online as ${client.user.tag}`);
-
   if (process.env.REGISTER_COMMANDS === 'true') {
-    try {
-      const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
-
-      const old = await rest.get(Routes.applicationCommands(client.user.id));
-      for (const cmd of old) {
-        await rest.delete(Routes.applicationCommand(client.user.id, cmd.id));
-      }
-      console.log('✅ Old commands deleted');
-
-      await rest.put(Routes.applicationCommands(client.user.id), { body: commands });
-      console.log('✅ New commands registered');
-    } catch (err) {
-      console.error('❌ Error registering commands:', err);
+    const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
+    const old = await rest.get(Routes.applicationCommands(client.user.id));
+    for (const cmd of old) {
+      await rest.delete(Routes.applicationCommand(client.user.id, cmd.id));
     }
-  }
-
-  // Now create the leaderboard message
-  const leaderboardChannelId = '1402387584860033106';
-
-  try {
-    const channel = await client.channels.fetch(leaderboardChannelId);
-    if (!channel) {
-      console.error('Leaderboard channel not found');
-      return;
-    }
-
-    const message = await channel.send({
-      embeds: [
-        {
-          title: '🏆 General Client Leaderboard',
-          description: 'No points recorded yet!',
-          color: 0xffd700,
-          timestamp: new Date()
-        }
-      ]
-    });
-
-    console.log('Leaderboard message created with ID:', message.id);
-    // Save this message.id to a database or JSON file
-  } catch (err) {
-    console.error('Error creating leaderboard message:', err);
-  }
-});
+    console.log('✅ Old commands deleted');
     const commands = [
       new SlashCommandBuilder().setName('setup').setDescription('Send ticket panel').addChannelOption(opt => opt.setName('channel').setDescription('Target channel').setRequired(true)),
       new SlashCommandBuilder().setName('close').setDescription('Close the ticket'),
@@ -248,6 +210,31 @@ new SlashCommandBuilder()
     console.log('✅ Slash commands registered');
   } else {
     console.log('🟡 Skipping command registration (REGISTER_COMMANDS is false)');
+  }
+  const leaderboardChannelId = '1402387584860033106';
+
+  try {
+    const channel = await client.channels.fetch(leaderboardChannelId);
+    if (!channel) {
+      console.error('Leaderboard channel not found');
+      return;
+    }
+
+    const message = await channel.send({
+      embeds: [
+        {
+          title: '🏆 General Client Leaderboard',
+          description: 'No points recorded yet!',
+          color: 0xffd700,
+          timestamp: new Date()
+        }
+      ]
+    });
+
+    console.log('🏁 Leaderboard message created with ID:', message.id);
+    // Save the message ID in your DB or config to update later
+  } catch (err) {
+    console.error('❌ Error sending leaderboard message:', err);
   }
 });
 
