@@ -736,7 +736,7 @@ if (interaction.isButton() && interaction.customId === 'transcript') {
     // Only allow use inside ticket channels
     const parentId = channel.parentId || channel.parent?.id;
     if (parentId !== TICKET_CATEGORY) {
-      return interaction.reply({ content: '❌ This button can only be used inside ticket channels.', ephemeral: true });
+      return await interaction.reply({ content: '❌ This button can only be used inside ticket channels.', ephemeral: true });
     }
 
     // Get ticket owner
@@ -749,8 +749,10 @@ if (interaction.isButton() && interaction.customId === 'transcript') {
     )?.id;
 
     if (!ticketOwnerId) {
-      return interaction.reply({ content: '❌ Could not determine the ticket owner.', ephemeral: true });
+      return await interaction.reply({ content: '❌ Could not determine the ticket owner.', ephemeral: true });
     }
+
+    await interaction.deferReply({ ephemeral: true }); // defer here!
 
     const userId = ticketOwnerId;
 
@@ -768,8 +770,6 @@ if (interaction.isButton() && interaction.customId === 'transcript') {
         points: 1
       });
     }
-
-    await interaction.reply({ content: `✅ Logged 1 point for <@${userId}>`, ephemeral: true });
 
     // Fetch leaderboard message
     const leaderboardChannel = await interaction.client.channels.fetch(process.env.LEADERBOARD_CHANNEL_ID);
@@ -790,6 +790,9 @@ if (interaction.isButton() && interaction.customId === 'transcript') {
       .setTimestamp();
 
     await leaderboardMessage.edit({ embeds: [embed] });
+
+    // Edit reply after finishing all async work
+    await interaction.editReply({ content: `✅ Logged 1 point for <@${userId}>` });
 
   } catch (err) {
     console.error('❌ Error logging points:', err);
