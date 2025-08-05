@@ -17,16 +17,11 @@ const mongoUri = process.env.MONGO_URI;
 const mongoClient = new MongoClient(mongoUri);
 let tagsCollection;
 let transcriptsCollection; // Add this next to tagsCollection
-let ticketUsersCollection; // For storing user1/user2 per ticket
-let clientPointsCollection;
-let ticketDB;
+
 mongoClient.connect().then(() => {
   const db = mongoClient.db('ticketbot');
   tagsCollection = db.collection('tags');
   transcriptsCollection = db.collection('transcripts'); // ✅ added
-ticketUsersCollection = db.collection('ticketUsers');
-clientPointsCollection = db.collection('clientPoints');
-ticketDB = db.collection('tickets');
   console.log('✅ Connected to MongoDB Atlas');
 }).catch(err => {
   console.error('❌ MongoDB connection error:', err);
@@ -59,7 +54,6 @@ const MIDDLEMAN_ROLE = '1373062797545570525';
 const PANEL_CHANNEL = '1373048211538841702';
 const TICKET_CATEGORY = '1373027564926406796';
 const TRANSCRIPT_CHANNEL = '1373058123547283568';
-const leaderboardChannelId = '1402336821287059496'; // replace with your #leaderboard channel ID
 const BASE_URL = process.env.BASE_URL;
 
 app.get('/transcripts/:filename', (req, res) => {
@@ -381,32 +375,6 @@ if (interaction.isChatInputCommand()) {
       new ButtonBuilder().setCustomId('transcript').setLabel('📄 Transcript').setStyle(ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('delete').setLabel('🗑️ Delete').setStyle(ButtonStyle.Danger)
     );
-    const ticketData = ticketDB[interaction.channel.id];
-if (!ticketData) {
-  await interaction.followUp({ content: '❌ No ticket data found for this channel.', ephemeral: true });
-  return;
-}
-
-const { user1, user2 } = ticketData;
-
-async function logClientPoints(userId, interaction) {
-  if (!userId) return;
-  await clientPointsCollection.updateOne(
-    { userId },
-    { $inc: { points: 1 } },
-    { upsert: true }
-  );
-  await updateLeaderboard(client);
-
-  if (interaction) {
-    await interaction.followUp({ content: '✅ Client points logged and leaderboard updated.', ephemeral: true });
-  }
-
-  console.log(`✅ Client points logged for ${userId}`);
-}
-
-await logClientPoints(user1, interaction);
-if (user2 && user2 !== user1) await logClientPoints(user2, interaction);
 
     await interaction.editReply({ embeds: [embed], components: [row] });
     console.log('[DEBUG] Close panel sent');
@@ -1129,40 +1097,6 @@ client.on('guildMemberAdd', async (member) => {
 
   welcomeChannel.send({ embeds: [embed] }).catch(console.error);
 });
-async function updateLeaderboard(client) {
-  const channel = await client.channels.fetch(leaderboardChannelId);
-  if (!channel) return console.error("Leaderboard channel not found.");
-
-  // Fetch top 10 users from MongoDB
-  const topUsers = await pointsCollection
-    .find({})
-    .sort({ points: -1 })
-    .limit(10)
-    .toArray();
-
-  if (!topUsers.length) return;
-
-  // Build the leaderboard description
-  const description = topUsers
-    .map((user, index) => `**${index + 1}.** <@${user.userId}> — \`${user.points} point${user.points !== 1 ? 's' : ''}\``)
-    .join('\n');
-
-  const embed = new EmbedBuilder()
-    .setTitle('🏆 Leaderboard')
-    .setDescription(description)
-    .setColor('#000000')
-    .setTimestamp();
-
-  // Find the previous leaderboard message if it exists
-  const messages = await channel.messages.fetch({ limit: 10 });
-  const existing = messages.find(msg => msg.author.id === client.user.id && msg.embeds[0]?.title === '🏆 Leaderboard');
-
-  if (existing) {
-    await existing.edit({ embeds: [embed] });
-  } else {
-    await channel.send({ embeds: [embed] });
-  }
-}
 app.get('/', (req, res) => {
   console.log('👀 UptimeRobot pinged the server');
   res.status(200).send('✅ Server is alive');
@@ -1181,4 +1115,3 @@ setInterval(() => {
 }, 1000 * 60 * 5); // Every 5 minutes
 client.on('error', console.error);
 process.on('unhandledRejection', (reason, p) => console.error('Unhandled Rejection:', reason));
-client.login(process.env.TOKEN);
