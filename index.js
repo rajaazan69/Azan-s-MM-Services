@@ -24,6 +24,22 @@ function loadPoints() {
 function savePoints(points) {
   fs.writeFileSync(pointsFile, JSON.stringify(points, null, 2));
 }
+function loadTicketDB() {
+  if (!fs.existsSync(ticketDBPath)) return {};
+  return JSON.parse(fs.readFileSync(ticketDBPath, 'utf8'));
+}
+
+function saveTicketDB(data) {
+  fs.writeFileSync(ticketDBPath, JSON.stringify(data, null, 2));
+}
+
+// Save on ticket create:
+const ticketDB = loadTicketDB();
+ticketDB[channel.id] = {
+  user1: interaction.user.id,
+  user2: otherUserIdFromModal // this is the one they pasted
+};
+saveTicketDB(ticketDB);
 const mongoUri = process.env.MONGO_URI;
 const mongoClient = new MongoClient(mongoUri);
 let tagsCollection;
@@ -423,18 +439,21 @@ if (commandName === 'leaderboard') {
 
 // EXTRACT USER IDS
 // You might be storing user IDs in the channel topic or modal fields
-const user1 = interaction.channel.topic?.split(':')[1]; // Example: you stored "ticket-for:1234567890"
-const user2 = interaction.message.embeds[0]?.fields?.find(f => f.name === 'Trader 2')?.value?.match(/\d{17,}/)?.[0]; // Try extracting from embed
+const ticketDB = loadTicketDB();
+const ticketData = ticketDB[interaction.channel.id];
 
-if (user1) {
-  clientPoints[user1] = (clientPoints[user1] || 0) + 1;
+if (!ticketData) {
+  return interaction.reply({ content: '❌ Could not find ticket data.', ephemeral: true });
 }
-if (user2) {
-  clientPoints[user2] = (clientPoints[user2] || 0) + 1;
-}
+
+const { user1, user2 } = ticketData;
+
+let clientPoints = loadClientPoints();
+
+if (user1) clientPoints[user1] = (clientPoints[user1] || 0) + 1;
+if (user2 && user2 !== user1) clientPoints[user2] = (clientPoints[user2] || 0) + 1;
 
 saveClientPoints(clientPoints);
-
     await interaction.editReply({ embeds: [embed], components: [row] });
     console.log('[DEBUG] Close panel sent');
 
