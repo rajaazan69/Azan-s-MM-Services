@@ -399,7 +399,7 @@ if (interaction.isChatInputCommand()) {
 
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId('transcript').setLabel('TRANSCRIPT').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('delete').setLabel('DELETE').setStyle(ButtonStyle.Danger)
+      new ButtonBuilder().setCustomId('delete').setLabel('DELETE').setStyle(ButtonStyle.Danger),
     new ButtonBuilder()
     .setCustomId('log_points')
     .setLabel('LOG POINTS')
