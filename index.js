@@ -739,37 +739,51 @@ if (interaction.isButton() && interaction.customId === 'transcript') {
       return await interaction.reply({ content: '❌ This button can only be used inside ticket channels.', ephemeral: true });
     }
 
-    // Get ticket owner
+    // Get ticket owner ID (the user who made the ticket)
     const perms = channel.permissionOverwrites.cache;
-    const ticketOwnerId = [...perms.values()].find(po =>
-      po.allow.has(PermissionsBitField.Flags.ViewChannel) &&
-      po.id !== OWNER_ID &&
-      po.id !== MIDDLEMAN_ROLE &&
-      po.id !== guild.id
-    )?.id;
+    const VIEW_CHANNEL = PermissionsBitField.Flags.ViewChannel;
+    const ticketOwnerId = [...perms.values()]
+      .filter(po => po.type === 'member' || po.type === 0)
+      .find(po => (po.allow?.bitfield & VIEW_CHANNEL) === VIEW_CHANNEL &&
+        po.id !== OWNER_ID &&
+        po.id !== MIDDLEMAN_ROLE &&
+        po.id !== guild.id
+      )?.id;
 
     if (!ticketOwnerId) {
       return await interaction.reply({ content: '❌ Could not determine the ticket owner.', ephemeral: true });
     }
 
-    await interaction.deferReply({ ephemeral: true }); // defer here!
-
-    const userId = ticketOwnerId;
-
-    // Update MongoDB points
-    const existing = await clientPointsCollection.findOne({ userId });
-
-    if (existing) {
-      await clientPointsCollection.updateOne(
-        { userId },
-        { $inc: { points: 1 } }
-      );
-    } else {
-      await clientPointsCollection.insertOne({
-        userId,
-        points: 1
-      });
+    // Find the "other" user ID stored in your tickets collection for this channel
+    const ticketData = await ticketsCollection.findOne({ channelId: channel.id });
+    if (!ticketData || !ticketData.user2) {
+      return await interaction.reply({ content: '❌ Could not find the second user in ticket data.', ephemeral: true });
     }
+    const secondUserId = ticketData.user2;
+
+    // Defer reply because Mongo updates + message fetch might take time
+    await interaction.deferReply({ ephemeral: true });
+
+    // Helper function to add/increment points in Mongo
+    async function addPoints(userId) {
+      if (!userId) return;
+      const existing = await clientPointsCollection.findOne({ userId });
+      if (existing) {
+        await clientPointsCollection.updateOne(
+          { userId },
+          { $inc: { points: 1 } }
+        );
+      } else {
+        await clientPointsCollection.insertOne({
+          userId,
+          points: 1
+        });
+      }
+    }
+
+    // Add points for both users
+    await addPoints(ticketOwnerId);
+    await addPoints(secondUserId);
 
     // Fetch leaderboard message
     const leaderboardChannel = await interaction.client.channels.fetch(process.env.LEADERBOARD_CHANNEL_ID);
@@ -791,8 +805,7 @@ if (interaction.isButton() && interaction.customId === 'transcript') {
 
     await leaderboardMessage.edit({ embeds: [embed] });
 
-    // Edit reply after finishing all async work
-    await interaction.editReply({ content: `✅ Logged 1 point for <@${userId}>` });
+    await interaction.editReply({ content: `✅ Logged 1 point for <@${ticketOwnerId}> and <@${secondUserId}>` });
 
   } catch (err) {
     console.error('❌ Error logging points:', err);
