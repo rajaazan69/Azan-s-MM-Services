@@ -383,7 +383,7 @@ if (interaction.isChatInputCommand()) {
     );
     const ticketData = ticketDB[interaction.channel.id];
 if (!ticketData) {
-  await interaction.reply({ content: '❌ No ticket data found for this channel.', ephemeral: true });
+  await interaction.followUp({ content: '❌ No ticket data found for this channel.', ephemeral: true });
   return;
 }
 
