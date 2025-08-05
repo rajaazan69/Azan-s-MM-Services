@@ -180,7 +180,7 @@ new SlashCommandBuilder()
   .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels),
   new SlashCommandBuilder()
   .setName('leaderboard')
-  .setDescription('View the top clients by successful trades'),
+  .setDescription('View the top clients by successful trades')
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels),
   new SlashCommandBuilder()
   .setName('setsticky')
