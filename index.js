@@ -106,6 +106,10 @@ client.once('ready', async () => {
       .setDescription('Reason for the kick')
       .setRequired(false))
   .setDefaultMemberPermissions(PermissionFlagsBits.KickMembers),
+  new SlashCommandBuilder()
+  .setName('resetlb')
+  .setDescription('Reset the client leaderboard')
+  .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
 new SlashCommandBuilder()
   .setName('ban')
@@ -282,6 +286,37 @@ if (interaction.isChatInputCommand()) {
   await interaction.reply({ content: '❌ Error reading tag.' });
 }
       }
+        if (commandName === 'resetlb') {
+    const OWNER_ID = '1356149794040446998'; // Replace with your Discord ID
+    const isOwner = user.id === OWNER_ID;
+    const isAdmin = member.permissions.has(PermissionsBitField.Flags.Administrator);
+
+    if (!isOwner && !isAdmin) {
+      return interaction.reply({ content: '❌ You do not have permission to reset the leaderboard.', ephemeral: true });
+    }
+
+    try {
+      // Clear all points
+      await clientPointsCollection.deleteMany({});
+
+      // Update leaderboard message
+      const leaderboardChannel = await client.channels.fetch(process.env.LEADERBOARD_CHANNEL_ID);
+      const leaderboardMessage = await leaderboardChannel.messages.fetch(process.env.LEADERBOARD_MESSAGE_ID);
+
+      const embed = new EmbedBuilder()
+        .setTitle('🏆 Client Leaderboard')
+        .setDescription('No points recorded yet!')
+        .setColor('#FFD700')
+        .setTimestamp();
+
+      await leaderboardMessage.edit({ embeds: [embed] });
+
+      await interaction.reply({ content: '✅ Leaderboard has been reset.', ephemeral: true });
+    } catch (error) {
+      console.error('❌ Error resetting leaderboard:', error);
+      await interaction.reply({ content: '❌ Failed to reset leaderboard.', ephemeral: true });
+    }
+  }
 
       if (commandName === 'tagdelete') {
         await interaction.deferReply({ ephemeral: true }).catch(() => {});
