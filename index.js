@@ -756,10 +756,11 @@ if (interaction.isButton() && interaction.customId === 'transcript') {
 
     // Find the "other" user ID stored in your tickets collection for this channel
     const ticketData = await ticketsCollection.findOne({ channelId: channel.id });
-    if (!ticketData || !ticketData.user2) {
-      return await interaction.reply({ content: '❌ Could not find the second user in ticket data.', ephemeral: true });
-    }
-    const secondUserId = ticketData.user2;
+if (!ticketData) {
+  return interaction.reply({ content: '❌ Could not find ticket data.', ephemeral: true });
+}
+const ticketOwnerId = ticketData.user1;
+const secondUserId = ticketData.user2;
 
     // Defer reply because Mongo updates + message fetch might take time
     await interaction.deferReply({ ephemeral: true });
