@@ -797,6 +797,7 @@ if (interaction.isButton() && interaction.customId === 'transcript') {
       await interaction.reply({ content: '❌ Something went wrong while logging points.', ephemeral: true });
     }
   }
+}
 
     if (interaction.isModalSubmit() && interaction.customId === 'ticketModal') {
       // Prevent multiple tickets per user
@@ -979,6 +980,7 @@ async function handleTranscript(interaction, channel) {
     }
   }
 }
+});
 client.on('interactionCreate', async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
 
