@@ -211,32 +211,6 @@ new SlashCommandBuilder()
   } else {
     console.log('🟡 Skipping command registration (REGISTER_COMMANDS is false)');
   }
-  const leaderboardChannelId = '1402387584860033106';
-
-  try {
-    const channel = await client.channels.fetch(leaderboardChannelId);
-    if (!channel) {
-      console.error('Leaderboard channel not found');
-      return;
-    }
-
-    const message = await channel.send({
-      embeds: [
-        {
-          title: '🏆 General Client Leaderboard',
-          description: 'No points recorded yet!',
-          color: 0xffd700,
-          timestamp: new Date()
-        }
-      ]
-    });
-
-    console.log('🏁 Leaderboard message created with ID:', message.id);
-    // Save the message ID in your DB or config to update later
-  } catch (err) {
-    console.error('❌ Error sending leaderboard message:', err);
-  }
-});
 
 client.on('interactionCreate', async interaction => {
   try {
@@ -755,51 +729,73 @@ if (interaction.isButton() && interaction.customId === 'transcript') {
       await interaction.channel.delete().catch(console.error);
     }
     if (interaction.isButton() && interaction.customId === 'log_points') {
-  const channelId = interaction.channel.id;
-
   try {
-    const ticket = await ticketsCollection.findOne({ channelId });
+    const channel = interaction.channel;
+    const guild = interaction.guild;
 
-    if (!ticket || !ticket.user1 || !ticket.user2) {
-      return interaction.reply({ content: '❌ Ticket data not found in database.', ephemeral: true });
+    // Only allow use inside ticket channels
+    const parentId = channel.parentId || channel.parent?.id;
+    if (parentId !== TICKET_CATEGORY) {
+      return interaction.reply({ content: '❌ This button can only be used inside ticket channels.', ephemeral: true });
     }
 
-    const { user1, user2 } = ticket;
+    // Get ticket owner
+    const perms = channel.permissionOverwrites.cache;
+    const ticketOwnerId = [...perms.values()].find(po =>
+      po.allow.has(PermissionsBitField.Flags.ViewChannel) &&
+      po.id !== OWNER_ID &&
+      po.id !== MIDDLEMAN_ROLE &&
+      po.id !== guild.id
+    )?.id;
 
-    // Increment client points for each user
-    await clientPointsCollection.updateOne(
-      { userId: user1 },
-      { $inc: { points: 1 } },
-      { upsert: true }
-    );
+    if (!ticketOwnerId) {
+      return interaction.reply({ content: '❌ Could not determine the ticket owner.', ephemeral: true });
+    }
 
-    if (user1 !== user2) {
+    const userId = ticketOwnerId;
+
+    // Update MongoDB points
+    const existing = await clientPointsCollection.findOne({ userId });
+
+    if (existing) {
       await clientPointsCollection.updateOne(
-        { userId: user2 },
-        { $inc: { points: 1 } },
-        { upsert: true }
+        { userId },
+        { $inc: { points: 1 } }
       );
+    } else {
+      await clientPointsCollection.insertOne({
+        userId,
+        points: 1
+      });
     }
 
-    // Optional: Disable the button so it can't be pressed again
-    const updatedComponents = interaction.message.components[0].components.map(btn =>
-      ButtonBuilder.from(btn).setDisabled(btn.customId === 'log_clients')
-    );
+    await interaction.reply({ content: `✅ Logged 1 point for <@${userId}>`, ephemeral: true });
 
-    await interaction.message.edit({
-      components: [new ActionRowBuilder().addComponents(...updatedComponents)],
-    });
+    // Fetch leaderboard message
+    const leaderboardChannel = await interaction.client.channels.fetch(process.env.LEADERBOARD_CHANNEL_ID);
+    const leaderboardMessage = await leaderboardChannel.messages.fetch(process.env.LEADERBOARD_MESSAGE_ID);
 
-    await interaction.reply({
-      content: '✅ Points have been logged successfully!',
-      ephemeral: true,
-    });
+    // Get sorted top users
+    const topUsers = await clientPointsCollection.find().sort({ points: -1 }).limit(10).toArray();
+
+    const leaderboardText = topUsers.map((user, i) =>
+      `**#${i + 1}** <@${user.userId}> — **${user.points}** point${user.points === 1 ? '' : 's'}`
+    ).join('\n');
+
+    const embed = new EmbedBuilder()
+      .setTitle('**🏆 Top Clients This Month**')
+      .setDescription(leaderboardText || 'No data yet.')
+      .setColor('#2B2D31')
+      .setFooter({ text: 'Client Leaderboard' })
+      .setTimestamp();
+
+    await leaderboardMessage.edit({ embeds: [embed] });
+
   } catch (err) {
-    console.error('Error logging clients:', err);
-    await interaction.reply({
-      content: '❌ Something went wrong while logging points.',
-      ephemeral: true,
-    });
+    console.error('❌ Error logging points:', err);
+    if (!interaction.replied && !interaction.deferred) {
+      await interaction.reply({ content: '❌ Something went wrong while logging points.', ephemeral: true });
+    }
   }
 }
 
