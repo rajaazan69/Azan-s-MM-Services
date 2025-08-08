@@ -887,6 +887,7 @@ await ticketsCollection.insertOne({
 const embed = new EmbedBuilder()
   .setTitle('Middleman Request')
   .setColor('#FFFFFF')
+  .setThumbnail(interaction.user.displayAvatarURL({ dynamic: true }))
   .addFields(
     { name: '**User 1**', value: `<@${interaction.user.id}>`, inline: true },
     { name: '**User 2**', value: `${targetMention}`, inline: true },
