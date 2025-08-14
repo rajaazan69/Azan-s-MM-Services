@@ -1,3 +1,4 @@
+
 const {
   Client, GatewayIntentBits, Partials, ChannelType, PermissionsBitField, PermissionFlagsBits,
   ActionRowBuilder, ModalBuilder, TextInputBuilder, TextInputStyle,
@@ -17,11 +18,13 @@ const mongoUri = process.env.MONGO_URI;
 const mongoClient = new MongoClient(mongoUri);
 let tagsCollection;
 let transcriptsCollection; // Add this next to tagsCollection
-
+let ticketsCollection;
 mongoClient.connect().then(() => {
   const db = mongoClient.db('ticketbot');
   tagsCollection = db.collection('tags');
   transcriptsCollection = db.collection('transcripts'); // ✅ added
+ticketsCollection = db.collection('tickets');
+clientPointsCollection = db.collection('clientPoints');
   console.log('✅ Connected to MongoDB Atlas');
 }).catch(err => {
   console.error('❌ MongoDB connection error:', err);
@@ -72,7 +75,6 @@ client.once('ready', async () => {
       await rest.delete(Routes.applicationCommand(client.user.id, cmd.id));
     }
     console.log('✅ Old commands deleted');
-
     const commands = [
       new SlashCommandBuilder().setName('setup').setDescription('Send ticket panel').addChannelOption(opt => opt.setName('channel').setDescription('Target channel').setRequired(true)),
       new SlashCommandBuilder().setName('close').setDescription('Close the ticket'),
@@ -105,6 +107,10 @@ client.once('ready', async () => {
       .setDescription('Reason for the kick')
       .setRequired(false))
   .setDefaultMemberPermissions(PermissionFlagsBits.KickMembers),
+  new SlashCommandBuilder()
+  .setName('resetlb')
+  .setDescription('Reset the client leaderboard')
+  .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
 new SlashCommandBuilder()
   .setName('ban')
@@ -210,7 +216,6 @@ new SlashCommandBuilder()
   } else {
     console.log('🟡 Skipping command registration (REGISTER_COMMANDS is false)');
   }
-});
 
 client.on('interactionCreate', async interaction => {
   try {
@@ -282,6 +287,41 @@ if (interaction.isChatInputCommand()) {
   await interaction.reply({ content: '❌ Error reading tag.' });
 }
       }
+        if (commandName === 'resetlb') {
+  const OWNER_ID = '1356149794040446998'; // Replace with your Discord ID
+
+  const user = interaction.user;           // get user from interaction
+  const member = interaction.member;       // get member from interaction (guild member)
+
+  const isOwner = user.id === OWNER_ID;
+  const isAdmin = member.permissions.has(PermissionsBitField.Flags.Administrator);
+
+  if (!isOwner && !isAdmin) {
+    return interaction.reply({ content: '❌ You do not have permission to reset the leaderboard.', ephemeral: true });
+  }
+
+  try {
+    // Clear all points
+    await clientPointsCollection.deleteMany({});
+
+    // Update leaderboard message
+    const leaderboardChannel = await client.channels.fetch(process.env.LEADERBOARD_CHANNEL_ID);
+    const leaderboardMessage = await leaderboardChannel.messages.fetch(process.env.LEADERBOARD_MESSAGE_ID);
+
+    const embed = new EmbedBuilder()
+      .setTitle('**🏆 Client Leaderboard**')
+      .setDescription('No points recorded yet!')
+      .setColor('#FFD700')
+      .setTimestamp();
+
+    await leaderboardMessage.edit({ embeds: [embed] });
+
+    await interaction.reply({ content: '✅ Leaderboard has been reset.', ephemeral: true });
+  } catch (error) {
+    console.error('❌ Error resetting leaderboard:', error);
+    await interaction.reply({ content: '❌ Failed to reset leaderboard.', ephemeral: true });
+  }
+}
 
       if (commandName === 'tagdelete') {
         await interaction.deferReply({ ephemeral: true }).catch(() => {});
@@ -372,9 +412,13 @@ if (interaction.isChatInputCommand()) {
       .setTimestamp();
 
     const row = new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('transcript').setLabel('📄 Transcript').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('delete').setLabel('🗑️ Delete').setStyle(ButtonStyle.Danger)
-    );
+      new ButtonBuilder().setCustomId('transcript').setLabel('TRANSCRIPT').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('delete').setLabel('DELETE').setStyle(ButtonStyle.Danger),
+    new ButtonBuilder()
+    .setCustomId('log_points')
+    .setLabel('LOG POINTS')
+    .setStyle(ButtonStyle.Success)
+);
 
     await interaction.editReply({ embeds: [embed], components: [row] });
     console.log('[DEBUG] Close panel sent');
@@ -724,6 +768,73 @@ if (interaction.isButton() && interaction.customId === 'transcript') {
     if (interaction.isButton() && interaction.customId === 'delete') {
       await interaction.channel.delete().catch(console.error);
     }
+    if (interaction.isButton() && interaction.customId === 'log_points') {
+  try {
+    const channel = interaction.channel;
+    const guild = interaction.guild;
+
+    // Check if inside ticket category
+    const parentId = channel.parentId || channel.parent?.id;
+    if (parentId !== TICKET_CATEGORY) {
+      return interaction.reply({ content: '❌ This button can only be used inside ticket channels.', ephemeral: true });
+    }
+
+    // Defer reply so we can do async operations without timeout or "already replied" errors
+    await interaction.deferReply({ ephemeral: true });
+
+    // Get ticket data from DB
+    const ticketData = await ticketsCollection.findOne({ channelId: channel.id });
+    if (!ticketData) {
+      return interaction.editReply({ content: '❌ Could not find ticket data.' });
+    }
+
+    const userIds = [ticketData.user1, ticketData.user2].filter(Boolean);
+
+    // Add points for each user
+    for (const userId of userIds) {
+      const existing = await clientPointsCollection.findOne({ userId });
+      if (existing) {
+        await clientPointsCollection.updateOne({ userId }, { $inc: { points: 1 } });
+      } else {
+        await clientPointsCollection.insertOne({ userId, points: 1 });
+      }
+    }
+
+    // Fetch leaderboard message
+    const leaderboardChannel = await guild.channels.fetch(process.env.LEADERBOARD_CHANNEL_ID);
+    if (!leaderboardChannel) {
+      return interaction.editReply({ content: '❌ Leaderboard channel not found.' });
+    }
+    const leaderboardMessage = await leaderboardChannel.messages.fetch(process.env.LEADERBOARD_MESSAGE_ID);
+
+    // Get sorted top users
+    const topUsers = await clientPointsCollection.find().sort({ points: -1 }).limit(10).toArray();
+
+    const leaderboardText = topUsers.map((user, i) =>
+      `**#${i + 1}** <@${user.userId}> — **${user.points}** point${user.points === 1 ? '' : 's'}`
+    ).join('\n');
+
+    const embed = new EmbedBuilder()
+      .setTitle('🏆 Top Clients This Month')
+      .setDescription(leaderboardText || 'No data yet.')
+      .setColor('#2B2D31')
+      .setFooter({ text: 'Client Leaderboard' })
+      .setTimestamp();
+
+    await leaderboardMessage.edit({ embeds: [embed] });
+
+    // Reply to user confirming
+    await interaction.editReply({ content: `✅ Logged 1 point for <@${userIds.join('>, <@')}>` });
+
+  } catch (err) {
+    console.error('❌ Error logging points:', err);
+    if (!interaction.replied && !interaction.deferred) {
+      await interaction.reply({ content: '❌ Something went wrong while logging points.', ephemeral: true });
+    } else {
+      await interaction.editReply({ content: '❌ Something went wrong while logging points.' }).catch(() => {});
+    }
+  }
+}
 
     if (interaction.isModalSubmit() && interaction.customId === 'ticketModal') {
       // Prevent multiple tickets per user
@@ -750,6 +861,7 @@ const permissionOverwrites = [
   { id: MIDDLEMAN_ROLE, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] }
 ];
 
+
 // Add the target user to permission overwrites if ID is valid and member exists
 if (isValidId) {
   const member = interaction.guild.members.cache.get(q4);
@@ -767,10 +879,16 @@ const ticket = await interaction.guild.channels.create({
   parent: TICKET_CATEGORY,
   permissionOverwrites
 });
+await ticketsCollection.insertOne({
+  channelId: ticket.id,
+  user1: interaction.user.id,
+  user2: q4
+});
 
 const embed = new EmbedBuilder()
   .setTitle('Middleman Request')
   .setColor('#FFFFFF')
+  .setThumbnail(interaction.user.displayAvatarURL({ dynamic: true }))
   .addFields(
     { name: '**User 1**', value: `<@${interaction.user.id}>`, inline: true },
     { name: '**User 2**', value: `${targetMention}`, inline: true },
@@ -900,6 +1018,7 @@ async function handleTranscript(interaction, channel) {
     }
   }
 }
+});
 client.on('interactionCreate', async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
 
