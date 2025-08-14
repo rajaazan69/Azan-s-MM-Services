@@ -1,29 +1,22 @@
 const { Client, GatewayIntentBits } = require("discord.js");
 
+const TOKEN = process.env.TOKEN; // or paste token directly for test
+
 console.log("🚀 Starting bot...");
+console.log(`✅ Token found. Length: ${TOKEN.length}`);
 
-// Debug: Check token before doing anything
-if (!process.env.TOKEN) {
-    console.error("❌ ERROR: TOKEN environment variable is missing!");
-    process.exit(1); // Stop bot
-} else {
-    console.log("✅ Token found. Length:", process.env.TOKEN.length);
-}
-
-// Create bot client
 const client = new Client({
-    intents: [
-        GatewayIntentBits.Guilds,
-        GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.MessageContent
-    ]
+    intents: [GatewayIntentBits.Guilds]
 });
+
+client.on("debug", console.log); // Log debug info
+client.on("error", console.error);
+client.on("shardError", console.error);
 
 client.once("ready", () => {
     console.log(`✅ Logged in as ${client.user.tag}`);
 });
 
-// Log in to Discord
-client.login(process.env.TOKEN).catch(err => {
-    console.error("❌ Login failed:", err);
-});
+client.login(TOKEN)
+    .then(() => console.log("📡 Login request sent to Discord..."))
+    .catch(err => console.error("❌ Login failed immediately:", err));
