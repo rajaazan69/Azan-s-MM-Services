@@ -1,24 +1,10 @@
 {
-  "name": "middleman-ticket-bot",
+  "name": "render-discord-bot",
   "version": "1.0.0",
-  "description": "Discord ticket bot with MongoDB and transcript support",
   "main": "index.js",
-  "scripts": {
-    "start": "node index.js"
-  },
-  "engines": {
-    "node": ">=18.0.0"
-  },
+  "license": "MIT",
   "dependencies": {
-    "@napi-rs/canvas": "^0.1.43",
-    "discord.js": "^14.14.1",
-    "dotenv": "^16.4.5",
-    "express": "^4.19.2",
-    "fs": "^0.0.1-security",
-    "mongodb": "^6.7.0",
-    "node-fetch": "^2.6.9",
-    "path": "^0.12.7",
-    "discord-html-transcripts": "^3.2.0"
-  },
-  "type": "commonjs"
+    "discord.js": "^14.15.3",
+    "express": "^4.19.2"
+  }
 }
