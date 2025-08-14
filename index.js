@@ -1,7 +1,6 @@
 const { Client, GatewayIntentBits } = require('discord.js');
 require('dotenv').config();
 
-// Create the client
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
@@ -10,17 +9,16 @@ const client = new Client({
     ]
 });
 
-// On ready
 client.once('ready', () => {
     console.log(`✅ Logged in as ${client.user.tag}`);
 });
 
-// Basic ping command
-client.on('messageCreate', message => {
+client.on('messageCreate', (message) => {
     if (message.content.toLowerCase() === '!ping') {
         message.reply('Pong!');
     }
 });
 
-// Login
-client.login(process.env.TOKEN);
+client.login(process.env.TOKEN).catch(err => {
+    console.error('❌ Failed to login:', err);
+});
