@@ -17,5 +17,4 @@ client.once('ready', () => {
 client.login(process.env.TOKEN)
     .then(() => console.log("Login successful"))
     .catch(err => console.error("Login failed:", err));
-  console.error("❌ Failed to login:", err);
 });
