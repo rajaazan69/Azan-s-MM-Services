@@ -1,14 +1,13 @@
-// index.js
-require('dotenv').config();
+// minimal.js
 const { Client, GatewayIntentBits } = require('discord.js');
+require('dotenv').config();
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
 client.once('ready', () => {
-  console.log(`✅ Logged in as ${client.user.tag}`);
+    console.log(`✅ Logged in as ${client.user.tag}`);
 });
 
-client.on('error', console.error);
-process.on('unhandledRejection', console.error);
-
-client.login(process.env.TOKEN);
+client.login(process.env.TOKEN).catch(err => {
+    console.error("❌ Login failed:", err);
+});
