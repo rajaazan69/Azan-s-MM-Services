@@ -1216,22 +1216,6 @@ client.on('guildMemberAdd', async (member) => {
 
   welcomeChannel.send({ embeds: [embed] }).catch(console.error);
 });
-app.get('/', (req, res) => {
-  console.log('👀 UptimeRobot pinged the server');
-  res.status(200).send('✅ Server is alive');
-});
-app.listen(3000, () => console.log('🌐 Express server is running'));
-
-setInterval(() => {
-  console.log('⏳ Self-ping running...');
-  fetch('https://azan-s-mm-services.onrender.com/')
-    .then(res => {
-      console.log(`✅ Self-ping success: ${res.status} at ${new Date().toISOString()}`);
-    })
-    .catch(err => {
-      console.error(`❌ Self-ping failed:`, err);
-    });
-}, 1000 * 60 * 5); // Every 5 minutes
 client.on('error', console.error);
 process.on('unhandledRejection', (reason, p) => console.error('Unhandled Rejection:', reason));
 client.login(process.env.TOKEN);
