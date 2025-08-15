@@ -1,4 +1,3 @@
-
 const {
   Client, GatewayIntentBits, Partials, ChannelType, PermissionsBitField, PermissionFlagsBits,
   ActionRowBuilder, ModalBuilder, TextInputBuilder, TextInputStyle,
@@ -52,11 +51,11 @@ const client = new Client({
 });
 
 const PORT = process.env.PORT || 3000;
-const OWNER_ID = '1356149794040446998';
-const MIDDLEMAN_ROLE = '1373062797545570525';
-const PANEL_CHANNEL = '1373048211538841702';
-const TICKET_CATEGORY = '1373027564926406796';
-const TRANSCRIPT_CHANNEL = '1373058123547283568';
+const OWNER_ID = '';
+const MIDDLEMAN_ROLE = '';
+const PANEL_CHANNEL = '';
+const TICKET_CATEGORY = '';
+const TRANSCRIPT_CHANNEL = '';
 const BASE_URL = process.env.BASE_URL;
 
 app.get('/transcripts/:filename', (req, res) => {
@@ -1216,6 +1215,19 @@ client.on('guildMemberAdd', async (member) => {
 
   welcomeChannel.send({ embeds: [embed] }).catch(console.error);
 });
-client.on('error', console.error);
-process.on('unhandledRejection', (reason, p) => console.error('Unhandled Rejection:', reason));
-client.login(process.env.TOKEN);
+app.get('/', (req, res) => {
+  console.log('👀 UptimeRobot pinged the server');
+  res.status(200).send('✅ Server is alive');
+});
+app.listen(3000, () => console.log('🌐 Express server is running'));
+
+setInterval(() => {
+  console.log('⏳ Self-ping running...');
+  fetch('https://azan-s-mm-services.onrender.com/')
+    .then(res => {
+      console.log(`✅ Self-ping success: ${res.status} at ${new Date().toISOString()}`);
+    })
+    .catch(err => {
+      console.error(`❌ Self-ping failed:`, err);
+    });
+}, 1000 * 60 * 5); // Every 5
