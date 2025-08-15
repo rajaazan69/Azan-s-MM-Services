@@ -1,3 +1,4 @@
+
 const {
   Client, GatewayIntentBits, Partials, ChannelType, PermissionsBitField, PermissionFlagsBits,
   ActionRowBuilder, ModalBuilder, TextInputBuilder, TextInputStyle,
@@ -51,11 +52,11 @@ const client = new Client({
 });
 
 const PORT = process.env.PORT || 3000;
-const OWNER_ID = '';
-const MIDDLEMAN_ROLE = '';
-const PANEL_CHANNEL = '';
-const TICKET_CATEGORY = '';
-const TRANSCRIPT_CHANNEL = '';
+const OWNER_ID = '1356149794040446998';
+const MIDDLEMAN_ROLE = '1373062797545570525';
+const PANEL_CHANNEL = '1373048211538841702';
+const TICKET_CATEGORY = '1373027564926406796';
+const TRANSCRIPT_CHANNEL = '1373058123547283568';
 const BASE_URL = process.env.BASE_URL;
 
 app.get('/transcripts/:filename', (req, res) => {
@@ -1230,4 +1231,7 @@ setInterval(() => {
     .catch(err => {
       console.error(`❌ Self-ping failed:`, err);
     });
-}, 1000 * 60 * 5); // Every 5
+}, 1000 * 60 * 5); // Every 5 minutes
+client.on('error', console.error);
+process.on('unhandledRejection', (reason, p) => console.error('Unhandled Rejection:', reason));
+client.login(process.env.TOKEN);
